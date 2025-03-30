@@ -10,6 +10,8 @@ Here's an example of what you can do when it's connected to Claude.
 
 ![WhatsApp MCP](./example-use.png)
 
+> To get updates on this and other projects I work on [enter your email here](https://docs.google.com/forms/d/1rTF9wMBTN0vPfzWuQa2BjfGKdKIpTbyeKxhPMcEzgyI/preview)
+
 ## Installation
 
 ### Prerequisites
