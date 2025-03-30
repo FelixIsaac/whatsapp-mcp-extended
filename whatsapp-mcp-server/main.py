@@ -151,15 +151,15 @@ def get_message_context(
 
 @mcp.tool()
 def send_message(
-    message: str,
-    recipient: str
+    recipient: str,
+    message: str
 ) -> Dict[str, Any]:
     """Send a WhatsApp message to a person or group. For group chats use the JID.
 
     Args:
-        message: The message text to send
         recipient: The recipient - either a phone number with country code but no + or other symbols,
                  or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
+        message: The message text to send
     
     Returns:
         A dictionary containing success status and a status message
