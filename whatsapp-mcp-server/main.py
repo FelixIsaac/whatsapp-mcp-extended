@@ -172,7 +172,7 @@ def send_message(
         }
     
     # Call the whatsapp_send_message function with the unified recipient parameter
-    success, status_message = whatsapp_send_message(message, recipient)
+    success, status_message = whatsapp_send_message(recipient, message)
     return {
         "success": success,
         "message": status_message
