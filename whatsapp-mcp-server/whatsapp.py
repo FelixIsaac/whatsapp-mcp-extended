@@ -694,3 +694,40 @@ def send_message(phone_number: str, message: str) -> Tuple[bool, str]:
         return False, f"Error parsing response: {response.text}"
     except Exception as e:
         return False, f"Unexpected error: {str(e)}"
+
+def send_group_message(group_jid: str, message: str) -> Tuple[bool, str]:
+    """Send a WhatsApp message to the specified group.
+    
+    Args:
+        group_jid (str): The JID of the group to send the message to (must end with @g.us)
+        message (str): The message text to send
+        
+    Returns:
+        Tuple[bool, str]: A tuple containing success status and a status message
+    """
+    try:
+        # Validate that this looks like a group JID
+        if not group_jid.endswith("@g.us"):
+            return False, "Invalid group JID format. Group JIDs must end with @g.us"
+            
+        url = f"{WHATSAPP_API_BASE_URL}/send-group"
+        payload = {
+            "jid": group_jid,
+            "message": message
+        }
+        
+        response = requests.post(url, json=payload)
+        
+        # Check if the request was successful
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("success", False), result.get("message", "Unknown response")
+        else:
+            return False, f"Error: HTTP {response.status_code} - {response.text}"
+            
+    except requests.RequestException as e:
+        return False, f"Request error: {str(e)}"
+    except json.JSONDecodeError:
+        return False, f"Error parsing response: {response.text}"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
