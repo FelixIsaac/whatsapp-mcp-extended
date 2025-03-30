@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 
@@ -178,24 +179,39 @@ type SendMessageResponse struct {
 
 // SendMessageRequest represents the request body for the send message API
 type SendMessageRequest struct {
-	Phone   string `json:"phone"`
-	Message string `json:"message"`
+	Recipient string `json:"recipient"`
+	Message   string `json:"message"`
 }
 
 // Function to send a WhatsApp message
-func sendWhatsAppMessage(client *whatsmeow.Client, phone, message string) (bool, string) {
+func sendWhatsAppMessage(client *whatsmeow.Client, recipient string, message string) (bool, string) {
 	if !client.IsConnected() {
 		return false, "Not connected to WhatsApp"
 	}
 
 	// Create JID for recipient
-	recipientJID := types.JID{
-		User:   phone,
-		Server: "s.whatsapp.net", // For personal chats
+	var recipientJID types.JID
+	var err error
+
+	// Check if recipient is a JID
+	isJID := strings.Contains(recipient, "@")
+
+	if isJID {
+		// Parse the JID string
+		recipientJID, err = types.ParseJID(recipient)
+		if err != nil {
+			return false, fmt.Sprintf("Error parsing JID: %v", err)
+		}
+	} else {
+		// Create JID from phone number
+		recipientJID = types.JID{
+			User:   recipient,
+			Server: "s.whatsapp.net", // For personal chats
+		}
 	}
 
 	// Send the message
-	_, err := client.SendMessage(context.Background(), recipientJID, &waProto.Message{
+	_, err = client.SendMessage(context.Background(), recipientJID, &waProto.Message{
 		Conversation: proto.String(message),
 	})
 
@@ -203,7 +219,7 @@ func sendWhatsAppMessage(client *whatsmeow.Client, phone, message string) (bool,
 		return false, fmt.Sprintf("Error sending message: %v", err)
 	}
 
-	return true, fmt.Sprintf("Message sent to %s", phone)
+	return true, fmt.Sprintf("Message sent to %s", recipient)
 }
 
 // Start a REST API server to expose the WhatsApp client functionality
@@ -225,13 +241,13 @@ func startRESTServer(client *whatsmeow.Client, port int) {
 		}
 
 		// Validate request
-		if req.Phone == "" || req.Message == "" {
-			http.Error(w, "Phone and message are required", http.StatusBadRequest)
+		if req.Recipient == "" || req.Message == "" {
+			http.Error(w, "Recipient and message are required", http.StatusBadRequest)
 			return
 		}
 
 		// Send the message
-		success, message := sendWhatsAppMessage(client, req.Phone, req.Message)
+		success, message := sendWhatsAppMessage(client, req.Recipient, req.Message)
 		fmt.Println("Message sent", success, message)
 		// Set response headers
 		w.Header().Set("Content-Type", "application/json")

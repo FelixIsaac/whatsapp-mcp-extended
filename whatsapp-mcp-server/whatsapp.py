@@ -662,57 +662,25 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Chat]:
         if 'conn' in locals():
             conn.close()
 
-def send_message(phone_number: str, message: str) -> Tuple[bool, str]:
-    """Send a WhatsApp message to the specified phone number.
+def send_message(message: str, recipient: str) -> Tuple[bool, str]:
+    """Send a WhatsApp message to the specified recipient. For group messages use the JID.
     
     Args:
-        phone_number (str): The recipient's phone number, with country code but no + or other symbols
-        message (str): The message text to send
+        message: The message text to send
+        recipient: The recipient - either a phone number with country code but no + or other symbols,
+                  or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us").
         
     Returns:
         Tuple[bool, str]: A tuple containing success status and a status message
     """
     try:
+        # Validate input
+        if not recipient:
+            return False, "Recipient must be provided"
+        
         url = f"{WHATSAPP_API_BASE_URL}/send"
         payload = {
-            "phone": phone_number,
-            "message": message
-        }
-        
-        response = requests.post(url, json=payload)
-        
-        # Check if the request was successful
-        if response.status_code == 200:
-            result = response.json()
-            return result.get("success", False), result.get("message", "Unknown response")
-        else:
-            return False, f"Error: HTTP {response.status_code} - {response.text}"
-            
-    except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
-    except json.JSONDecodeError:
-        return False, f"Error parsing response: {response.text}"
-    except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
-
-def send_group_message(group_jid: str, message: str) -> Tuple[bool, str]:
-    """Send a WhatsApp message to the specified group.
-    
-    Args:
-        group_jid (str): The JID of the group to send the message to (must end with @g.us)
-        message (str): The message text to send
-        
-    Returns:
-        Tuple[bool, str]: A tuple containing success status and a status message
-    """
-    try:
-        # Validate that this looks like a group JID
-        if not group_jid.endswith("@g.us"):
-            return False, "Invalid group JID format. Group JIDs must end with @g.us"
-            
-        url = f"{WHATSAPP_API_BASE_URL}/send-group"
-        payload = {
-            "jid": group_jid,
+            "recipient": recipient,
             "message": message
         }
         
