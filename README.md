@@ -43,7 +43,7 @@ Here's an example of what you can do when it's connected to Claude.
 
    After approximately 20 days, you will might need to re-authenticate.
 
-3. **Connect to the the MCP server**
+3. **Connect to the MCP server**
 
    Copy the below json with the appropriate {{PATH}} values:
 
