@@ -51,10 +51,10 @@ Here's an example of what you can do when it's connected to Claude.
    {
      "mcpServers": {
        "whatsapp": {
-         "command": "{{PATH}}/.local/bin/uv", // Run `which uv` and place the output here
+         "command": "{{PATH_TO_UV}}", // Run `which uv` and place the output here
          "args": [
            "--directory",
-           "{{PATH}}/whatsapp-mcp/whatsapp-mcp-server", // cd into the repo, run `pwd` and enter the output here + "/whatsapp-mcp-server"
+           "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-mcp-server", // cd into the repo, run `pwd` and enter the output here + "/whatsapp-mcp-server"
            "run",
            "main.py"
          ]
