@@ -1,6 +1,5 @@
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from mcp.server.fastmcp import FastMCP
-from datetime import datetime
 from whatsapp import (
     search_contacts as whatsapp_search_contacts,
     list_messages as whatsapp_list_messages,
@@ -28,7 +27,8 @@ def search_contacts(query: str) -> List[Dict[str, Any]]:
 
 @mcp.tool()
 def list_messages(
-    date_range: Optional[Tuple[datetime, datetime]] = None,
+    after: Optional[str] = None,
+    before: Optional[str] = None,
     sender_phone_number: Optional[str] = None,
     chat_jid: Optional[str] = None,
     query: Optional[str] = None,
@@ -41,7 +41,8 @@ def list_messages(
     """Get WhatsApp messages matching specified criteria with optional context.
     
     Args:
-        date_range: Optional tuple of (start_date, end_date) to filter messages by date
+        after: Optional ISO-8601 formatted string to only return messages after this date
+        before: Optional ISO-8601 formatted string to only return messages before this date
         sender_phone_number: Optional phone number to filter messages by sender
         chat_jid: Optional chat JID to filter messages by chat
         query: Optional search term to filter messages by content
@@ -52,7 +53,8 @@ def list_messages(
         context_after: Number of messages to include after each match (default 1)
     """
     messages = whatsapp_list_messages(
-        date_range=date_range,
+        after=after,
+        before=before,
         sender_phone_number=sender_phone_number,
         chat_jid=chat_jid,
         query=query,
