@@ -204,7 +204,7 @@ def send_file(recipient: str, media_path: str) -> Dict[str, Any]:
 
 @mcp.tool()
 def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
-    """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID.
+    """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
     
     Args:
         recipient: The recipient - either a phone number with country code but no + or other symbols,

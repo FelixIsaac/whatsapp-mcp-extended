@@ -20,7 +20,7 @@ Here's an example of what you can do when it's connected to Claude.
 - Python 3.6+
 - Anthropic Claude Desktop app (or Cursor)
 - UV (Python package manager), install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- FFmpeg (optional, when using the send_audio_message tool you either need to send them as .ogg opus files or install FFmpeg and it will automatically convert them)
+- **FFmpeg** (_optional_) - Only needed for audio messages. If you want to send audio files as playable WhatsApp voice messages, they must be in `.ogg` Opus format. With FFmpeg installed, the MCP server will automatically convert non-Opus audio files. Without FFmpeg, you can still send raw audio files using the `send_file` tool.
 
 ### Steps
 
@@ -136,11 +136,17 @@ Claude can access the following tools to interact with WhatsApp:
 - **get_message_context**: Retrieve context around a specific message
 - **send_message**: Send a WhatsApp message to a specified phone number or group JID
 - **send_file**: Send a file (image, video, raw audio, document) to a specified recipient
-- **send_audio_message**: Send an audio file as a WhatsApp voice message
+- **send_audio_message**: Send an audio file as a WhatsApp voice message (requires the file to be an .ogg opus file or ffmpeg must be installed)
 
-### Media Sending Requirements
+### Media Sending Features
 
-- For **send_audio_message**: If you're sending files that aren't already in OGG Opus format, you need to install FFmpeg on your system. The tool uses FFmpeg to convert audio files to the required format for WhatsApp voice messages.
+The MCP server supports sending various media types to your WhatsApp contacts:
+
+- **Images, Videos, Documents**: Use the `send_file` tool to share any supported media type.
+- **Voice Messages**: Use the `send_audio_message` tool to send audio files as playable WhatsApp voice messages.
+  - For optimal compatibility, audio files should be in `.ogg` Opus format.
+  - With FFmpeg installed, the system will automatically convert other audio formats (MP3, WAV, etc.) to the required format.
+  - Without FFmpeg, you can still send raw audio files using the `send_file` tool, but they won't appear as playable voice messages.
 
 ## Technical Details
 
