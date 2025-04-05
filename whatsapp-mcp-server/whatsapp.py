@@ -185,9 +185,9 @@ def print_recent_messages(limit=10) -> List[Message]:
         if 'conn' in locals():
             conn.close()
 
-
 def list_messages(
-    date_range: Optional[Tuple[datetime, datetime]] = None,
+    after: Optional[str] = None,
+    before: Optional[str] = None,
     sender_phone_number: Optional[str] = None,
     chat_jid: Optional[str] = None,
     query: Optional[str] = None,
@@ -209,10 +209,24 @@ def list_messages(
         params = []
         
         # Add filters
-        if date_range:
-            where_clauses.append("messages.timestamp BETWEEN ? AND ?")
-            params.extend([date_range[0].isoformat(), date_range[1].isoformat()])
+        if after:
+            try:
+                after = datetime.fromisoformat(after)
+            except ValueError:
+                raise ValueError(f"Invalid date format for 'after': {after}. Please use ISO-8601 format.")
             
+            where_clauses.append("messages.timestamp > ?")
+            params.append(after)
+
+        if before:
+            try:
+                before = datetime.fromisoformat(before)
+            except ValueError:
+                raise ValueError(f"Invalid date format for 'before': {before}. Please use ISO-8601 format.")
+            
+            where_clauses.append("messages.timestamp < ?")
+            params.append(before)
+
         if sender_phone_number:
             where_clauses.append("messages.sender = ?")
             params.append(sender_phone_number)
