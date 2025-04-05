@@ -2,7 +2,7 @@
 
 This is a Model Context Protocol (MCP) server for WhatsApp.
 
-With this you can search you personal Whatsapp messages, search your contacts and send messages to either individuals or groups.
+With this you can search you personal Whatsapp messages, search your contacts and send messages to either individuals or groups. You can also send media files including images, videos, documents, and audio messages.
 
 It connects to your **personal WhatsApp account** directly via the Whatsapp web multidevice API (using the [whatsmeow](https://github.com/tulir/whatsmeow) library). All your messages are stored locally in a SQLite database and only sent to an LLM (such as Claude) when the agent accesses them through tools (which you control).
 
@@ -20,6 +20,7 @@ Here's an example of what you can do when it's connected to Claude.
 - Python 3.6+
 - Anthropic Claude Desktop app (or Cursor)
 - UV (Python package manager), install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- FFmpeg (optional, when using the send_audio_message tool you either need to send them as .ogg opus files or install FFmpeg and it will automatically convert them)
 
 ### Steps
 
@@ -91,7 +92,7 @@ If you're running this project on Windows, be aware that `go-sqlite3` requires *
    We recommend using [MSYS2](https://www.msys2.org/) to install a C compiler for Windows. After installing MSYS2, make sure to add the `ucrt64\bin` folder to your `PATH`.  
    → A step-by-step guide is available [here](https://code.visualstudio.com/docs/cpp/config-mingw).
 
-2. **Enable CGO and run the app**  
+2. **Enable CGO and run the app**
 
    ```bash
    cd whatsapp-bridge
@@ -100,6 +101,7 @@ If you're running this project on Windows, be aware that `go-sqlite3` requires *
    ```
 
 Without this setup, you'll likely run into errors like:
+
 > `Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work.`
 
 ## Architecture Overview
@@ -132,7 +134,13 @@ Claude can access the following tools to interact with WhatsApp:
 - **get_contact_chats**: List all chats involving a specific contact
 - **get_last_interaction**: Get the most recent message with a contact
 - **get_message_context**: Retrieve context around a specific message
-- **send_message**: Send a WhatsApp message to a specified phone number
+- **send_message**: Send a WhatsApp message to a specified phone number or group JID
+- **send_file**: Send a file (image, video, raw audio, document) to a specified recipient
+- **send_audio_message**: Send an audio file as a WhatsApp voice message
+
+### Media Sending Requirements
+
+- For **send_audio_message**: If you're sending files that aren't already in OGG Opus format, you need to install FFmpeg on your system. The tool uses FFmpeg to convert audio files to the required format for WhatsApp voice messages.
 
 ## Technical Details
 
