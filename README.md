@@ -2,7 +2,7 @@
 
 This is a Model Context Protocol (MCP) server for WhatsApp.
 
-With this you can search you personal Whatsapp messages, search your contacts and send messages to either individuals or groups. You can also send media files including images, videos, documents, and audio messages.
+With this you can search your personal Whatsapp messages, search your contacts and send messages to either individuals or groups. You can also send media files including images, videos, documents, and audio messages.
 
 It connects to your **personal WhatsApp account** directly via the Whatsapp web multidevice API (using the [whatsmeow](https://github.com/tulir/whatsmeow) library). All your messages are stored locally in a SQLite database and only sent to an LLM (such as Claude) when the agent accesses them through tools (which you control).
 
