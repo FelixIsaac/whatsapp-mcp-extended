@@ -11,7 +11,8 @@ from whatsapp import (
     get_message_context as whatsapp_get_message_context,
     send_message as whatsapp_send_message,
     send_file as whatsapp_send_file,
-    send_audio_message as whatsapp_audio_voice_message
+    send_audio_message as whatsapp_audio_voice_message,
+    download_media as whatsapp_download_media
 )
 
 # Initialize FastMCP server
@@ -128,7 +129,7 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Dict[str
     return chats
 
 @mcp.tool()
-def get_last_interaction(jid: str) -> Dict[str, Any]:
+def get_last_interaction(jid: str) -> str:
     """Get most recent WhatsApp message involving the contact.
     
     Args:
@@ -219,6 +220,31 @@ def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
         "success": success,
         "message": status_message
     }
+
+@mcp.tool()
+def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
+    """Download media from a WhatsApp message and get the local file path.
+    
+    Args:
+        message_id: The ID of the message containing the media
+        chat_jid: The JID of the chat containing the message
+    
+    Returns:
+        A dictionary containing success status, a status message, and the file path if successful
+    """
+    file_path = whatsapp_download_media(message_id, chat_jid)
+    
+    if file_path:
+        return {
+            "success": True,
+            "message": "Media downloaded successfully",
+            "file_path": file_path
+        }
+    else:
+        return {
+            "success": False,
+            "message": "Failed to download media"
+        }
 
 if __name__ == "__main__":
     # Initialize and run the server
