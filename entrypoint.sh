@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Start the Go WhatsApp bridge in the background
-cd /app
+cd /app/whatsapp-bridge
 ./whatsapp-bridge &
 
-# Start the Python MCP server with SSE transport on port 8081
+# Start the Python MCP server with SSE transport on port 8082
 cd /app/whatsapp-mcp-server
-uv run main.py
+python gradio-main.py
 
 # Keep the container running
 wait

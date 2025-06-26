@@ -20,12 +20,13 @@ FROM python:3.13 as runtime
 
 WORKDIR /app
 
-# Copy the go bridge project files
+# Copy the Python Gradio project files
 COPY  --from=builder /app/whatsapp-mcp-server /app/whatsapp-mcp-server
 
 # Copy the GO exec from the previus stage
-COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge
-RUN chmod +x /app/whatsapp-bridge
+RUN mkdir -p /app/whatsapp-bridge
+COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge/whatsapp-bridge
+RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge
 
 # Install Python and other dependencies
 RUN apt-get update 
@@ -37,6 +38,11 @@ RUN apt-get install -y ffmpeg \
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install uv
 
+# Install dependencies from requirements.txt
+WORKDIR /app/whatsapp-mcp-server
+COPY --from=builder /app/whatsapp-mcp-server/requirements.txt /app/whatsapp-mcp-server/requirements.txt
+RUN pip install -r requirements.txt
+
 # Set up Python MCP server
 WORKDIR /app/whatsapp-mcp-server
 
@@ -47,7 +53,7 @@ RUN mkdir -p /app/store
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Expose port for MCP server with SSE
-EXPOSE 8080
+# Expose ports for MCP server and Gradio UI
 EXPOSE 8081
+EXPOSE 8082
 ENTRYPOINT ["/app/entrypoint.sh"]

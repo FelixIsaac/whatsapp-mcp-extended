@@ -1,0 +1,7 @@
+httpx>=0.28.1
+mcp[cli]>=1.6.0
+requests>=2.32.3
+starlette>=0.37.2
+uvicorn>=0.23.2
+gradio==5.34.2
+gradio_client==1.10.3

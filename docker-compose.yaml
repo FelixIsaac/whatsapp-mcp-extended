@@ -4,10 +4,10 @@ services:
   whatsapp-mcp:
     build: .
     ports:
-      - "8080:8080" 
       - "8081:8081"  # MCP server port with SSE
+      - "8082:8082"  # Gradio UI port
     volumes:
-      - ./store:/app/store  # Persistent storage for WhatsApp data
+      - ./store:/app/whatsapp-bridge/store  # Persistent storage for WhatsApp data
     environment:
       - TZ=UTC
     restart: unless-stopped

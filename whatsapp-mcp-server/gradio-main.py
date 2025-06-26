@@ -1,3 +1,6 @@
+import os
+import logging
+import gradio as gr
 from typing import List, Dict, Any, Optional
 from mcp.server.fastmcp import FastMCP
 from whatsapp import (
@@ -15,8 +18,20 @@ from whatsapp import (
     download_media as whatsapp_download_media
 )
 
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG if os.environ.get('DEBUG') == 'true' else logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 # Initialize FastMCP server
-mcp = FastMCP("whatsapp")
+mcp = FastMCP(
+    "whatsapp",
+    log_level="DEBUG" if os.environ.get('DEBUG') == 'true' else "INFO",
+    auth_required=os.environ.get('DANGEROUSLY_OMIT_AUTH') != 'true'
+)
+
+# Define MCP tools (these will be exposed through both MCP and Gradio)
 
 @mcp.tool()
 def search_contacts(query: str) -> List[Dict[str, Any]]:
@@ -246,6 +261,161 @@ def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
             "message": "Failed to download media"
         }
 
+# Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)
+
+def gradio_search_contacts(query):
+    contacts = search_contacts(query)
+    if contacts:
+        return gr.update(value=str(contacts), visible=True)
+    else:
+        return gr.update(value="No contacts found", visible=True)
+
+def gradio_list_chats(query, limit, include_last_message, sort_by):
+    chats = list_chats(
+        query=query if query else None, 
+        limit=int(limit), 
+        page=0,
+        include_last_message=include_last_message, 
+        sort_by=sort_by
+    )
+    if chats:
+        return gr.update(value=str(chats), visible=True)
+    else:
+        return gr.update(value="No chats found", visible=True)
+
+def gradio_list_messages(chat_jid, query, limit):
+    messages = list_messages(
+        chat_jid=chat_jid if chat_jid else None,
+        query=query if query else None,
+        limit=int(limit),
+        page=0
+    )
+    if messages:
+        return gr.update(value=str(messages), visible=True)
+    else:
+        return gr.update(value="No messages found", visible=True)
+
+def gradio_send_message(recipient, message):
+    result = send_message(recipient, message)
+    return f"Status: {result['success']}, Message: {result['message']}"
+
+def gradio_send_file(recipient, file):
+    result = send_file(recipient, file.name)
+    return f"Status: {result['success']}, Message: {result['message']}"
+
+def gradio_send_audio(recipient, file):
+    result = send_audio_message(recipient, file.name)
+    return f"Status: {result['success']}, Message: {result['message']}"
+
+# Create Gradio UI
+def create_gradio_ui():
+    with gr.Blocks(title="WhatsApp MCP Interface") as app:
+        gr.Markdown("# WhatsApp MCP Interface")
+        gr.Markdown("This interface allows you to interact with your WhatsApp account through the Model Context Protocol (MCP).")
+        
+        with gr.Tab("Search Contacts"):
+            with gr.Row():
+                search_query = gr.Textbox(label="Search Query", placeholder="Enter name or phone number")
+                search_button = gr.Button("Search")
+            
+            search_results = gr.Textbox(label="Results", visible=False, lines=10)
+            search_button.click(gradio_search_contacts, inputs=search_query, outputs=search_results)
+        
+        with gr.Tab("List Chats"):
+            with gr.Row():
+                chat_query = gr.Textbox(label="Search Query (optional)", placeholder="Enter chat name")
+                chat_limit = gr.Slider(label="Limit", minimum=1, maximum=50, value=20, step=1)
+                chat_include_last = gr.Checkbox(label="Include Last Message", value=True)
+                chat_sort = gr.Dropdown(label="Sort By", choices=["last_active", "name"], value="last_active")
+                
+            chat_search_button = gr.Button("List Chats")
+            chat_results = gr.Textbox(label="Results", visible=False, lines=10)
+            
+            chat_search_button.click(
+                gradio_list_chats, 
+                inputs=[chat_query, chat_limit, chat_include_last, chat_sort], 
+                outputs=chat_results
+            )
+        
+        with gr.Tab("List Messages"):
+            with gr.Row():
+                msg_chat_jid = gr.Textbox(label="Chat JID (optional)", placeholder="Enter chat JID")
+                msg_query = gr.Textbox(label="Search Query (optional)", placeholder="Enter message content to search")
+                msg_limit = gr.Slider(label="Limit", minimum=1, maximum=50, value=20, step=1)
+                
+            msg_search_button = gr.Button("List Messages")
+            msg_results = gr.Textbox(label="Results", visible=False, lines=10)
+            
+            msg_search_button.click(
+                gradio_list_messages, 
+                inputs=[msg_chat_jid, msg_query, msg_limit], 
+                outputs=msg_results
+            )
+        
+        with gr.Tab("Send Message"):
+            with gr.Row():
+                send_recipient = gr.Textbox(label="Recipient", placeholder="Phone number or JID")
+                send_message_text = gr.Textbox(label="Message", placeholder="Type your message here", lines=3)
+                
+            send_button = gr.Button("Send Message")
+            send_result = gr.Textbox(label="Result", lines=2)
+            
+            send_button.click(
+                gradio_send_message, 
+                inputs=[send_recipient, send_message_text], 
+                outputs=send_result
+            )
+        
+        with gr.Tab("Send Media"):
+            with gr.Row():
+                media_recipient = gr.Textbox(label="Recipient", placeholder="Phone number or JID")
+                media_file = gr.File(label="Select Media File")
+                
+            send_file_button = gr.Button("Send File")
+            send_audio_button = gr.Button("Send as Audio Message")
+            media_result = gr.Textbox(label="Result", lines=2)
+            
+            send_file_button.click(
+                gradio_send_file, 
+                inputs=[media_recipient, media_file], 
+                outputs=media_result
+            )
+            
+            send_audio_button.click(
+                gradio_send_audio, 
+                inputs=[media_recipient, media_file], 
+                outputs=media_result
+            )
+            
+    return app
+
+# Main function
 if __name__ == "__main__":
-    # Initialize and run the server
-    mcp.run(transport='stdio')
+    # Get configuration from environment variables or use defaults
+    host = os.environ.get('HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', '8081'))  # Use a different port to avoid conflicts with the Inspector
+    gradio_port = int(os.environ.get('GRADIO_PORT', '8082'))
+    
+    # Start MCP server in a separate thread
+    import threading
+    def start_mcp_server():
+        logging.info(f"Starting WhatsApp MCP server with SSE transport on {host}:{port}")
+        try:
+            # Initialize and run the server with SSE transport
+            mcp.run(
+                transport='sse'
+            )
+        except Exception as e:
+            logging.error(f"Error starting MCP server: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Start MCP server in a thread
+    mcp_thread = threading.Thread(target=start_mcp_server)
+    mcp_thread.daemon = True
+    mcp_thread.start()
+    
+    # Start Gradio UI
+    logging.info(f"Starting Gradio UI on port {gradio_port}")
+    app = create_gradio_ui()
+    app.launch(server_name=host, server_port=gradio_port, share=False,mcp_server=True)
