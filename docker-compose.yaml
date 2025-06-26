@@ -4,10 +4,15 @@ services:
   whatsapp-mcp:
     build: .
     ports:
-      - "8080:8080"  # WhatsApp bridge port
-      - "8081:8081"  # MCP server port
+      - "8080:8080" 
+      - "8081:8081"  # MCP server port with SSE
     volumes:
       - ./store:/app/store  # Persistent storage for WhatsApp data
     environment:
       - TZ=UTC
     restart: unless-stopped
+    networks:
+      -  n8n_n8n_traefik_network
+networks:
+  n8n_n8n_traefik_network:
+    external: true

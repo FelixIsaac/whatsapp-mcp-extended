@@ -47,6 +47,7 @@ RUN mkdir -p /app/store
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Expose ports
-EXPOSE 8080 8081
+# Expose port for MCP server with SSE
+EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["/app/entrypoint.sh"]
