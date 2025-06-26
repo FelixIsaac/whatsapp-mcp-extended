@@ -12,7 +12,7 @@ services:
       - TZ=UTC
     restart: unless-stopped
     networks:
-      -  n8n_n8n_traefik_network
+      -  n8n_n8n_traefik_network # <-- Ensure this network exists in your Docker setup -- if you dont whant it expose set it to the relevnat network only
 networks:
   n8n_n8n_traefik_network:
     external: true
