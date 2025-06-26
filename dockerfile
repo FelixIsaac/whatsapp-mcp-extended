@@ -9,10 +9,10 @@ ENV GO111MODULE=on
 WORKDIR /app
 
 # Copy the go bridge project files
-COPY ./whatsapp-bridge .
+COPY . .
 
 # Build the Go WhatsApp bridge
-WORKDIR /app
+WORKDIR /app/whatsapp-bridge
 RUN go mod download
 RUN go build -o whatsapp-bridge
 
@@ -21,10 +21,10 @@ FROM python:3.13 as runtime
 WORKDIR /app
 
 # Copy the go bridge project files
-COPY ./whatsapp-mcp-server .
+COPY  --from=builder /app/whatsapp-mcp-server /app/whatsapp-mcp-server
 
 # Copy the GO exec from the previus stage
-COPY --from=builder /app/whatsapp-bridge ./whatsapp-bridge
+COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge
 RUN chmod +x /app/whatsapp-bridge
 
 # Install Python and other dependencies

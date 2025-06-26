@@ -6,7 +6,7 @@ cd /app
 
 # Start the Python MCP server with SSE transport on port 8081
 cd /app/whatsapp-mcp-server
-uv run sse_main.py
+uv run main.py
 
 # Keep the container running
 wait
