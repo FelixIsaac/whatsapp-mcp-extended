@@ -3,6 +3,11 @@ version: '3.8'
 services:
   whatsapp-mcp:
     build: .
+    deploy:
+      resources:
+        limits:
+          memory: 2G  # Adjust memory allocation as needed
+          cpus: '0.5'  # Adjust CPU allocation as needed
     ports:
       - "8081:8081"  # MCP server port with SSE
       - "8082:8082"  # Gradio UI port
