@@ -68,12 +68,12 @@ type WebhookTrigger struct {
 
 // WebhookPayload represents the standardized payload structure for webhook notifications
 type WebhookPayload struct {
-	EventType     string                 `json:"event_type"`
-	Timestamp     string                 `json:"timestamp"`
-	WebhookConfig WebhookConfigInfo      `json:"webhook_config"`
-	Trigger       WebhookTriggerInfo     `json:"trigger"`
-	Message       WebhookMessageInfo     `json:"message"`
-	Metadata      WebhookMetadata        `json:"metadata"`
+	EventType     string             `json:"event_type"`
+	Timestamp     string             `json:"timestamp"`
+	WebhookConfig WebhookConfigInfo  `json:"webhook_config"`
+	Trigger       WebhookTriggerInfo `json:"trigger"`
+	Message       WebhookMessageInfo `json:"message"`
+	Metadata      WebhookMetadata    `json:"metadata"`
 }
 
 type WebhookConfigInfo struct {
@@ -108,25 +108,25 @@ type WebhookMetadata struct {
 }
 
 type GroupInfo struct {
-	IsGroup          bool `json:"is_group"`
+	IsGroup          bool   `json:"is_group"`
 	GroupName        string `json:"group_name"`
-	ParticipantCount int  `json:"participant_count"`
+	ParticipantCount int    `json:"participant_count"`
 }
 
 // WebhookLog represents a webhook delivery log entry
 type WebhookLog struct {
-	ID              int       `json:"id"`
-	WebhookConfigID int       `json:"webhook_config_id"`
-	MessageID       string    `json:"message_id"`
-	ChatJID         string    `json:"chat_jid"`
-	TriggerType     string    `json:"trigger_type"`
-	TriggerValue    string    `json:"trigger_value"`
-	Payload         string    `json:"payload"`
-	ResponseStatus  int       `json:"response_status"`
-	ResponseBody    string    `json:"response_body"`
-	AttemptCount    int       `json:"attempt_count"`
+	ID              int        `json:"id"`
+	WebhookConfigID int        `json:"webhook_config_id"`
+	MessageID       string     `json:"message_id"`
+	ChatJID         string     `json:"chat_jid"`
+	TriggerType     string     `json:"trigger_type"`
+	TriggerValue    string     `json:"trigger_value"`
+	Payload         string     `json:"payload"`
+	ResponseStatus  int        `json:"response_status"`
+	ResponseBody    string     `json:"response_body"`
+	AttemptCount    int        `json:"attempt_count"`
 	DeliveredAt     *time.Time `json:"delivered_at"`
-	CreatedAt       time.Time `json:"created_at"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 // Database handler for storing message history
@@ -306,13 +306,13 @@ func (store *MessageStore) StoreWebhookConfig(config *WebhookConfig) error {
 	if err != nil {
 		return err
 	}
-	
+
 	id, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
 	config.ID = int(id)
-	
+
 	// Store triggers
 	for i := range config.Triggers {
 		config.Triggers[i].WebhookConfigID = config.ID
@@ -321,7 +321,7 @@ func (store *MessageStore) StoreWebhookConfig(config *WebhookConfig) error {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -331,19 +331,19 @@ func (store *MessageStore) GetWebhookConfig(id int) (*WebhookConfig, error) {
 	err := store.db.QueryRow(
 		`SELECT id, name, webhook_url, secret_token, enabled, created_at, updated_at 
 		 FROM webhook_configs WHERE id = ?`, id,
-	).Scan(&config.ID, &config.Name, &config.WebhookURL, &config.SecretToken, 
+	).Scan(&config.ID, &config.Name, &config.WebhookURL, &config.SecretToken,
 		&config.Enabled, &config.CreatedAt, &config.UpdatedAt)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Load triggers
 	config.Triggers, err = store.GetWebhookTriggers(id)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return config, nil
 }
 
@@ -356,7 +356,7 @@ func (store *MessageStore) GetAllWebhookConfigs() ([]*WebhookConfig, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var configs []*WebhookConfig
 	for rows.Next() {
 		config := &WebhookConfig{}
@@ -365,16 +365,16 @@ func (store *MessageStore) GetAllWebhookConfigs() ([]*WebhookConfig, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Load triggers for each config
 		config.Triggers, err = store.GetWebhookTriggers(config.ID)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		configs = append(configs, config)
 	}
-	
+
 	return configs, nil
 }
 
@@ -399,13 +399,13 @@ func (store *MessageStore) DeleteWebhookConfig(id int) error {
 	if count == 0 {
 		return fmt.Errorf("webhook with ID %d not found", id)
 	}
-	
+
 	// Delete triggers first (foreign key constraint)
 	_, err = store.db.Exec("DELETE FROM webhook_triggers WHERE webhook_config_id = ?", id)
 	if err != nil {
 		return err
 	}
-	
+
 	// Delete config
 	_, err = store.db.Exec("DELETE FROM webhook_configs WHERE id = ?", id)
 	return err
@@ -421,13 +421,13 @@ func (store *MessageStore) StoreWebhookTrigger(trigger *WebhookTrigger) error {
 	if err != nil {
 		return err
 	}
-	
+
 	id, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
 	trigger.ID = int(id)
-	
+
 	return nil
 }
 
@@ -441,7 +441,7 @@ func (store *MessageStore) GetWebhookTriggers(webhookConfigID int) ([]WebhookTri
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var triggers []WebhookTrigger
 	for rows.Next() {
 		trigger := WebhookTrigger{}
@@ -452,7 +452,7 @@ func (store *MessageStore) GetWebhookTriggers(webhookConfigID int) ([]WebhookTri
 		}
 		triggers = append(triggers, trigger)
 	}
-	
+
 	return triggers, nil
 }
 
@@ -479,25 +479,25 @@ func (store *MessageStore) GetWebhookLogs(webhookConfigID int, limit int) ([]*We
 	query := `SELECT id, webhook_config_id, message_id, chat_jid, trigger_type, trigger_value, 
 		 payload, response_status, response_body, attempt_count, delivered_at, created_at 
 		 FROM webhook_logs`
-	
+
 	var args []interface{}
 	if webhookConfigID > 0 {
 		query += " WHERE webhook_config_id = ?"
 		args = append(args, webhookConfigID)
 	}
-	
+
 	query += " ORDER BY created_at DESC"
 	if limit > 0 {
 		query += " LIMIT ?"
 		args = append(args, limit)
 	}
-	
+
 	rows, err := store.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var logs []*WebhookLog
 	for rows.Next() {
 		log := &WebhookLog{}
@@ -509,7 +509,7 @@ func (store *MessageStore) GetWebhookLogs(webhookConfigID int, limit int) ([]*We
 		}
 		logs = append(logs, log)
 	}
-	
+
 	return logs, nil
 }
 
@@ -538,12 +538,12 @@ func NewWebhookManager(messageStore *MessageStore, logger waLog.Logger) *Webhook
 func (wm *WebhookManager) LoadWebhookConfigs() error {
 	wm.mutex.Lock()
 	defer wm.mutex.Unlock()
-	
+
 	configs, err := wm.messageStore.GetAllWebhookConfigs()
 	if err != nil {
 		return fmt.Errorf("failed to load webhook configs: %v", err)
 	}
-	
+
 	wm.configs = configs
 	wm.logger.Infof("Loaded %d webhook configurations", len(configs))
 	return nil
@@ -553,7 +553,7 @@ func (wm *WebhookManager) LoadWebhookConfigs() error {
 func (wm *WebhookManager) GetWebhookConfigs() []*WebhookConfig {
 	wm.mutex.RLock()
 	defer wm.mutex.RUnlock()
-	
+
 	// Return a copy to avoid race conditions
 	configs := make([]*WebhookConfig, len(wm.configs))
 	copy(configs, wm.configs)
@@ -564,35 +564,35 @@ func (wm *WebhookManager) GetWebhookConfigs() []*WebhookConfig {
 func (wm *WebhookManager) MatchesTriggers(msg *events.Message, chatName string) []*WebhookConfig {
 	wm.mutex.RLock()
 	defer wm.mutex.RUnlock()
-	
+
 	var matchedConfigs []*WebhookConfig
-	
+
 	// Extract message content
 	content := extractTextContent(msg.Message)
 	mediaType, _, _, _, _, _, _ := extractMediaInfo(msg.Message)
-	
+
 	for _, config := range wm.configs {
 		if !config.Enabled {
 			continue
 		}
-		
+
 		matched := false
 		for _, trigger := range config.Triggers {
 			if !trigger.Enabled {
 				continue
 			}
-			
+
 			if wm.matchesTrigger(trigger, msg, content, mediaType, chatName) {
 				matched = true
 				break
 			}
 		}
-		
+
 		if matched {
 			matchedConfigs = append(matchedConfigs, config)
 		}
 	}
-	
+
 	return matchedConfigs
 }
 
@@ -601,22 +601,22 @@ func (wm *WebhookManager) matchesTrigger(trigger WebhookTrigger, msg *events.Mes
 	switch trigger.TriggerType {
 	case "all":
 		return true
-		
+
 	case "chat_jid":
 		return wm.matchesString(msg.Info.Chat.String(), trigger.TriggerValue, trigger.MatchType)
-		
+
 	case "sender":
 		senderJID := msg.Info.Sender.String()
 		senderUser := msg.Info.Sender.User
 		return wm.matchesString(senderJID, trigger.TriggerValue, trigger.MatchType) ||
-			   wm.matchesString(senderUser, trigger.TriggerValue, trigger.MatchType)
-		
+			wm.matchesString(senderUser, trigger.TriggerValue, trigger.MatchType)
+
 	case "keyword":
 		return wm.matchesString(content, trigger.TriggerValue, trigger.MatchType)
-		
+
 	case "media_type":
 		return wm.matchesString(mediaType, trigger.TriggerValue, trigger.MatchType)
-		
+
 	default:
 		wm.logger.Warnf("Unknown trigger type: %s", trigger.TriggerType)
 		return false
@@ -628,10 +628,10 @@ func (wm *WebhookManager) matchesString(text, pattern, matchType string) bool {
 	switch matchType {
 	case "exact":
 		return text == pattern
-		
+
 	case "contains":
 		return strings.Contains(strings.ToLower(text), strings.ToLower(pattern))
-		
+
 	case "regex":
 		matched, err := regexp.MatchString(pattern, text)
 		if err != nil {
@@ -639,7 +639,7 @@ func (wm *WebhookManager) matchesString(text, pattern, matchType string) bool {
 			return false
 		}
 		return matched
-		
+
 	default:
 		wm.logger.Warnf("Unknown match type: %s", matchType)
 		return false
@@ -649,51 +649,51 @@ func (wm *WebhookManager) matchesString(text, pattern, matchType string) bool {
 // ProcessMessage processes a message and sends webhooks if triggers match
 func (wm *WebhookManager) ProcessMessage(client *whatsmeow.Client, msg *events.Message, chatName string) {
 	startTime := time.Now()
-	
+
 	// Find matching webhook configurations
 	matchedConfigs := wm.MatchesTriggers(msg, chatName)
 	if len(matchedConfigs) == 0 {
 		return
 	}
-	
+
 	wm.logger.Infof("Found %d matching webhook configs for message %s", len(matchedConfigs), msg.Info.ID)
-	
+
 	// Extract message content and media info
 	content := extractTextContent(msg.Message)
 	mediaType, filename, _, _, _, _, _ := extractMediaInfo(msg.Message)
-	
+
 	// Determine sender name
 	senderName := msg.Info.Sender.User
 	if contact, err := client.Store.Contacts.GetContact(context.Background(), msg.Info.Sender); err == nil && contact.FullName != "" {
 		senderName = contact.FullName
 	}
-	
+
 	// Build base payload
 	basePayload := WebhookPayload{
 		EventType: "message_received",
 		Timestamp: msg.Info.Timestamp.Format(time.RFC3339),
 		Message: WebhookMessageInfo{
-			ID:        msg.Info.ID,
-			ChatJID:   msg.Info.Chat.String(),
-			ChatName:  chatName,
-			Sender:    msg.Info.Sender.User,
+			ID:         msg.Info.ID,
+			ChatJID:    msg.Info.Chat.String(),
+			ChatName:   chatName,
+			Sender:     msg.Info.Sender.User,
 			SenderName: senderName,
-			Content:   content,
-			Timestamp: msg.Info.Timestamp.Format(time.RFC3339),
-			IsFromMe:  msg.Info.IsFromMe,
-			MediaType: mediaType,
-			Filename:  filename,
+			Content:    content,
+			Timestamp:  msg.Info.Timestamp.Format(time.RFC3339),
+			IsFromMe:   msg.Info.IsFromMe,
+			MediaType:  mediaType,
+			Filename:   filename,
 		},
 		Metadata: WebhookMetadata{
 			ProcessingTimeMs: time.Since(startTime).Milliseconds(),
 		},
 	}
-	
+
 	// Add media download URL if it's a media message
 	if mediaType != "" {
 		basePayload.Message.MediaDownloadURL = fmt.Sprintf("http://localhost:8080/api/download")
 	}
-	
+
 	// Add group info if it's a group chat
 	if msg.Info.Chat.Server == "g.us" {
 		basePayload.Metadata.GroupInfo = &GroupInfo{
@@ -702,25 +702,25 @@ func (wm *WebhookManager) ProcessMessage(client *whatsmeow.Client, msg *events.M
 			// ParticipantCount would require additional API call
 		}
 	}
-	
+
 	// Send webhooks for each matched configuration
 	for _, config := range matchedConfigs {
 		// Find the specific trigger that matched
 		var matchedTrigger *WebhookTrigger
 		content := extractTextContent(msg.Message)
 		mediaType, _, _, _, _, _, _ := extractMediaInfo(msg.Message)
-		
+
 		for _, trigger := range config.Triggers {
 			if trigger.Enabled && wm.matchesTrigger(trigger, msg, content, mediaType, chatName) {
 				matchedTrigger = &trigger
 				break
 			}
 		}
-		
+
 		if matchedTrigger == nil {
 			continue
 		}
-		
+
 		// Customize payload for this webhook
 		payload := basePayload
 		payload.WebhookConfig = WebhookConfigInfo{
@@ -733,7 +733,7 @@ func (wm *WebhookManager) ProcessMessage(client *whatsmeow.Client, msg *events.M
 			MatchType: matchedTrigger.MatchType,
 		}
 		payload.Metadata.DeliveryAttempt = 1
-		
+
 		// Send webhook asynchronously
 		go wm.deliverWebhook(config, &payload, msg.Info.ID, msg.Info.Chat.String(), matchedTrigger)
 	}
@@ -743,21 +743,21 @@ func (wm *WebhookManager) ProcessMessage(client *whatsmeow.Client, msg *events.M
 func (wm *WebhookManager) deliverWebhook(config *WebhookConfig, payload *WebhookPayload, messageID, chatJID string, trigger *WebhookTrigger) {
 	maxRetries := 5
 	backoffIntervals := []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second}
-	
+
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		wm.logger.Errorf("Failed to marshal webhook payload: %v", err)
 		return
 	}
-	
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		payload.Metadata.DeliveryAttempt = attempt
-		
+
 		// Update payload with current attempt
 		payloadBytes, _ = json.Marshal(payload)
-		
+
 		success, statusCode, responseBody := wm.sendHTTPRequest(config, payloadBytes)
-		
+
 		// Log the delivery attempt
 		log := &WebhookLog{
 			WebhookConfigID: config.ID,
@@ -770,7 +770,7 @@ func (wm *WebhookManager) deliverWebhook(config *WebhookConfig, payload *Webhook
 			ResponseBody:    responseBody,
 			AttemptCount:    attempt,
 		}
-		
+
 		if success {
 			now := time.Now()
 			log.DeliveredAt = &now
@@ -778,22 +778,22 @@ func (wm *WebhookManager) deliverWebhook(config *WebhookConfig, payload *Webhook
 		} else {
 			wm.logger.Warnf("Webhook delivery failed to %s (attempt %d): status %d", config.WebhookURL, attempt, statusCode)
 		}
-		
+
 		// Store log
 		if err := wm.messageStore.StoreWebhookLog(log); err != nil {
 			wm.logger.Errorf("Failed to store webhook log: %v", err)
 		}
-		
+
 		if success {
 			return // Success, no need to retry
 		}
-		
+
 		// Wait before retry (except for last attempt)
 		if attempt < maxRetries {
 			time.Sleep(backoffIntervals[attempt-1])
 		}
 	}
-	
+
 	wm.logger.Errorf("Webhook delivery failed permanently to %s after %d attempts", config.WebhookURL, maxRetries)
 }
 
@@ -804,17 +804,17 @@ func (wm *WebhookManager) sendHTTPRequest(config *WebhookConfig, payload []byte)
 		wm.logger.Errorf("Failed to create HTTP request: %v", err)
 		return false, 0, err.Error()
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "WhatsApp-Bridge-Webhook/1.0")
-	
+
 	// Add HMAC signature if secret token is provided
 	if config.SecretToken != "" {
 		signature := wm.generateHMACSignature(payload, config.SecretToken)
 		req.Header.Set("X-Webhook-Signature", signature)
 	}
-	
+
 	// Send request
 	resp, err := wm.httpClient.Do(req)
 	if err != nil {
@@ -822,15 +822,15 @@ func (wm *WebhookManager) sendHTTPRequest(config *WebhookConfig, payload []byte)
 		return false, 0, err.Error()
 	}
 	defer resp.Body.Close()
-	
+
 	// Read response body
 	responseBytes := make([]byte, 1024) // Limit response size
 	n, _ := resp.Body.Read(responseBytes)
 	responseBody = string(responseBytes[:n])
-	
+
 	// Consider 2xx status codes as successful
 	success = resp.StatusCode >= 200 && resp.StatusCode < 300
-	
+
 	return success, resp.StatusCode, responseBody
 }
 
@@ -847,29 +847,29 @@ func (wm *WebhookManager) ValidateWebhookConfig(config *WebhookConfig) error {
 	if config.Name == "" {
 		return fmt.Errorf("webhook name is required")
 	}
-	
+
 	if len(config.Name) > 255 {
 		return fmt.Errorf("webhook name must be less than 256 characters")
 	}
-	
+
 	if config.WebhookURL == "" {
 		return fmt.Errorf("webhook URL is required")
 	}
-	
+
 	if len(config.WebhookURL) > 2048 {
 		return fmt.Errorf("webhook URL must be less than 2048 characters")
 	}
-	
+
 	if !strings.HasPrefix(config.WebhookURL, "http://") && !strings.HasPrefix(config.WebhookURL, "https://") {
 		return fmt.Errorf("webhook URL must start with http:// or https://")
 	}
-	
+
 	// Validate triggers
 	for _, trigger := range config.Triggers {
 		if trigger.TriggerType == "" {
 			return fmt.Errorf("trigger type is required")
 		}
-		
+
 		validTypes := []string{"all", "chat_jid", "sender", "keyword", "media_type"}
 		valid := false
 		for _, validType := range validTypes {
@@ -881,7 +881,7 @@ func (wm *WebhookManager) ValidateWebhookConfig(config *WebhookConfig) error {
 		if !valid {
 			return fmt.Errorf("invalid trigger type: %s", trigger.TriggerType)
 		}
-		
+
 		validMatchTypes := []string{"exact", "contains", "regex"}
 		valid = false
 		for _, validType := range validMatchTypes {
@@ -893,7 +893,7 @@ func (wm *WebhookManager) ValidateWebhookConfig(config *WebhookConfig) error {
 		if !valid {
 			return fmt.Errorf("invalid match type: %s", trigger.MatchType)
 		}
-		
+
 		// Test regex patterns
 		if trigger.MatchType == "regex" && trigger.TriggerValue != "" {
 			_, err := regexp.Compile(trigger.TriggerValue)
@@ -902,7 +902,7 @@ func (wm *WebhookManager) ValidateWebhookConfig(config *WebhookConfig) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -916,31 +916,31 @@ func (wm *WebhookManager) TestWebhook(config *WebhookConfig) error {
 			Name: config.Name,
 		},
 		Message: WebhookMessageInfo{
-			ID:        "test-message-id",
-			ChatJID:   "test@s.whatsapp.net",
-			ChatName:  "Test Chat",
-			Sender:    "test",
+			ID:         "test-message-id",
+			ChatJID:    "test@s.whatsapp.net",
+			ChatName:   "Test Chat",
+			Sender:     "test",
 			SenderName: "Test User",
-			Content:   "This is a test message",
-			Timestamp: time.Now().Format(time.RFC3339),
-			IsFromMe:  false,
+			Content:    "This is a test message",
+			Timestamp:  time.Now().Format(time.RFC3339),
+			IsFromMe:   false,
 		},
 		Metadata: WebhookMetadata{
 			DeliveryAttempt:  1,
 			ProcessingTimeMs: 0,
 		},
 	}
-	
+
 	payloadBytes, err := json.Marshal(testPayload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal test payload: %v", err)
 	}
-	
+
 	success, statusCode, responseBody := wm.sendHTTPRequest(config, payloadBytes)
 	if !success {
 		return fmt.Errorf("test webhook failed: status %d, response: %s", statusCode, responseBody)
 	}
-	
+
 	return nil
 }
 
@@ -1000,8 +1000,8 @@ type SendMessageRequest struct {
 
 // Function to send a WhatsApp message
 func sendWhatsAppMessage(client *whatsmeow.Client,
-						 messageStore *MessageStore,
-						 recipient string, message string, mediaPath string) (bool, string) {
+	messageStore *MessageStore,
+	recipient string, message string, mediaPath string) (bool, string) {
 	if !client.IsConnected() {
 		return false, "Not connected to WhatsApp"
 	}
@@ -1168,10 +1168,10 @@ func sendWhatsAppMessage(client *whatsmeow.Client,
 	err = messageStore.StoreMessage(
 		sendResp.ID, // Use the ID from SendResponse
 		recipientJID.String(),
-		client.Store.ID.User, // Use the client's user ID as sender
+		client.Store.ID.User,  // Use the client's user ID as sender
 		msg.GetConversation(), // Use the conversation text
-		sendResp.Timestamp, // Use the Timestamp from SendResponse
-		true, // IsFromMe is true since we are sending this message
+		sendResp.Timestamp,    // Use the Timestamp from SendResponse
+		true,                  // IsFromMe is true since we are sending this message
 		"",
 		"",
 		"",
@@ -1371,10 +1371,30 @@ func GetChatName(client *whatsmeow.Client, messageStore *MessageStore, jid types
 	return name
 }
 
+// corsMiddleware adds CORS headers to allow cross-origin requests
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		// Handle preflight requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call the next handler
+		next(w, r)
+	}
+}
+
 // Start a REST API server to expose the WhatsApp client functionality
 func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webhookManager *WebhookManager, port int) {
 	// Handler for sending messages
-	http.HandleFunc("/api/send", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/send", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		// Only allow POST requests
 		if r.Method != http.MethodPost {
 			sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1386,12 +1406,12 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webho
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			sendJSONError(w, "Invalid request format", http.StatusBadRequest)
 			return
-		}		// Validate request
+		} // Validate request
 		if req.Recipient == "" {
 			sendJSONError(w, "Recipient is required", http.StatusBadRequest)
 			return
 		}
-		
+
 		if req.Message == "" && req.MediaPath == "" {
 			sendJSONError(w, "Message or media path is required", http.StatusBadRequest)
 			return
@@ -1415,12 +1435,12 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webho
 			Success: success,
 			Message: message,
 		})
-	})
+	}))
 
 	// Webhook management endpoints
-	http.HandleFunc("/api/webhooks", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/webhooks", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		
+
 		switch r.Method {
 		case http.MethodGet:
 			// List all webhook configurations
@@ -1429,7 +1449,7 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webho
 				"success": true,
 				"data":    configs,
 			})
-			
+
 		case http.MethodPost:
 			// Create new webhook configuration
 			var config WebhookConfig
@@ -1437,50 +1457,50 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webho
 				sendJSONError(w, "Invalid request format", http.StatusBadRequest)
 				return
 			}
-			
+
 			// Validate configuration
 			if err := webhookManager.ValidateWebhookConfig(&config); err != nil {
 				sendJSONError(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			
+
 			// Store configuration
 			if err := messageStore.StoreWebhookConfig(&config); err != nil {
 				sendJSONError(w, fmt.Sprintf("Failed to store webhook config: %v", err), http.StatusInternalServerError)
 				return
 			}
-			
+
 			// Reload configurations
 			webhookManager.LoadWebhookConfigs()
-			
+
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"data":    config,
 			})
-			
+
 		default:
 			sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})
+	}))
 
 	// Individual webhook management endpoints
-	http.HandleFunc("/api/webhooks/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/webhooks/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		
+
 		// Parse webhook ID from URL path
 		pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/webhooks/"), "/")
 		if len(pathParts) == 0 || pathParts[0] == "" {
 			sendJSONError(w, "Webhook ID is required", http.StatusBadRequest)
 			return
 		}
-		
+
 		webhookIDStr := pathParts[0]
 		webhookID := 0
 		if _, err := fmt.Sscanf(webhookIDStr, "%d", &webhookID); err != nil {
 			sendJSONError(w, "Invalid webhook ID", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Handle different sub-paths
 		switch {
 		case len(pathParts) == 1: // /api/webhooks/{id}
@@ -1492,12 +1512,12 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webho
 					sendJSONError(w, fmt.Sprintf("Webhook not found: %v", err), http.StatusNotFound)
 					return
 				}
-				
+
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"success": true,
 					"data":    config,
 				})
-				
+
 			case http.MethodPut:
 				// Update webhook configuration
 				var config WebhookConfig
@@ -1505,94 +1525,94 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webho
 					sendJSONError(w, "Invalid request format", http.StatusBadRequest)
 					return
 				}
-				
+
 				config.ID = webhookID // Ensure ID matches URL
-				
+
 				// Validate configuration
 				if err := webhookManager.ValidateWebhookConfig(&config); err != nil {
 					sendJSONError(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				
+
 				// Update configuration
 				if err := messageStore.UpdateWebhookConfig(&config); err != nil {
 					sendJSONError(w, fmt.Sprintf("Failed to update webhook config: %v", err), http.StatusInternalServerError)
 					return
 				}
-				
+
 				// Reload configurations
 				webhookManager.LoadWebhookConfigs()
-				
+
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"success": true,
 					"data":    config,
 				})
-				
+
 			case http.MethodDelete:
 				// Delete webhook configuration
 				if err := messageStore.DeleteWebhookConfig(webhookID); err != nil {
 					sendJSONError(w, fmt.Sprintf("Failed to delete webhook config: %v", err), http.StatusInternalServerError)
 					return
 				}
-				
+
 				// Reload configurations
 				webhookManager.LoadWebhookConfigs()
-				
+
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"success": true,
 					"message": "Webhook deleted successfully",
 				})
-				
+
 			default:
 				sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}
-			
+
 		case len(pathParts) == 2 && pathParts[1] == "test": // /api/webhooks/{id}/test
 			if r.Method != http.MethodPost {
 				sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
-			}				// Get webhook configuration
-				config, err := messageStore.GetWebhookConfig(webhookID)
-				if err != nil {
-					sendJSONError(w, fmt.Sprintf("Webhook not found: %v", err), http.StatusNotFound)
-					return
-				}
-			
+			} // Get webhook configuration
+			config, err := messageStore.GetWebhookConfig(webhookID)
+			if err != nil {
+				sendJSONError(w, fmt.Sprintf("Webhook not found: %v", err), http.StatusNotFound)
+				return
+			}
+
 			// Test webhook
 			if err := webhookManager.TestWebhook(config); err != nil {
 				sendJSONError(w, fmt.Sprintf("Webhook test failed: %v", err), http.StatusInternalServerError)
 				return
 			}
-			
+
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"message": "Webhook test successful",
 			})
-			
+
 		case len(pathParts) == 2 && pathParts[1] == "logs": // /api/webhooks/{id}/logs
 			if r.Method != http.MethodGet {
 				sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
 			}
-			
+
 			// Get webhook logs
 			logs, err := messageStore.GetWebhookLogs(webhookID, 100) // Limit to 100 recent logs
 			if err != nil {
 				sendJSONError(w, fmt.Sprintf("Failed to get webhook logs: %v", err), http.StatusInternalServerError)
 				return
 			}
-			
+
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"data":    logs,
 			})
-			
+
 		case len(pathParts) == 2 && pathParts[1] == "enable": // /api/webhooks/{id}/enable
 			if r.Method != http.MethodPost {
 				sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
 			}
-			
+
 			// Parse request body to get enabled status
 			var req struct {
 				Enabled bool `json:"enabled"`
@@ -1601,56 +1621,56 @@ func startRESTServer(client *whatsmeow.Client, messageStore *MessageStore, webho
 				sendJSONError(w, "Invalid request format", http.StatusBadRequest)
 				return
 			}
-			
+
 			// Get current config
 			config, err := messageStore.GetWebhookConfig(webhookID)
 			if err != nil {
 				sendJSONError(w, fmt.Sprintf("Webhook not found: %v", err), http.StatusNotFound)
 				return
 			}
-			
+
 			// Update enabled status
 			config.Enabled = req.Enabled
 			if err := messageStore.UpdateWebhookConfig(config); err != nil {
 				sendJSONError(w, fmt.Sprintf("Failed to update webhook config: %v", err), http.StatusInternalServerError)
 				return
 			}
-			
+
 			// Reload configurations
 			webhookManager.LoadWebhookConfigs()
-			
+
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"message": fmt.Sprintf("Webhook %s successfully", map[bool]string{true: "enabled", false: "disabled"}[req.Enabled]),
 				"data":    config,
 			})
-			
+
 		default:
 			sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})
+	}))
 
 	// Webhook logs endpoint (all logs)
-	http.HandleFunc("/api/webhook-logs", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/webhook-logs", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			sendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
-		
+
 		// Get all webhook logs
 		logs, err := messageStore.GetWebhookLogs(0, 100) // Get last 100 logs for all webhooks
 		if err != nil {
 			sendJSONError(w, fmt.Sprintf("Failed to get webhook logs: %v", err), http.StatusInternalServerError)
 			return
 		}
-		
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"data":    logs,
 		})
-	})
+	}))
 
 	// Start the server
 	serverAddr := fmt.Sprintf(":%d", port)

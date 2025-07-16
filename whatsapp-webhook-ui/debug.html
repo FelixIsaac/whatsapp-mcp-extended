@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Debug Test</title>
+</head>
+<body>
+    <h1>Webhook API Debug Test</h1>
+    <button id="testAPI">Test API Connection</button>
+    <button id="testCreate">Test Create Webhook</button>
+    <button id="testList">Test List Webhooks</button>
+    
+    <div id="results" style="margin-top: 20px; padding: 10px; background: #f0f0f0;">
+        <h3>Results:</h3>
+        <pre id="output"></pre>
+    </div>
+
+    <script>
+        const apiBaseUrl = 'http://localhost:8080/api';
+        const output = document.getElementById('output');
+
+        function log(message) {
+            output.textContent += message + '\n';
+            console.log(message);
+        }
+
+        document.getElementById('testAPI').addEventListener('click', async () => {
+            output.textContent = '';
+            log('Testing API connection...');
+            
+            try {
+                const response = await fetch(`${apiBaseUrl}/webhooks`);
+                log(`Status: ${response.status}`);
+                log(`OK: ${response.ok}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('Response data:');
+                    log(JSON.stringify(data, null, 2));
+                } else {
+                    const text = await response.text();
+                    log('Error response:');
+                    log(text);
+                }
+            } catch (error) {
+                log('Connection error:');
+                log(error.message);
+            }
+        });
+
+        document.getElementById('testCreate').addEventListener('click', async () => {
+            output.textContent = '';
+            log('Testing webhook creation...');
+            
+            const testWebhook = {
+                name: 'Test Webhook ' + Date.now(),
+                webhook_url: 'https://httpbin.org/post',
+                secret_token: 'test123',
+                enabled: true,
+                triggers: [{
+                    trigger_type: 'all',
+                    trigger_value: '',
+                    match_type: 'exact',
+                    enabled: true
+                }]
+            };
+            
+            log('Sending webhook:');
+            log(JSON.stringify(testWebhook, null, 2));
+            
+            try {
+                const response = await fetch(`${apiBaseUrl}/webhooks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testWebhook)
+                });
+                
+                log(`Status: ${response.status}`);
+                log(`OK: ${response.ok}`);
+                
+                const responseText = await response.text();
+                log('Response:');
+                log(responseText);
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        log('Parsed response:');
+                        log(JSON.stringify(data, null, 2));
+                    } catch (e) {
+                        log('Response is not JSON');
+                    }
+                }
+            } catch (error) {
+                log('Request error:');
+                log(error.message);
+            }
+        });
+
+        document.getElementById('testList').addEventListener('click', async () => {
+            output.textContent = '';
+            log('Testing webhook list...');
+            
+            try {
+                const response = await fetch(`${apiBaseUrl}/webhooks`);
+                log(`Status: ${response.status}`);
+                
+                const data = await response.json();
+                log('Webhooks found:');
+                log(JSON.stringify(data, null, 2));
+                
+                if (data.data) {
+                    log(`Number of webhooks: ${data.data.length}`);
+                } else if (Array.isArray(data)) {
+                    log(`Number of webhooks: ${data.length}`);
+                } else {
+                    log('Unexpected response format');
+                }
+            } catch (error) {
+                log('Error:');
+                log(error.message);
+            }
+        });
+    </script>
+</body>
+</html>

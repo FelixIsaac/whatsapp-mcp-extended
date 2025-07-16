@@ -1,5 +1,5 @@
 # Use a base image with both Go and Python
-FROM golang:1.24-bullseye as builder
+FROM golang:1.24-bullseye AS builder
 
 # Set up Go environment
 ENV CGO_ENABLED=1
@@ -16,7 +16,7 @@ WORKDIR /app/whatsapp-bridge
 RUN go mod download
 RUN go build -o whatsapp-bridge
 
-FROM python:3.13 as runtime
+FROM python:3.13 AS runtime
 
 WORKDIR /app
 
@@ -27,6 +27,9 @@ COPY  --from=builder /app/whatsapp-mcp-server /app/whatsapp-mcp-server
 RUN mkdir -p /app/whatsapp-bridge
 COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge/whatsapp-bridge
 RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge
+
+# Copy the webhook UI files
+COPY --from=builder /app/whatsapp-webhook-ui /app/whatsapp-webhook-ui
 
 # Install Python and other dependencies
 RUN apt-get update 
@@ -54,6 +57,8 @@ COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # Expose ports for MCP server and Gradio UI
+EXPOSE 8080
 EXPOSE 8081
 EXPOSE 8082
+EXPOSE 3000
 ENTRYPOINT ["/app/entrypoint.sh"]
