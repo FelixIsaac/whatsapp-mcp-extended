@@ -388,7 +388,7 @@ func (store *MessageStore) UpdateWebhookConfig(config *WebhookConfig) error {
 	return err
 }
 
-// DeleteWebhookConfig deletes a webhook configuration and its triggers
+// DeleteWebhookConfig deletes a webhook configuration and its triggers and logs
 func (store *MessageStore) DeleteWebhookConfig(id int) error {
 	// First check if the webhook exists
 	var count int
@@ -400,13 +400,19 @@ func (store *MessageStore) DeleteWebhookConfig(id int) error {
 		return fmt.Errorf("webhook with ID %d not found", id)
 	}
 
-	// Delete triggers first (foreign key constraint)
+	// Delete webhook logs first (foreign key constraint)
+	_, err = store.db.Exec("DELETE FROM webhook_logs WHERE webhook_config_id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	// Delete triggers second (foreign key constraint)
 	_, err = store.db.Exec("DELETE FROM webhook_triggers WHERE webhook_config_id = ?", id)
 	if err != nil {
 		return err
 	}
 
-	// Delete config
+	// Delete config last
 	_, err = store.db.Exec("DELETE FROM webhook_configs WHERE id = ?", id)
 	return err
 }

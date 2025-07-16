@@ -148,6 +148,71 @@
         </div>
     </template>
 
+    <!-- Logs Modal -->
+    <div id="logsModal" class="modal">
+        <div class="modal-content logs-modal">
+            <div class="modal-header">
+                <h2 id="logsModalTitle">Webhook Logs</h2>
+                <span class="close" id="closeLogsModal">&times;</span>
+            </div>
+            <div class="logs-content">
+                <div class="logs-header">
+                    <div class="logs-info">
+                        <span id="logsCount">0 log entries</span>
+                        <button id="refreshLogsBtn" class="btn btn-outline btn-small">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="logsContainer" class="logs-container">
+                    <div id="logsLoading" class="loading-small">
+                        <i class="fas fa-spinner fa-spin"></i> Loading logs...
+                    </div>
+                    <div id="logsList" class="logs-list"></div>
+                    <div id="noLogs" class="no-data-small" style="display: none;">
+                        <i class="fas fa-file-alt"></i>
+                        <p>No logs found for this webhook</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Entry Template -->
+    <template id="logEntryTemplate">
+        <div class="log-entry">
+            <div class="log-header">
+                <div class="log-status">
+                    <span class="status-badge"></span>
+                    <span class="log-timestamp"></span>
+                </div>
+                <div class="log-attempt">
+                    Attempt <span class="attempt-number"></span>
+                </div>
+            </div>
+            <div class="log-details">
+                <div class="log-detail-item">
+                    <strong>Trigger:</strong> <span class="log-url"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Message ID:</strong> <span class="log-message-id"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Chat:</strong> <span class="log-chat-info"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Response:</strong> <span class="log-response"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Processing Time:</strong> <span class="log-processing-time"></span>
+                </div>
+                <div class="log-detail-item log-error" style="display: none;">
+                    <strong>Error:</strong> <span class="log-error-message"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
     <!-- Toast Notification -->
     <div id="toast" class="toast">
         <span id="toastMessage"></span>

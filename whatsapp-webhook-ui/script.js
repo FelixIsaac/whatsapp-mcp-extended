@@ -17,6 +17,7 @@ class WebhookManager {
         console.log('API Base URL:', this.apiBaseUrl);
         this.webhooks = [];
         this.currentEditingId = null;
+        this.currentLogsWebhookId = null;
         this.init();
     }
 
@@ -49,6 +50,10 @@ class WebhookManager {
         document.getElementById('cancelBtn').addEventListener('click', () => this.closeModal());
         document.getElementById('refreshBtn').addEventListener('click', () => this.loadWebhooks());
 
+        // Logs modal controls
+        document.getElementById('closeLogsModal').addEventListener('click', () => this.closeLogsModal());
+        document.getElementById('refreshLogsBtn').addEventListener('click', () => this.refreshCurrentLogs());
+
         // Form submission
         document.getElementById('webhookForm').addEventListener('submit', (e) => this.handleFormSubmit(e));
 
@@ -58,11 +63,15 @@ class WebhookManager {
         // Toast close
         document.getElementById('toastClose').addEventListener('click', () => this.hideToast());
 
-        // Close modal when clicking outside
+        // Close modals when clicking outside
         window.addEventListener('click', (e) => {
-            const modal = document.getElementById('webhookModal');
-            if (e.target === modal) {
+            const webhookModal = document.getElementById('webhookModal');
+            const logsModal = document.getElementById('logsModal');
+            if (e.target === webhookModal) {
                 this.closeModal();
+            }
+            if (e.target === logsModal) {
+                this.closeLogsModal();
             }
         });
 
@@ -447,7 +456,7 @@ class WebhookManager {
     }
 
     async deleteWebhook(id, name) {
-        if (!confirm(`Are you sure you want to delete webhook "${name}"?`)) {
+        if (!confirm(`Are you sure you want to delete webhook "${name}"?\n\nThis will also delete all webhook logs and cannot be undone.`)) {
             return;
         }
         
@@ -457,8 +466,15 @@ class WebhookManager {
             });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || `HTTP error! status: ${response.status}`);
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch (e) {
+                    // If response is not JSON, use status text
+                    errorMessage = response.statusText || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
             
             this.showToast('Webhook deleted successfully', 'success');
@@ -512,28 +528,198 @@ class WebhookManager {
     }
 
     async viewLogs(id) {
+        this.currentLogsWebhookId = id;
+        this.openLogsModal(id);
+        await this.loadWebhookLogs(id);
+    }
+
+    openLogsModal(webhookId) {
+        const modal = document.getElementById('logsModal');
+        const title = document.getElementById('logsModalTitle');
+        
+        // Find webhook name
+        const webhook = this.webhooks.find(w => w.id === webhookId);
+        const webhookName = webhook ? webhook.name : `Webhook ${webhookId}`;
+        
+        title.textContent = `Logs - ${webhookName}`;
+        modal.style.display = 'block';
+    }
+
+    closeLogsModal() {
+        const modal = document.getElementById('logsModal');
+        modal.style.display = 'none';
+        this.currentLogsWebhookId = null;
+    }
+
+    async refreshCurrentLogs() {
+        if (this.currentLogsWebhookId) {
+            await this.loadWebhookLogs(this.currentLogsWebhookId);
+        }
+    }
+
+    async loadWebhookLogs(id) {
         try {
+            this.showLogsLoading(true);
+            
             const response = await fetch(`${this.apiBaseUrl}/webhooks/${id}/logs`);
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || `HTTP error! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const data = await response.json();
             const logs = data.data || [];
             
-            if (logs.length === 0) {
-                this.showToast('No logs found for this webhook', 'warning');
-            } else {
-                // For now, just show a simple alert with log count
-                // In a real application, you might want to open a detailed modal
-                this.showToast(`Found ${logs.length} log entries. Check browser console for details.`, 'success');
-                console.log('Webhook logs:', logs);
-            }
+            console.log('Webhook logs:', logs); // Keep console log for debugging
+            
+            this.renderLogs(logs);
+            this.updateLogsCount(logs.length);
+            
         } catch (error) {
             console.error('Failed to get webhook logs:', error);
             this.showToast('Failed to get webhook logs: ' + error.message, 'error');
+            this.renderLogs([]);
+            this.updateLogsCount(0);
+        } finally {
+            this.showLogsLoading(false);
+        }
+    }
+
+    renderLogs(logs) {
+        const container = document.getElementById('logsList');
+        const noLogsElement = document.getElementById('noLogs');
+        
+        container.innerHTML = '';
+        
+        if (!logs || logs.length === 0) {
+            noLogsElement.style.display = 'block';
+            container.style.display = 'none';
+            return;
+        }
+        
+        noLogsElement.style.display = 'none';
+        container.style.display = 'flex';
+        
+        // Sort logs by timestamp (newest first)
+        const sortedLogs = logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        sortedLogs.forEach(log => {
+            const logElement = this.createLogEntry(log);
+            container.appendChild(logElement);
+        });
+    }
+
+    createLogEntry(log) {
+        const template = document.getElementById('logEntryTemplate');
+        const clone = template.content.cloneNode(true);
+        
+        // Determine status based on response_status or delivered_at
+        let status = 'pending';
+        if (log.response_status) {
+            status = log.response_status >= 200 && log.response_status < 300 ? 'success' : 'error';
+        } else if (log.delivered_at) {
+            status = 'success';
+        }
+        
+        // Apply status class to entry
+        const logEntry = clone.querySelector('.log-entry');
+        logEntry.classList.add(status);
+        
+        // Fill in the data
+        const statusBadge = clone.querySelector('.status-badge');
+        statusBadge.textContent = status.toUpperCase();
+        statusBadge.classList.add(status);
+        
+        clone.querySelector('.log-timestamp').textContent = this.formatDate(log.created_at);
+        clone.querySelector('.attempt-number').textContent = log.attempt_count || 1;
+        
+        // Trigger information
+        const triggerInfo = `${log.trigger_type}: ${log.trigger_value}`;
+        clone.querySelector('.log-url').textContent = triggerInfo;
+        
+        // Message ID
+        clone.querySelector('.log-message-id').textContent = log.message_id || 'N/A';
+        
+        // Chat information from payload
+        let chatInfo = log.chat_jid || 'N/A';
+        try {
+            if (log.payload) {
+                const payload = JSON.parse(log.payload);
+                if (payload.message?.chat_name) {
+                    chatInfo = `${payload.message.chat_name} (${log.chat_jid})`;
+                }
+            }
+        } catch (e) {
+            // If parsing fails, use chat_jid
+        }
+        clone.querySelector('.log-chat-info').textContent = chatInfo;
+        
+        // Response information
+        let responseText = 'N/A';
+        if (log.response_status) {
+            responseText = `HTTP ${log.response_status}`;
+            if (log.response_body) {
+                try {
+                    const responseObj = JSON.parse(log.response_body);
+                    if (responseObj.message) {
+                        responseText += ` - ${responseObj.message.substring(0, 100)}${responseObj.message.length > 100 ? '...' : ''}`;
+                    } else {
+                        responseText += ` - ${log.response_body.substring(0, 100)}${log.response_body.length > 100 ? '...' : ''}`;
+                    }
+                } catch (e) {
+                    responseText += ` - ${log.response_body.substring(0, 100)}${log.response_body.length > 100 ? '...' : ''}`;
+                }
+            }
+        } else if (log.delivered_at) {
+            responseText = 'Delivered successfully';
+        }
+        clone.querySelector('.log-response').textContent = responseText;
+        
+        // Processing time from payload metadata
+        let processingTime = 0;
+        try {
+            if (log.payload) {
+                const payload = JSON.parse(log.payload);
+                processingTime = payload.metadata?.processing_time_ms || 0;
+            }
+        } catch (e) {
+            // If parsing fails, use 0
+        }
+        clone.querySelector('.log-processing-time').textContent = `${processingTime}ms`;
+        
+        // Error message (if status indicates error and we have response body)
+        if (status === 'error' && log.response_body) {
+            const errorElement = clone.querySelector('.log-error');
+            errorElement.style.display = 'block';
+            
+            try {
+                const responseObj = JSON.parse(log.response_body);
+                const errorMessage = responseObj.message || responseObj.error || log.response_body;
+                clone.querySelector('.log-error-message').textContent = errorMessage;
+            } catch (e) {
+                clone.querySelector('.log-error-message').textContent = log.response_body;
+            }
+        }
+        
+        return clone;
+    }
+
+    updateLogsCount(count) {
+        const logsCount = document.getElementById('logsCount');
+        logsCount.textContent = `${count} log ${count === 1 ? 'entry' : 'entries'}`;
+    }
+
+    showLogsLoading(show) {
+        const loading = document.getElementById('logsLoading');
+        const list = document.getElementById('logsList');
+        const noData = document.getElementById('noLogs');
+        
+        if (show) {
+            loading.style.display = 'block';
+            list.style.display = 'none';
+            noData.style.display = 'none';
+        } else {
+            loading.style.display = 'none';
         }
     }
 
