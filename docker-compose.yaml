@@ -7,9 +7,8 @@ services:
       resources:
         limits:
           memory: 2G  # Adjust memory allocation as needed
-          cpus: '0.5'  # Adjust CPU allocation as needed
+          cpus: '1'  # Adjust CPU allocation as needed
     ports:
-      - "3000:3000"  # Webhook UI port
       - "8080:8080"  # WhatsApp Bridge API port
       - "8081:8081"  # MCP server port with SSE
       - "8082:8082"  # Gradio UI port
@@ -20,6 +19,24 @@ services:
     restart: unless-stopped
     networks:
       -  n8n_n8n_traefik_network # <-- Ensure this network exists in your Docker setup -- if you dont whant it expose set it to the relevnat network only
+
+  webhook-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    deploy:
+      resources:
+        limits:
+          memory: 500M  # Lightweight nginx container
+          cpus: '0.5'
+    ports:
+      - "8089:8080"  # Webhook UI port
+    depends_on:
+      - whatsapp-mcp
+    restart: unless-stopped
+    networks:
+      -  n8n_n8n_traefik_network
+
 networks:
   n8n_n8n_traefik_network:
     external: true

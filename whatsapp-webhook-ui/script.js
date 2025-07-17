@@ -3,16 +3,11 @@ class WebhookManager {
         // Determine the API base URL based on current location
         const currentPort = window.location.port;
         const currentProtocol = window.location.protocol;
-        const currentHost = window.location.hostname;
-        
-        // If we're running on port 3000 (development), use localhost:8080
-        // If we're running on a different port (production), use relative URLs
-        if (currentPort === '3000') {
-            this.apiBaseUrl = `${currentProtocol}//${currentHost}:8080/api`;
-        } else {
-            // For production, assume API is on the same host but port 8080
-            this.apiBaseUrl = `${currentProtocol}//${currentHost}:8080/api`;
-        }
+        const currentHost = window.location.hostname; // Use the browser's hostname, not container name
+
+        // For containerized environments, use the host's port mapping
+        // The backend is accessible through the host on port 8080
+        this.apiBaseUrl = `${currentProtocol}//${currentHost}:8080/api`;
         
         console.log('API Base URL:', this.apiBaseUrl);
         this.webhooks = [];
@@ -23,7 +18,10 @@ class WebhookManager {
 
     async checkApiConnection() {
         try {
+            console.log('Checking API connection to:', `${this.apiBaseUrl}/webhooks`);
             const response = await fetch(`${this.apiBaseUrl}/webhooks`);
+            console.log('API response status:', response.status);
+            console.log('API response ok:', response.ok);
             return response.ok || response.status === 404; // 404 is ok, means API is running but no webhooks
         } catch (error) {
             console.error('API connection failed:', error);
@@ -81,8 +79,12 @@ class WebhookManager {
 
     async loadWebhooks() {
         try {
+            console.log('Loading webhooks from:', `${this.apiBaseUrl}/webhooks`);
             this.showLoading(true);
             const response = await fetch(`${this.apiBaseUrl}/webhooks`);
+            
+            console.log('Webhooks response status:', response.status);
+            console.log('Webhooks response ok:', response.ok);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -100,6 +102,7 @@ class WebhookManager {
                 this.webhooks = [];
             }
             
+            console.log('Processed webhooks:', this.webhooks);
             this.renderWebhooks();
         } catch (error) {
             console.error('Failed to load webhooks:', error);

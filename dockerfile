@@ -28,9 +28,6 @@ RUN mkdir -p /app/whatsapp-bridge
 COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge/whatsapp-bridge
 RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge
 
-# Copy the webhook UI files
-COPY --from=builder /app/whatsapp-webhook-ui /app/whatsapp-webhook-ui
-
 # Install Python and other dependencies
 RUN apt-get update 
 RUN apt-get install -y ffmpeg \
@@ -60,5 +57,4 @@ RUN chmod +x /app/entrypoint.sh
 EXPOSE 8080
 EXPOSE 8081
 EXPOSE 8082
-EXPOSE 3000
 ENTRYPOINT ["/app/entrypoint.sh"]
