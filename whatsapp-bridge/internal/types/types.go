@@ -65,6 +65,7 @@ type WebhookMessageInfo struct {
 	SenderName       string `json:"sender_name"`
 	Content          string `json:"content"`
 	Timestamp        string `json:"timestamp"`
+	PushName         string `json:"push_name,omitempty"`
 	IsFromMe         bool   `json:"is_from_me"`
 	MediaType        string `json:"media_type"`
 	Filename         string `json:"filename"`

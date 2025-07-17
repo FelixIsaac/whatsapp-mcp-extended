@@ -174,10 +174,11 @@ func (wm *Manager) ProcessMessage(client interface{}, msg *events.Message, chatN
 			ID:         msg.Info.ID,
 			ChatJID:    msg.Info.Chat.String(),
 			ChatName:   chatName,
-			Sender:     msg.Info.Sender.User,
+			Sender:     msg.Info.Sender.String(),
 			SenderName: senderName,
 			Content:    content,
 			Timestamp:  msg.Info.Timestamp.Format(time.RFC3339),
+			PushName:   msg.Info.PushName,
 			IsFromMe:   msg.Info.IsFromMe,
 			MediaType:  mediaType,
 			Filename:   filename,
@@ -189,7 +190,7 @@ func (wm *Manager) ProcessMessage(client interface{}, msg *events.Message, chatN
 
 	// Add media download URL if it's a media message
 	if mediaType != "" {
-		basePayload.Message.MediaDownloadURL = fmt.Sprintf("http://localhost:8080/api/download")
+		basePayload.Message.MediaDownloadURL = "http://localhost:8080/api/download"
 	}
 
 	// Add group info if it's a group chat
