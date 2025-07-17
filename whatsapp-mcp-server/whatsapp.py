@@ -2,14 +2,17 @@ import sqlite3
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
+import os
 import os.path
 import requests
 import json
 import audio
 
 MESSAGES_DB_PATH = os.path.join('/app', 'store', 'messages.db')
-WHATSAPP_STORE_DB_PATH = os.path.join('/app', 'store', 'whatsapp_store.db')
-import os
+# MESSAGES_DB_PATH = "/home/ubuntu/docker/whatsapp-mcp/store/messages.db"
+WHATSAPP_DB_PATH = os.path.join('/app', 'store', 'whatsapp.db')
+# WHATSAPP_DB_PATH = "/home/ubuntu/docker/whatsapp-mcp/store/whatsapp.db"
+
 
 # Use environment variable for bridge host, default to localhost for development
 BRIDGE_HOST = os.getenv('BRIDGE_HOST', 'localhost')
@@ -66,7 +69,7 @@ def get_sender_name(sender_jid: str) -> str:
             return nickname
         
         # Try to get rich contact information from WhatsApp store
-        whatsapp_conn = sqlite3.connect(WHATSAPP_STORE_DB_PATH)
+        whatsapp_conn = sqlite3.connect(WHATSAPP_DB_PATH)
         whatsapp_cursor = whatsapp_conn.cursor()
         
         # Look for contact in WhatsApp contacts
@@ -463,10 +466,7 @@ def search_contacts(query: str) -> List[Contact]:
     """Search contacts by name or phone number using both WhatsApp contacts and chat data."""
     try:
         # Connect to both databases
-        messages_conn = sqlite3.connect(MESSAGES_DB_PATH)
-        whatsapp_conn = sqlite3.connect(WHATSAPP_STORE_DB_PATH)
-        
-        messages_cursor = messages_conn.cursor()
+        whatsapp_conn = sqlite3.connect(WHATSAPP_DB_PATH)
         whatsapp_cursor = whatsapp_conn.cursor()
         
         # Split query into characters to support partial matching
@@ -497,43 +497,18 @@ def search_contacts(query: str) -> List[Contact]:
                 END
             LIMIT 50
         """, (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern))
-        
-        whatsapp_contacts = whatsapp_cursor.fetchall()
-        
-        # Also query chats database for additional contacts not in WhatsApp contacts
-        messages_cursor.execute("""
-            SELECT DISTINCT 
-                jid,
-                name
-            FROM chats
-            WHERE 
-                (LOWER(COALESCE(name, '')) LIKE LOWER(?) OR LOWER(jid) LIKE LOWER(?))
-                AND jid NOT LIKE '%@g.us'
-                AND jid NOT IN (
-                    SELECT their_jid FROM whatsmeow_contacts 
-                    WHERE their_jid = chats.jid
-                )
-            ORDER BY name, jid
-            LIMIT 50
-        """, (search_pattern, search_pattern))
-        
-        chat_contacts = messages_cursor.fetchall()
-        
+        whatsapp_contacts = whatsapp_cursor.fetchall()           
         result = []
-        
-        # Process WhatsApp contacts (rich data)
+        # If whatsapp_contacts is not empty, use only those
         for contact_data in whatsapp_contacts:
             jid = contact_data[0]
             phone_number = jid.split('@')[0] if '@' in jid else jid
-            
             # Determine best display name
             first_name = contact_data[1]
-            full_name = contact_data[2] 
+            full_name = contact_data[2]
             push_name = contact_data[3]
             business_name = contact_data[4]
-            
             display_name = full_name or push_name or first_name or business_name or phone_number
-            
             contact = Contact(
                 phone_number=phone_number,
                 name=display_name,
@@ -544,27 +519,12 @@ def search_contacts(query: str) -> List[Contact]:
                 business_name=business_name
             )
             result.append(contact)
-        
-        # Process chat contacts (basic data for contacts not in WhatsApp store)
-        for contact_data in chat_contacts:
-            jid = contact_data[0]
-            phone_number = jid.split('@')[0] if '@' in jid else jid
-            
-            contact = Contact(
-                phone_number=phone_number,
-                name=contact_data[1] or phone_number,
-                jid=jid
-            )
-            result.append(contact)
-            
         return result
         
     except sqlite3.Error as e:
         print(f"Database error: {e}")
         return []
     finally:
-        if 'messages_conn' in locals():
-            messages_conn.close()
         if 'whatsapp_conn' in locals():
             whatsapp_conn.close()
 
@@ -907,7 +867,7 @@ def get_contact_by_jid(jid: str) -> Optional[Contact]:
     """Get detailed contact information by JID."""
     try:
         # First try WhatsApp contacts database
-        whatsapp_conn = sqlite3.connect(WHATSAPP_STORE_DB_PATH)
+        whatsapp_conn = sqlite3.connect(WHATSAPP_DB_PATH)
         whatsapp_cursor = whatsapp_conn.cursor()
         
         whatsapp_cursor.execute("""
@@ -1014,21 +974,19 @@ def get_contact_by_phone(phone_number: str) -> Optional[Contact]:
         return None
 
 
-def list_all_contacts(include_groups: bool = False, limit: int = 100) -> List[Contact]:
+def list_all_contacts(limit: int = 100) -> List[Contact]:
     """Get all contacts with their detailed information."""
     try:
         contacts = []
         
         # Get contacts from WhatsApp store
-        whatsapp_conn = sqlite3.connect(WHATSAPP_STORE_DB_PATH)
+        whatsapp_conn = sqlite3.connect(WHATSAPP_DB_PATH)
         whatsapp_cursor = whatsapp_conn.cursor()
-        
-        group_filter = "" if include_groups else "AND their_jid NOT LIKE '%@g.us'"
-        
+                
         whatsapp_cursor.execute(f"""
             SELECT their_jid, first_name, full_name, push_name, business_name
             FROM whatsmeow_contacts
-            WHERE 1=1 {group_filter}
+            WHERE 1=1 AND their_jid NOT LIKE '%@g.us'
             ORDER BY 
                 CASE 
                     WHEN full_name IS NOT NULL AND full_name != '' THEN full_name

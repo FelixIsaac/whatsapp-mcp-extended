@@ -158,8 +158,12 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 
 	// Process webhooks if manager is available
 	if webhookManager != nil {
-		// Note: We'll need to define an interface for this when we create the webhook manager
-		// webhookManager.ProcessMessage(c, msg, name)
+		// Cast to webhook manager and process message
+		if wm, ok := webhookManager.(interface {
+			ProcessMessage(client interface{}, msg *events.Message, chatName string)
+		}); ok {
+			wm.ProcessMessage(c, msg, name)
+		}
 	}
 }
 

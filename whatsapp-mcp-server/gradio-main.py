@@ -301,14 +301,13 @@ def get_contact_details(jid: Optional[str] = None, phone_number: Optional[str] =
 
 
 @mcp.tool()
-def list_all_contacts(include_groups: bool = False, limit: int = 100) -> List[Dict[str, Any]]:
+def list_all_contacts(limit: int = 100) -> List[Dict[str, Any]]:
     """Get all contacts with their detailed information.
     
     Args:
-        include_groups: Whether to include group chats in the results
         limit: Maximum number of contacts to return
     """
-    contacts = whatsapp_list_all_contacts(include_groups, limit)
+    contacts = whatsapp_list_all_contacts(limit)
     return [
         {
             "phone_number": contact.phone_number,
@@ -424,20 +423,21 @@ def gradio_get_contact_details(jid, phone_number):
     else:
         return result["formatted_info"]
 
-def gradio_list_all_contacts(include_groups, limit):
+def gradio_list_all_contacts(limit):
     """Gradio wrapper for list_all_contacts"""
-    contacts = list_all_contacts(include_groups=include_groups, limit=int(limit))
+    contacts = list_all_contacts(limit=int(limit))
     
     if contacts:
         formatted_contacts = []
         for contact in contacts:
+            name_to_display = contact.get('name', '') if contact.get('name', '') != '*' else contact.get('push_name', 'Unknown')
             formatted_contacts.append(
-                f"📱 {contact['name']} ({contact['phone_number']})\n"
-                f"   JID: {contact['jid']}\n"
-                f"   Full Name: {contact.get('full_name', 'N/A')}\n"
-                f"   Push Name: {contact.get('push_name', 'N/A')}\n"
-                f"   Nickname: {contact.get('nickname', 'N/A')}\n"
-                f"   Business: {contact.get('business_name', 'N/A')}\n"
+                f"📱 {name_to_display} ({contact.get('phone_number', 'N/A')})\n"
+                f"   JID: {contact.get('jid', 'N/A')}\n"
+                f"   Full Name: {contact.get('full_name') or 'N/A'}\n"
+                f"   Push Name: {contact.get('push_name') or 'N/A'}\n"
+                f"   Nickname: {contact.get('nickname') or 'N/A'}\n"
+                f"   Business: {contact.get('business_name') or 'N/A'}\n"
             )
         return "\n".join(formatted_contacts)
     else:
@@ -516,7 +516,6 @@ def create_gradio_ui():
         with gr.Tab("All Contacts"):
             gr.Markdown("### List all contacts with detailed information")
             with gr.Row():
-                include_groups_checkbox = gr.Checkbox(label="Include Groups", value=False)
                 contacts_limit = gr.Slider(label="Limit", minimum=10, maximum=500, value=100, step=10)
             
             list_contacts_button = gr.Button("List All Contacts")
@@ -524,7 +523,7 @@ def create_gradio_ui():
             
             list_contacts_button.click(
                 gradio_list_all_contacts,
-                inputs=[include_groups_checkbox, contacts_limit],
+                inputs=[ contacts_limit],
                 outputs=all_contacts_result
             )
         
@@ -646,7 +645,19 @@ def create_gradio_ui():
                 inputs=[media_recipient, media_file], 
                 outputs=media_result
             )
-            
+        
+        with gr.Tab("get_last_interaction"):
+            with gr.Row():
+                interaction_chat_jid = gr.Textbox(label="Chat JID", placeholder="Enter chat JID")
+
+            interaction_search_button = gr.Button("Get Last Interaction")
+            interaction_results = gr.Textbox(label="Results", visible=False, lines=5)
+
+            interaction_search_button.click(
+                get_last_interaction,
+                inputs=[interaction_chat_jid],
+                outputs=interaction_results
+            )
     return app
 
 # Main function
