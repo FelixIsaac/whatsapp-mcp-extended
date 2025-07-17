@@ -13,7 +13,7 @@ services:
     ports:
       - "8080:8080"  # WhatsApp Bridge API port
     volumes:
-      - ./store:/app/store  # Persistent storage for WhatsApp data
+      - ./store:/app/whatsapp-bridge/store  # Persistent storage for WhatsApp data
     environment:
       - TZ=UTC
     restart: unless-stopped
@@ -37,6 +37,7 @@ services:
       - ./store:/app/store  # Shared persistent storage for WhatsApp data
     environment:
       - TZ=UTC
+      - DEBUG=true  # Enable debug mode for development
       - BRIDGE_HOST=whatsapp-mcp-whatsapp-bridge-1  # Set bridge hostname for MCP server
     depends_on:
       - whatsapp-bridge

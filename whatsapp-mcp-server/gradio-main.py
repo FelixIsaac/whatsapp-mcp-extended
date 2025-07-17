@@ -15,7 +15,15 @@ from whatsapp import (
     send_message as whatsapp_send_message,
     send_file as whatsapp_send_file,
     send_audio_message as whatsapp_audio_voice_message,
-    download_media as whatsapp_download_media
+    download_media as whatsapp_download_media,
+    get_contact_by_jid as whatsapp_get_contact_by_jid,
+    get_contact_by_phone as whatsapp_get_contact_by_phone,
+    list_all_contacts as whatsapp_list_all_contacts,
+    format_contact_info as whatsapp_format_contact_info,
+    set_contact_nickname as whatsapp_set_contact_nickname,
+    get_contact_nickname as whatsapp_get_contact_nickname,
+    remove_contact_nickname as whatsapp_remove_contact_nickname,
+    list_contact_nicknames as whatsapp_list_contact_nicknames
 )
 
 # Configure logging
@@ -261,6 +269,101 @@ def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
             "message": "Failed to download media"
         }
 
+@mcp.tool()
+def get_contact_details(jid: Optional[str] = None, phone_number: Optional[str] = None) -> Dict[str, Any]:
+    """Get detailed contact information by JID or phone number.
+    
+    Args:
+        jid: WhatsApp JID of the contact
+        phone_number: Phone number of the contact
+    """
+    if jid:
+        contact = whatsapp_get_contact_by_jid(jid)
+    elif phone_number:
+        contact = whatsapp_get_contact_by_phone(phone_number)
+    else:
+        return {"error": "Either jid or phone_number must be provided"}
+    
+    if contact:
+        return {
+            "phone_number": contact.phone_number,
+            "name": contact.name,
+            "jid": contact.jid,
+            "first_name": contact.first_name,
+            "full_name": contact.full_name,
+            "push_name": contact.push_name,
+            "business_name": contact.business_name,
+            "nickname": contact.nickname,
+            "formatted_info": whatsapp_format_contact_info(contact)
+        }
+    else:
+        return {"error": "Contact not found"}
+
+
+@mcp.tool()
+def list_all_contacts(include_groups: bool = False, limit: int = 100) -> List[Dict[str, Any]]:
+    """Get all contacts with their detailed information.
+    
+    Args:
+        include_groups: Whether to include group chats in the results
+        limit: Maximum number of contacts to return
+    """
+    contacts = whatsapp_list_all_contacts(include_groups, limit)
+    return [
+        {
+            "phone_number": contact.phone_number,
+            "name": contact.name,
+            "jid": contact.jid,
+            "first_name": contact.first_name,
+            "full_name": contact.full_name,
+            "push_name": contact.push_name,
+            "business_name": contact.business_name,
+            "nickname": contact.nickname
+        }
+        for contact in contacts
+    ]
+
+
+@mcp.tool()
+def set_contact_nickname(jid: str, nickname: str) -> Dict[str, Any]:
+    """Set a custom nickname for a contact.
+    
+    Args:
+        jid: WhatsApp JID of the contact
+        nickname: Custom nickname to set for the contact
+    """
+    success, message = whatsapp_set_contact_nickname(jid, nickname)
+    return {"success": success, "message": message}
+
+
+@mcp.tool()
+def get_contact_nickname(jid: str) -> Dict[str, Any]:
+    """Get a contact's custom nickname.
+    
+    Args:
+        jid: WhatsApp JID of the contact
+    """
+    nickname = whatsapp_get_contact_nickname(jid)
+    return {"jid": jid, "nickname": nickname}
+
+
+@mcp.tool()
+def remove_contact_nickname(jid: str) -> Dict[str, Any]:
+    """Remove a contact's custom nickname.
+    
+    Args:
+        jid: WhatsApp JID of the contact
+    """
+    success, message = whatsapp_remove_contact_nickname(jid)
+    return {"success": success, "message": message}
+
+
+@mcp.tool()
+def list_contact_nicknames() -> List[Dict[str, str]]:
+    """List all custom contact nicknames."""
+    nicknames = whatsapp_list_contact_nicknames()
+    return [{"jid": jid, "nickname": nickname} for jid, nickname in nicknames]
+
 # Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)
 
 def gradio_search_contacts(query):
@@ -307,6 +410,80 @@ def gradio_send_audio(recipient, file):
     result = send_audio_message(recipient, file.name)
     return f"Status: {result['success']}, Message: {result['message']}"
 
+# Gradio wrapper functions for contact management
+
+def gradio_get_contact_details(jid, phone_number):
+    """Gradio wrapper for get_contact_details"""
+    if not jid and not phone_number:
+        return "Error: Either JID or phone number must be provided"
+    
+    result = get_contact_details(jid=jid if jid else None, phone_number=phone_number if phone_number else None)
+    
+    if "error" in result:
+        return result["error"]
+    else:
+        return result["formatted_info"]
+
+def gradio_list_all_contacts(include_groups, limit):
+    """Gradio wrapper for list_all_contacts"""
+    contacts = list_all_contacts(include_groups=include_groups, limit=int(limit))
+    
+    if contacts:
+        formatted_contacts = []
+        for contact in contacts:
+            formatted_contacts.append(
+                f"📱 {contact['name']} ({contact['phone_number']})\n"
+                f"   JID: {contact['jid']}\n"
+                f"   Full Name: {contact.get('full_name', 'N/A')}\n"
+                f"   Push Name: {contact.get('push_name', 'N/A')}\n"
+                f"   Nickname: {contact.get('nickname', 'N/A')}\n"
+                f"   Business: {contact.get('business_name', 'N/A')}\n"
+            )
+        return "\n".join(formatted_contacts)
+    else:
+        return "No contacts found"
+
+def gradio_set_contact_nickname(jid, nickname):
+    """Gradio wrapper for set_contact_nickname"""
+    if not jid or not nickname:
+        return "Error: Both JID and nickname must be provided"
+    
+    result = set_contact_nickname(jid, nickname)
+    return f"Status: {result['success']}, Message: {result['message']}"
+
+def gradio_get_contact_nickname(jid):
+    """Gradio wrapper for get_contact_nickname"""
+    if not jid:
+        return "Error: JID must be provided"
+    
+    result = get_contact_nickname(jid)
+    nickname = result.get('nickname')
+    
+    if nickname:
+        return f"Nickname for {jid}: {nickname}"
+    else:
+        return f"No nickname set for {jid}"
+
+def gradio_remove_contact_nickname(jid):
+    """Gradio wrapper for remove_contact_nickname"""
+    if not jid:
+        return "Error: JID must be provided"
+    
+    result = remove_contact_nickname(jid)
+    return f"Status: {result['success']}, Message: {result['message']}"
+
+def gradio_list_contact_nicknames():
+    """Gradio wrapper for list_contact_nicknames"""
+    nicknames = list_contact_nicknames()
+    
+    if nicknames:
+        formatted_nicknames = []
+        for item in nicknames:
+            formatted_nicknames.append(f"📝 {item['nickname']} -> {item['jid']}")
+        return "\n".join(formatted_nicknames)
+    else:
+        return "No custom nicknames found"
+
 # Create Gradio UI
 def create_gradio_ui():
     with gr.Blocks(title="WhatsApp MCP Interface") as app:
@@ -320,6 +497,89 @@ def create_gradio_ui():
             
             search_results = gr.Textbox(label="Results", visible=False, lines=10)
             search_button.click(gradio_search_contacts, inputs=search_query, outputs=search_results)
+        
+        with gr.Tab("Contact Details"):
+            gr.Markdown("### Get detailed contact information")
+            with gr.Row():
+                contact_jid = gr.Textbox(label="Contact JID (optional)", placeholder="e.g., 123456789@s.whatsapp.net")
+                contact_phone = gr.Textbox(label="Phone Number (optional)", placeholder="e.g., 123456789")
+            
+            get_contact_button = gr.Button("Get Contact Details")
+            contact_details_result = gr.Textbox(label="Contact Details", lines=10)
+            
+            get_contact_button.click(
+                gradio_get_contact_details,
+                inputs=[contact_jid, contact_phone],
+                outputs=contact_details_result
+            )
+        
+        with gr.Tab("All Contacts"):
+            gr.Markdown("### List all contacts with detailed information")
+            with gr.Row():
+                include_groups_checkbox = gr.Checkbox(label="Include Groups", value=False)
+                contacts_limit = gr.Slider(label="Limit", minimum=10, maximum=500, value=100, step=10)
+            
+            list_contacts_button = gr.Button("List All Contacts")
+            all_contacts_result = gr.Textbox(label="All Contacts", lines=15)
+            
+            list_contacts_button.click(
+                gradio_list_all_contacts,
+                inputs=[include_groups_checkbox, contacts_limit],
+                outputs=all_contacts_result
+            )
+        
+        with gr.Tab("Contact Nicknames"):
+            gr.Markdown("### Manage custom contact nicknames")
+            
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("#### Set Nickname")
+                    set_nickname_jid = gr.Textbox(label="Contact JID", placeholder="e.g., 123456789@s.whatsapp.net")
+                    set_nickname_text = gr.Textbox(label="Nickname", placeholder="Enter custom nickname")
+                    set_nickname_button = gr.Button("Set Nickname")
+                    set_nickname_result = gr.Textbox(label="Result", lines=2)
+                
+                with gr.Column():
+                    gr.Markdown("#### Get Nickname")
+                    get_nickname_jid = gr.Textbox(label="Contact JID", placeholder="e.g., 123456789@s.whatsapp.net")
+                    get_nickname_button = gr.Button("Get Nickname")
+                    get_nickname_result = gr.Textbox(label="Result", lines=2)
+            
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("#### Remove Nickname")
+                    remove_nickname_jid = gr.Textbox(label="Contact JID", placeholder="e.g., 123456789@s.whatsapp.net")
+                    remove_nickname_button = gr.Button("Remove Nickname")
+                    remove_nickname_result = gr.Textbox(label="Result", lines=2)
+                
+                with gr.Column():
+                    gr.Markdown("#### List All Nicknames")
+                    list_nicknames_button = gr.Button("List All Nicknames")
+                    list_nicknames_result = gr.Textbox(label="All Nicknames", lines=10)
+            
+            # Connect the nickname management buttons
+            set_nickname_button.click(
+                gradio_set_contact_nickname,
+                inputs=[set_nickname_jid, set_nickname_text],
+                outputs=set_nickname_result
+            )
+            
+            get_nickname_button.click(
+                gradio_get_contact_nickname,
+                inputs=get_nickname_jid,
+                outputs=get_nickname_result
+            )
+            
+            remove_nickname_button.click(
+                gradio_remove_contact_nickname,
+                inputs=remove_nickname_jid,
+                outputs=remove_nickname_result
+            )
+            
+            list_nicknames_button.click(
+                gradio_list_contact_nicknames,
+                outputs=list_nicknames_result
+            )
         
         with gr.Tab("List Chats"):
             with gr.Row():

@@ -63,6 +63,13 @@ func createTables(db *sql.DB) error {
 			FOREIGN KEY (chat_jid) REFERENCES chats(jid)
 		);
 
+		CREATE TABLE IF NOT EXISTS contact_nicknames (
+			jid TEXT PRIMARY KEY,
+			nickname TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+
 		CREATE TABLE IF NOT EXISTS webhook_configs (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
