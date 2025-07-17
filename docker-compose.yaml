@@ -1,24 +1,49 @@
 version: '3.8'
 
 services:
-  whatsapp-mcp:
-    build: .
+  whatsapp-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
     deploy:
       resources:
         limits:
-          memory: 2G  # Adjust memory allocation as needed
-          cpus: '1'  # Adjust CPU allocation as needed
+          memory: 1G  # Adjust memory allocation as needed
+          cpus: '0.5'  # Adjust CPU allocation as needed
     ports:
       - "8080:8080"  # WhatsApp Bridge API port
-      - "8081:8081"  # MCP server port with SSE
-      - "8082:8082"  # Gradio UI port
     volumes:
-      - ./store:/app/whatsapp-bridge/store  # Persistent storage for WhatsApp data
+      - ./store:/app/store  # Persistent storage for WhatsApp data
     environment:
       - TZ=UTC
     restart: unless-stopped
     networks:
-      -  n8n_n8n_traefik_network # <-- Ensure this network exists in your Docker setup -- if you dont whant it expose set it to the relevnat network only
+      - n8n_n8n_traefik_network
+      - whatsapp_internal
+
+  whatsapp-mcp:
+    build:
+      context: .
+      dockerfile: dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 1G  # Adjust memory allocation as needed
+          cpus: '0.5'  # Adjust CPU allocation as needed
+    ports:
+      - "8081:8081"  # MCP server port with SSE
+      - "8082:8082"  # Gradio UI port
+    volumes:
+      - ./store:/app/store  # Shared persistent storage for WhatsApp data
+    environment:
+      - TZ=UTC
+      - BRIDGE_HOST=whatsapp-mcp-whatsapp-bridge-1  # Set bridge hostname for MCP server
+    depends_on:
+      - whatsapp-bridge
+    restart: unless-stopped
+    networks:
+      - n8n_n8n_traefik_network
+      - whatsapp_internal
 
   webhook-ui:
     build:
@@ -32,11 +57,15 @@ services:
     ports:
       - "8089:8080"  # Webhook UI port
     depends_on:
+      - whatsapp-bridge
       - whatsapp-mcp
     restart: unless-stopped
     networks:
-      -  n8n_n8n_traefik_network
+      - n8n_n8n_traefik_network
+      - whatsapp_internal
 
 networks:
   n8n_n8n_traefik_network:
     external: true
+  whatsapp_internal:
+    driver: bridge

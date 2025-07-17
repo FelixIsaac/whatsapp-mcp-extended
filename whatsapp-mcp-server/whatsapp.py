@@ -7,8 +7,12 @@ import requests
 import json
 import audio
 
-MESSAGES_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'whatsapp-bridge', 'store', 'messages.db')
-WHATSAPP_API_BASE_URL = "http://localhost:8080/api"
+MESSAGES_DB_PATH = os.path.join('/app', 'store', 'messages.db')
+import os
+
+# Use environment variable for bridge host, default to localhost for development
+BRIDGE_HOST = os.getenv('BRIDGE_HOST', 'localhost')
+WHATSAPP_API_BASE_URL = f"http://{BRIDGE_HOST}:8080/api"
 
 @dataclass
 class Message:
@@ -134,9 +138,25 @@ def list_messages(
     context_after: int = 1
 ) -> List[Message]:
     """Get messages matching the specified criteria with optional context."""
+    print(f"Debug: Database path: {MESSAGES_DB_PATH}")
+    print(f"Debug: Database exists: {os.path.exists(MESSAGES_DB_PATH)}")
+    
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
+        
+        # Debug: Check if tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        print(f"Debug: Available tables: {tables}")
+        
+        # Debug: Check row counts
+        try:
+            cursor.execute("SELECT COUNT(*) FROM messages")
+            msg_count = cursor.fetchone()[0]
+            print(f"Debug: Total messages in database: {msg_count}")
+        except Exception as e:
+            print(f"Debug: Error counting messages: {e}")
         
         # Build base query
         query_parts = ["SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type FROM messages"]
@@ -324,9 +344,25 @@ def list_chats(
     sort_by: str = "last_active"
 ) -> List[Chat]:
     """Get chats matching the specified criteria."""
+    print(f"Debug: Database path: {MESSAGES_DB_PATH}")
+    print(f"Debug: Database exists: {os.path.exists(MESSAGES_DB_PATH)}")
+    
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
+        
+        # Debug: Check if tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        print(f"Debug: Available tables: {tables}")
+        
+        # Debug: Check row counts
+        try:
+            cursor.execute("SELECT COUNT(*) FROM chats")
+            chat_count = cursor.fetchone()[0]
+            print(f"Debug: Total chats in database: {chat_count}")
+        except Exception as e:
+            print(f"Debug: Error counting chats: {e}")
         
         # Build base query
         query_parts = ["""
