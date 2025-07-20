@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Webhook Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fab fa-whatsapp"></i> WhatsApp Webhook Manager</h1>
+            <p>Manage your webhook configurations</p>
+        </header>
+
+        <main>
+            <!-- Action Buttons -->
+            <div class="action-bar">
+                <button id="addWebhookBtn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Webhook
+                </button>
+                <button id="refreshBtn" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
+            <!-- Webhooks List -->
+            <div class="webhooks-container">
+                <div id="loadingSpinner" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading webhooks...
+                </div>
+                <div id="webhooksList" class="webhooks-list"></div>
+                <div id="noWebhooks" class="no-data" style="display: none;">
+                    <i class="fas fa-webhook"></i>
+                    <h3>No Webhooks Found</h3>
+                    <p>Create your first webhook to get started</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Add/Edit Webhook -->
+    <div id="webhookModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Webhook</h2>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            <form id="webhookForm">
+                <div class="form-group">
+                    <label for="webhookName">Name *</label>
+                    <input type="text" id="webhookName" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="webhookURL">Webhook URL *</label>
+                    <input type="url" id="webhookURL" name="webhook_url" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="secretToken">Secret Token</label>
+                    <input type="text" id="secretToken" name="secret_token" placeholder="Optional security token">
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="webhookEnabled" name="enabled" checked>
+                        <span class="checkmark"></span>
+                        Enable webhook
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Triggers</label>
+                    <div id="triggersContainer">
+                        <div class="trigger-item">
+                            <select name="trigger_type" class="trigger-type">
+                                <option value="all">All Messages</option>
+                                <option value="chat_jid">Specific Chat</option>
+                                <option value="sender">Specific Sender</option>
+                                <option value="keyword">Keyword</option>
+                                <option value="media_type">Media Type</option>
+                            </select>
+                            <input type="text" name="trigger_value" class="trigger-value" placeholder="Trigger value">
+                            <select name="match_type" class="match-type">
+                                <option value="exact">Exact</option>
+                                <option value="contains">Contains</option>
+                                <option value="regex">Regex</option>
+                            </select>
+                            <button type="button" class="btn-remove-trigger" title="Remove trigger">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" id="addTriggerBtn" class="btn btn-outline">
+                        <i class="fas fa-plus"></i> Add Trigger
+                    </button>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="submitText">Create Webhook</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Webhook Card Template -->
+    <template id="webhookCardTemplate">
+        <div class="webhook-card">
+            <div class="webhook-header">
+                <div class="webhook-info">
+                    <h3 class="webhook-name"></h3>
+                    <span class="webhook-status"></span>
+                </div>
+                <div class="webhook-actions">
+                    <button class="btn-action btn-test" title="Test webhook">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="btn-action btn-logs" title="View logs">
+                        <i class="fas fa-list"></i>
+                    </button>
+                    <button class="btn-action btn-edit" title="Edit webhook">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-action btn-toggle" title="Toggle webhook">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                    <button class="btn-action btn-delete" title="Delete webhook">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="webhook-details">
+                <div class="detail-item">
+                    <strong>URL:</strong> <span class="webhook-url"></span>
+                </div>
+                <div class="detail-item">
+                    <strong>Created:</strong> <span class="webhook-created"></span>
+                </div>
+                <div class="detail-item">
+                    <strong>Triggers:</strong> <span class="webhook-triggers"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Logs Modal -->
+    <div id="logsModal" class="modal">
+        <div class="modal-content logs-modal">
+            <div class="modal-header">
+                <h2 id="logsModalTitle">Webhook Logs</h2>
+                <span class="close" id="closeLogsModal">&times;</span>
+            </div>
+            <div class="logs-content">
+                <div class="logs-header">
+                    <div class="logs-info">
+                        <span id="logsCount">0 log entries</span>
+                        <button id="refreshLogsBtn" class="btn btn-outline btn-small">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="logsContainer" class="logs-container">
+                    <div id="logsLoading" class="loading-small">
+                        <i class="fas fa-spinner fa-spin"></i> Loading logs...
+                    </div>
+                    <div id="logsList" class="logs-list"></div>
+                    <div id="noLogs" class="no-data-small" style="display: none;">
+                        <i class="fas fa-file-alt"></i>
+                        <p>No logs found for this webhook</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Entry Template -->
+    <template id="logEntryTemplate">
+        <div class="log-entry">
+            <div class="log-header">
+                <div class="log-status">
+                    <span class="status-badge"></span>
+                    <span class="log-timestamp"></span>
+                </div>
+                <div class="log-attempt">
+                    Attempt <span class="attempt-number"></span>
+                </div>
+            </div>
+            <div class="log-details">
+                <div class="log-detail-item">
+                    <strong>Trigger:</strong> <span class="log-url"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Message ID:</strong> <span class="log-message-id"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Chat:</strong> <span class="log-chat-info"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Response:</strong> <span class="log-response"></span>
+                </div>
+                <div class="log-detail-item">
+                    <strong>Processing Time:</strong> <span class="log-processing-time"></span>
+                </div>
+                <div class="log-detail-item log-error" style="display: none;">
+                    <strong>Error:</strong> <span class="log-error-message"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toastMessage"></span>
+        <button id="toastClose" class="toast-close">&times;</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

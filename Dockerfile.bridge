@@ -1,0 +1,44 @@
+# Dockerfile for WhatsApp Bridge service
+FROM golang:1.24-bullseye AS builder
+
+# Set up Go environment
+ENV CGO_ENABLED=1
+ENV GO111MODULE=on
+
+# Create working directory
+WORKDIR /app
+
+# Copy the go bridge project files
+COPY ./whatsapp-bridge /app/whatsapp-bridge
+
+# Build the Go WhatsApp bridge
+WORKDIR /app/whatsapp-bridge
+RUN go mod download
+RUN go build -o whatsapp-bridge
+
+FROM debian:bullseye-slim AS runtime
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    sqlite3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the GO exec from the previous stage
+RUN mkdir -p /app/whatsapp-bridge
+COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge/whatsapp-bridge
+RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge
+
+# Create directories for persistent storage
+RUN mkdir -p /app/store
+
+# Create entrypoint script for bridge
+RUN echo '#!/bin/bash\ncd /app/whatsapp-bridge\n./whatsapp-bridge' > /app/entrypoint-bridge.sh
+RUN chmod +x /app/entrypoint-bridge.sh
+
+# Expose port for WhatsApp Bridge API
+EXPOSE 8080
+
+ENTRYPOINT ["/app/entrypoint-bridge.sh"]

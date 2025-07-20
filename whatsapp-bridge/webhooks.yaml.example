@@ -1,0 +1,37 @@
+webhooks:
+  - name: "Example Family Group"
+    url: "https://api.example.com/webhooks/family"
+    secret: ""  # Optional HMAC secret
+    enabled: true
+    triggers:
+      - type: "chat_jid"
+        value: "120363123456789012@g.us"  # Replace with actual group JID
+        match_type: "exact"
+  
+  - name: "Emergency Keywords"
+    url: "https://alerts.example.com/emergency"
+    secret: "your-secret-token-here"
+    enabled: true
+    triggers:
+      - type: "keyword"
+        value: "urgent|emergency|help|911"
+        match_type: "regex"
+  
+  - name: "Media Notifications"
+    url: "https://media.example.com/webhook"
+    enabled: false  # Disabled by default
+    triggers:
+      - type: "media_type"
+        value: "document"
+        match_type: "exact"
+      - type: "media_type"
+        value: "image"
+        match_type: "exact"
+  
+  - name: "Specific Contact"
+    url: "https://contact.example.com/webhook"
+    enabled: true
+    triggers:
+      - type: "sender"
+        value: "1234567890"  # Replace with actual phone number
+        match_type: "contains"

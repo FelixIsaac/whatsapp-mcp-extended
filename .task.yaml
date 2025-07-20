@@ -1,0 +1,367 @@
+name: "WhatsApp Bridge Webhook Extension"
+description: "Extend the WhatsApp bridge to send webhooks on special group or user message inputs"
+version: "1.0.0"
+created: "2025-07-16"
+
+overview: |
+  This task extends the current WhatsApp bridge application to support webhook notifications
+  for specific events like messages from special groups, users, or keyword triggers.
+  The enhancement will enable real-time notifications to external systems while maintaining
+  the current REST API functionality.
+
+current_state:
+  architecture: |
+    - Go-based WhatsApp bridge using whatsmeow library
+    - SQLite database for message storage (store/messages.db, store/whatsapp.db)
+    - REST API server on port 8080 with endpoints:
+      - POST /api/send - Send messages
+      - POST /api/download - Download media
+    - Event-driven message handling with handleMessage() function
+    - Support for text messages, media (images, videos, audio, documents)
+    - History sync capability for message backups
+  
+  limitations: |
+    - No webhook or external notification system
+    - No filtering or rules engine for special message handling
+    - No configuration management for webhook targets
+    - No retry mechanism for failed webhook deliveries
+    - Limited observability for webhook events
+
+features_to_implement:
+  
+  1_database_schema_extension:
+    description: "Extend database schema to support webhook configurations and logs"
+    tables:
+      webhook_configs:
+        fields:
+          - id: "INTEGER PRIMARY KEY AUTOINCREMENT"
+          - name: "TEXT NOT NULL" # Human readable name
+          - webhook_url: "TEXT NOT NULL" # Target webhook URL
+          - secret_token: "TEXT" # Optional HMAC secret for authentication
+          - enabled: "BOOLEAN DEFAULT 1"
+          - created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+          - updated_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      
+      webhook_triggers:
+        fields:
+          - id: "INTEGER PRIMARY KEY AUTOINCREMENT"
+          - webhook_config_id: "INTEGER REFERENCES webhook_configs(id)"
+          - trigger_type: "TEXT NOT NULL" # 'chat_jid', 'sender', 'keyword', 'media_type', 'all'
+          - trigger_value: "TEXT" # JID, phone number, keyword, etc.
+          - match_type: "TEXT DEFAULT 'exact'" # 'exact', 'contains', 'regex'
+          - enabled: "BOOLEAN DEFAULT 1"
+      
+      webhook_logs:
+        fields:
+          - id: "INTEGER PRIMARY KEY AUTOINCREMENT"
+          - webhook_config_id: "INTEGER REFERENCES webhook_configs(id)"
+          - message_id: "TEXT"
+          - chat_jid: "TEXT"
+          - trigger_type: "TEXT"
+          - trigger_value: "TEXT"
+          - payload: "TEXT" # JSON payload sent
+          - response_status: "INTEGER" # HTTP response status
+          - response_body: "TEXT"
+          - attempt_count: "INTEGER DEFAULT 1"
+          - delivered_at: "TIMESTAMP"
+          - created_at: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+
+  2_configuration_management:
+    description: "Configuration system for webhook management"
+    components:
+      webhook_config_struct:
+        fields:
+          - ID: "int"
+          - Name: "string"
+          - WebhookURL: "string"
+          - SecretToken: "string"
+          - Enabled: "bool"
+          - Triggers: "[]WebhookTrigger"
+      
+      webhook_trigger_struct:
+        fields:
+          - ID: "int"
+          - WebhookConfigID: "int"
+          - TriggerType: "string" # chat_jid, sender, keyword, media_type, all
+          - TriggerValue: "string"
+          - MatchType: "string" # exact, contains, regex
+          - Enabled: "bool"
+      
+      webhook_manager:
+        methods:
+          - LoadWebhookConfigs() # Load from database
+          - ValidateConfig(config) # Validate webhook configuration
+          - TestWebhook(config) # Test webhook connectivity
+          - MatchesTriggers(message, triggers) # Check if message matches triggers
+
+  3_webhook_payload_structure:
+    description: "Standardized payload structure for webhook notifications"
+    webhook_payload:
+      fields:
+        - event_type: "string" # 'message_received', 'message_sent', 'media_received'
+        - timestamp: "string" # ISO 8601 format
+        - webhook_config:
+            - id: "int"
+            - name: "string"
+        - trigger:
+            - type: "string"
+            - value: "string"
+            - match_type: "string"
+        - message:
+            - id: "string"
+            - chat_jid: "string"
+            - chat_name: "string"
+            - sender: "string"
+            - sender_name: "string" # Resolved contact name
+            - content: "string"
+            - timestamp: "string"
+            - is_from_me: "boolean"
+            - media_type: "string" # empty for text messages
+            - filename: "string"
+            - media_download_url: "string" # API endpoint to download media
+        - metadata:
+            - group_info: # Only for group messages
+                - is_group: "boolean"
+                - group_name: "string"
+                - participant_count: "int"
+            - delivery_attempt: "int"
+            - processing_time_ms: "int"
+
+  4_webhook_delivery_system:
+    description: "Reliable webhook delivery with retry logic"
+    components:
+      webhook_delivery_service:
+        features:
+          - Async delivery using goroutines
+          - Exponential backoff retry (1s, 2s, 4s, 8s, 16s)
+          - Maximum 5 retry attempts
+          - HMAC-SHA256 signature validation
+          - Timeout configuration (default 30s)
+          - Request/response logging
+          
+      delivery_queue:
+        - In-memory queue for immediate delivery
+        - Database persistence for failed deliveries
+        - Background worker for retry processing
+        - Dead letter queue for permanently failed deliveries
+
+  5_rest_api_extensions:
+    description: "New REST API endpoints for webhook management"
+    endpoints:
+      webhook_management:
+        - "GET /api/webhooks" # List all webhook configurations
+        - "POST /api/webhooks" # Create new webhook configuration
+        - "GET /api/webhooks/{id}" # Get specific webhook configuration
+        - "PUT /api/webhooks/{id}" # Update webhook configuration
+        - "DELETE /api/webhooks/{id}" # Delete webhook configuration
+        - "POST /api/webhooks/{id}/test" # Test webhook configuration
+        - "POST /api/webhooks/{id}/enable" # Enable/disable webhook
+      
+      webhook_logs:
+        - "GET /api/webhooks/{id}/logs" # Get webhook delivery logs
+        - "GET /api/webhooks/logs" # Get all webhook logs with filtering
+        - "POST /api/webhooks/{id}/retry" # Retry failed webhook deliveries
+      
+      webhook_triggers:
+        - "POST /api/webhooks/{id}/triggers" # Add trigger to webhook
+        - "PUT /api/webhooks/{id}/triggers/{trigger_id}" # Update trigger
+        - "DELETE /api/webhooks/{id}/triggers/{trigger_id}" # Remove trigger
+
+  6_message_processing_enhancement:
+    description: "Enhance message handling to support webhook triggers"
+    enhancements:
+      handleMessage_function:
+        additions:
+          - Call webhook processing after message storage
+          - Extract trigger matching logic
+          - Async webhook delivery initiation
+          - Error handling and logging
+      
+      trigger_matching:
+        - Chat JID matching (exact group/contact IDs)
+        - Sender matching (phone numbers, contact names)
+        - Keyword matching (content search with regex support)
+        - Media type filtering (image, video, audio, document)
+        - Combined trigger conditions (AND/OR logic)
+      
+      security_measures:
+        - Input validation for webhook URLs
+        - Rate limiting for webhook deliveries
+        - Sanitization of sensitive data in logs
+        - Optional webhook URL allowlist
+
+  7_configuration_interface:
+    description: "Configuration management through files and API"
+    config_file_support:
+      - YAML configuration file (webhooks.yaml)
+      - Environment variable overrides
+      - Hot-reload capability for configuration changes
+      - Schema validation for configuration
+    
+    example_config:
+      webhooks:
+        - name: "Family Group Notifications"
+          url: "https://api.example.com/webhooks/family"
+          secret: "${FAMILY_WEBHOOK_SECRET}"
+          enabled: true
+          triggers:
+            - type: "chat_jid"
+              value: "120363123456789012@g.us"
+              match_type: "exact"
+        
+        - name: "Emergency Keywords"
+          url: "https://alerts.example.com/emergency"
+          secret: "${EMERGENCY_WEBHOOK_SECRET}"
+          enabled: true
+          triggers:
+            - type: "keyword"
+              value: "urgent|emergency|help"
+              match_type: "regex"
+        
+        - name: "Media Notifications"
+          url: "https://media.example.com/webhook"
+          enabled: true
+          triggers:
+            - type: "media_type"
+              value: "document"
+              match_type: "exact"
+
+implementation_phases:
+
+  phase_1_foundation:
+    timeline: "Week 1-2"
+    tasks:
+      - Create database schema migration
+      - Implement WebhookConfig and WebhookTrigger structs
+      - Create basic webhook delivery service
+      - Add configuration loading from YAML/environment
+    deliverables:
+      - Database migration scripts
+      - Core webhook data structures
+      - Basic webhook HTTP client
+      - Configuration parser
+
+  phase_2_core_functionality:
+    timeline: "Week 3-4"
+    tasks:
+      - Implement trigger matching engine
+      - Enhance handleMessage function for webhook processing
+      - Create webhook payload builder
+      - Add webhook delivery queue and retry logic
+    deliverables:
+      - Trigger matching engine
+      - Enhanced message processor
+      - Webhook delivery service with retry
+      - Payload standardization
+
+  phase_3_api_management:
+    timeline: "Week 5-6"
+    tasks:
+      - Implement webhook management REST API endpoints
+      - Add webhook testing and validation
+      - Create webhook logging and monitoring
+      - Add security features (HMAC, rate limiting)
+    deliverables:
+      - Complete REST API for webhook management
+      - Webhook testing utilities
+      - Comprehensive logging system
+      - Security implementations
+
+  phase_4_polish_and_docs:
+    timeline: "Week 7-8"
+    tasks:
+      - Add comprehensive error handling
+      - Create documentation and examples
+      - Performance optimization and testing
+      - Docker configuration updates
+    deliverables:
+      - Complete documentation
+      - Performance benchmarks
+      - Updated Docker configurations
+      - Example configurations and use cases
+
+technical_considerations:
+
+  performance:
+    - Webhook delivery should not block message processing
+    - Use goroutine pools for concurrent webhook deliveries
+    - Database connection pooling for webhook operations
+    - Memory-efficient payload construction
+    - Configurable rate limiting to prevent overwhelming targets
+
+  reliability:
+    - Persistent storage for failed webhook deliveries
+    - Exponential backoff with jitter for retries
+    - Circuit breaker pattern for failing webhook endpoints
+    - Dead letter queue for permanently failed deliveries
+    - Health check endpoints for webhook targets
+
+  security:
+    - HMAC-SHA256 signature validation for webhook authenticity
+    - HTTPS-only webhook URLs (with override option for development)
+    - Sensitive data filtering in logs and payloads
+    - Input validation and sanitization
+    - Optional webhook URL allowlist for security-conscious deployments
+
+  observability:
+    - Structured logging for all webhook operations
+    - Metrics for webhook delivery success/failure rates
+    - Webhook delivery latency tracking
+    - Database query performance monitoring
+    - Health check endpoints for monitoring systems
+
+  scalability:
+    - Horizontal scaling support through stateless design
+    - Database sharding considerations for high-volume deployments
+    - Webhook delivery worker pool sizing
+    - Memory usage optimization for large message volumes
+    - Configurable retention periods for webhook logs
+
+migration_strategy:
+  - Backward compatibility with existing API endpoints
+  - Database migration scripts with rollback capability
+  - Feature flags for gradual rollout
+  - Configuration validation during startup
+  - Graceful degradation when webhook service is unavailable
+
+testing_strategy:
+  - Unit tests for trigger matching logic
+  - Integration tests for webhook delivery
+  - Mock HTTP servers for webhook testing
+  - Database migration testing
+  - Performance testing with high message volumes
+  - Security testing for HMAC validation and input sanitization
+
+deployment_considerations:
+  - Environment-specific configuration
+  - Secret management for webhook tokens
+  - Docker image updates with new dependencies
+  - Database migration automation
+  - Health check endpoint updates
+  - Monitoring and alerting configuration
+
+success_metrics:
+  - Webhook delivery success rate > 99%
+  - Message processing latency increase < 10ms
+  - Zero message loss during webhook processing
+  - Configuration reload without service restart
+  - Complete API coverage for webhook management
+  - Comprehensive documentation and examples
+
+risk_mitigation:
+  - Webhook failures should not affect core message functionality
+  - Database migration rollback procedures
+  - Fallback configuration for webhook service failures
+  - Rate limiting to prevent webhook abuse
+  - Input validation to prevent security vulnerabilities
+  - Comprehensive error logging for troubleshooting
+
+future_enhancements:
+  - Webhook template system for custom payload formats
+  - Webhook chaining for complex notification workflows
+  - Advanced filtering with logical operators (AND/OR/NOT)
+  - Webhook analytics and reporting dashboard
+  - Integration with popular notification services (Slack, Discord, Teams)
+  - Webhook payload transformation using templates or scripts
+  - Support for webhook authentication methods beyond HMAC
+  - Webhook delivery scheduling and batching options
