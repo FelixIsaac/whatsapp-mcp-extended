@@ -16,7 +16,6 @@ services:
       - TZ=UTC
     restart: unless-stopped
     networks:
-      - n8n_n8n_traefik_network
       - whatsapp_internal
 
   whatsapp-mcp:
@@ -26,16 +25,17 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G  # Adjust memory allocation as needed
-          cpus: '0.5'  # Adjust CPU allocation as needed
+          memory: 2G  # Adjust memory allocation as needed
+          cpus: '1'  # Adjust CPU allocation as needed
     ports:
       - "8081:8081"  # MCP server port with SSE
-      - "8082:8082"  # Gradio UI port
+      - "8082:8082"  # Gradio UI port (only used when GRADIO=true)
     volumes:
       - ./store:/app/store  # Shared persistent storage for WhatsApp data
     environment:
       - TZ=UTC
       - DEBUG=true  # Enable debug mode for development
+      - GRADIO=false  # Enable/disable Gradio UI (true/false)
       - BRIDGE_HOST=whatsapp-mcp-whatsapp-bridge-1  # Set bridge hostname for MCP server
     depends_on:
       - whatsapp-bridge
@@ -60,7 +60,6 @@ services:
       - whatsapp-mcp
     restart: unless-stopped
     networks:
-      - n8n_n8n_traefik_network
       - whatsapp_internal
 
 networks:

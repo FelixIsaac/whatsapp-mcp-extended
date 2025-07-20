@@ -147,6 +147,12 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 
 			config.ID = webhookID // Ensure ID matches URL
 
+			fmt.Printf("Updating webhook %d with %d triggers\n", webhookID, len(config.Triggers))
+			for i, trigger := range config.Triggers {
+				fmt.Printf("  Trigger %d: type=%s, value=%s, match=%s, enabled=%t\n",
+					i, trigger.TriggerType, trigger.TriggerValue, trigger.MatchType, trigger.Enabled)
+			}
+
 			// Validate configuration
 			if err := s.webhookManager.ValidateWebhookConfig(&config); err != nil {
 				SendJSONError(w, err.Error(), http.StatusBadRequest)
@@ -161,6 +167,8 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 
 			// Reload configurations
 			s.webhookManager.LoadWebhookConfigs()
+
+			fmt.Printf("Successfully updated webhook %d\n", webhookID)
 
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,

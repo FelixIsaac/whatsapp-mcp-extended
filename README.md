@@ -1,181 +1,429 @@
-# WhatsApp MCP Server
+# WhatsApp MCP Server - Enhanced Enterprise Edition
 
-This is a Model Context Protocol (MCP) server for WhatsApp.
+A comprehensive Model Context Protocol (MCP) server for WhatsApp with advanced webhook capabilities, contact management, and enterprise-grade features.
 
-With this you can search and read your personal Whatsapp messages (including images, videos, documents, and audio messages), search your contacts and send messages to either individuals or groups. You can also send media files including images, videos, documents, and audio messages.
+This enhanced version provides **complete WhatsApp integration** with your personal account, featuring advanced contact management, real-time webhooks, comprehensive media handling, and a modern web interface for webhook management.
 
-It connects to your **personal WhatsApp account** directly via the Whatsapp web multidevice API (using the [whatsmeow](https://github.com/tulir/whatsmeow) library). All your messages are stored locally in a SQLite database and only sent to an LLM (such as Claude) when the agent accesses them through tools (which you control).
-
-Here's an example of what you can do when it's connected to Claude.
+Built with a containerized microservices architecture, this system offers professional-grade reliability, scalability, and maintainability for enterprise and developer use cases.
 
 ![WhatsApp MCP](./example-use.png)
 
-> To get updates on this and other projects I work on [enter your email here](https://docs.google.com/forms/d/1rTF9wMBTN0vPfzWuQa2BjfGKdKIpTbyeKxhPMcEzgyI/preview)
+## 🚀 Key Features
 
-## Installation
+### 📱 Core WhatsApp Integration
+- **Direct Personal Account Connection**: Connect to your personal WhatsApp account via the official multidevice API
+- **Complete Message History**: Full access to your message history with advanced search and filtering
+- **Media Support**: Send and receive images, videos, documents, and audio messages
+- **Voice Messages**: Send audio files as playable WhatsApp voice messages with automatic format conversion
+- **Group Chat Support**: Full support for group chats with participant management
+- **Real-time Synchronization**: Instant message synchronization with your WhatsApp account
+
+### 🔗 Advanced Webhook System
+- **Real-time Notifications**: Instant HTTP webhook notifications for incoming messages
+- **Flexible Trigger System**: Configure webhooks based on sender, keywords, media types, or all messages
+- **Pattern Matching**: Support for exact match, contains, and regex pattern matching
+- **Retry Logic**: Exponential backoff retry mechanism with comprehensive logging
+- **Security**: HMAC-SHA256 signature authentication for webhook endpoints
+- **Web UI**: Modern responsive web interface for webhook management
+
+### 👥 Enhanced Contact Management
+- **Unified Contact Resolution**: Intelligent contact name resolution from multiple sources
+- **Custom Nicknames**: Set and manage custom nicknames for contacts
+- **Rich Contact Data**: Access to full contact information including business names and profile data
+- **Advanced Search**: Search contacts by name, phone number, or custom attributes
+- **Contact Prioritization**: Smart name resolution with customizable priority ordering
+
+### 🏗️ Enterprise Architecture
+- **Microservices Design**: Containerized architecture with separate services for different functions
+- **Persistent Storage**: Reliable SQLite database storage with shared volumes
+- **Scalable Deployment**: Docker Compose setup for easy deployment and scaling
+
+## 🏛️ System Architecture
+
+This application consists of three main containerized services:
+
+### 1. **WhatsApp Bridge Service** (`whatsapp-bridge/`)
+- **Technology**: Go application using whatsmeow library
+- **Port**: 8080
+- **Responsibilities**: 
+  - WhatsApp API connection and authentication
+  - Message processing and storage
+  - Webhook delivery and management
+  - RESTful API endpoints
+  - Contact and chat management
+
+### 2. **MCP Server Service** (`whatsapp-mcp-server/`)
+- **Technology**: Python with Model Context Protocol
+- **Ports**: 8081 (MCP), 8082 (Gradio UI)
+- **Responsibilities**:
+  - MCP protocol implementation for Claude/AI integration
+  - Advanced message search and filtering
+  - Media download and processing
+  - Contact management tools
+  - Gradio web interface for testing
+
+### 3. **Webhook Management UI** (`whatsapp-webhook-ui/`)
+- **Technology**: Modern HTML/CSS/JavaScript SPA
+- **Port**: 8089
+- **Responsibilities**:
+  - Webhook configuration management
+  - Real-time webhook testing
+  - Delivery log monitoring
+  - Responsive web interface
+
+## 📦 Installation
 
 ### Prerequisites
 
-- Go
-- Python 3.6+
-- Anthropic Claude Desktop app (or Cursor)
-- UV (Python package manager), install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- FFmpeg (_optional_) - Only needed for audio messages. If you want to send audio files as playable WhatsApp voice messages, they must be in `.ogg` Opus format. With FFmpeg installed, the MCP server will automatically convert non-Opus audio files. Without FFmpeg, you can still send raw audio files using the `send_file` tool.
+- **Docker & Docker Compose**: Latest versions
+- **Python 3.11+**: For MCP server
+- **Go 1.24+**: For WhatsApp bridge
+- **UV Package Manager**: Install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **FFmpeg** (optional): For audio message conversion
+- **Anthropic Claude Desktop** or **Cursor**: For AI integration
 
-### Steps
+### Quick Start with Docker
 
-1. **Clone this repository**
+1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/lharries/whatsapp-mcp.git
+   git clone https://github.com/AdamRussak/whatsapp-mcp
    cd whatsapp-mcp
    ```
 
-2. **Run the WhatsApp bridge**
+2. **Start all services**
 
-   Navigate to the whatsapp-bridge directory and run the Go application:
+   ```bash
+   docker-compose up --build
+   ```
+
+   This will start:
+   - WhatsApp Bridge: `http://localhost:8080`
+   - MCP Server: `http://localhost:8081`
+   - Gradio UI: `http://localhost:8082`
+   - Webhook Manager: `http://localhost:8089`
+
+3. **Initial Setup**
+
+   On first run, you'll need to scan a QR code to authenticate with WhatsApp:
+   
+   ```bash
+   # Watch the bridge logs for QR code
+   docker-compose logs -f whatsapp-bridge
+   ```
+
+   Scan the QR code with your WhatsApp mobile app to authenticate.
+
+### Manual Development Setup
+
+1. **Start WhatsApp Bridge**
 
    ```bash
    cd whatsapp-bridge
    go run main.go
    ```
 
-   The first time you run it, you will be prompted to scan a QR code. Scan the QR code with your WhatsApp mobile app to authenticate.
-
-   After approximately 20 days, you will might need to re-authenticate.
-
-3. **Connect to the MCP server**
-
-   Copy the below json with the appropriate {{PATH}} values:
-
-   ```json
-   {
-     "mcpServers": {
-       "whatsapp": {
-         "command": "{{PATH_TO_UV}}", // Run `which uv` and place the output here
-         "args": [
-           "--directory",
-           "{{PATH_TO_SRC}}/whatsapp-mcp/whatsapp-mcp-server", // cd into the repo, run `pwd` and enter the output here + "/whatsapp-mcp-server"
-           "run",
-           "main.py"
-         ]
-       }
-     }
-   }
-   ```
-
-   For **Claude**, save this as `claude_desktop_config.json` in your Claude Desktop configuration directory at:
-
-   ```
-   ~/Library/Application Support/Claude/claude_desktop_config.json
-   ```
-
-   For **Cursor**, save this as `mcp.json` in your Cursor configuration directory at:
-
-   ```
-   ~/.cursor/mcp.json
-   ```
-
-4. **Restart Claude Desktop / Cursor**
-
-   Open Claude Desktop and you should now see WhatsApp as an available integration.
-
-   Or restart Cursor.
-
-### Windows Compatibility
-
-If you're running this project on Windows, be aware that `go-sqlite3` requires **CGO to be enabled** in order to compile and work properly. By default, **CGO is disabled on Windows**, so you need to explicitly enable it and have a C compiler installed.
-
-#### Steps to get it working:
-
-1. **Install a C compiler**  
-   We recommend using [MSYS2](https://www.msys2.org/) to install a C compiler for Windows. After installing MSYS2, make sure to add the `ucrt64\bin` folder to your `PATH`.  
-   → A step-by-step guide is available [here](https://code.visualstudio.com/docs/cpp/config-mingw).
-
-2. **Enable CGO and run the app**
+2. **Start MCP Server**
 
    ```bash
-   cd whatsapp-bridge
-   go env -w CGO_ENABLED=1
-   go run main.go
+   cd whatsapp-mcp-server
+   uv sync
+   uv run python whatsapp.py
    ```
 
-Without this setup, you'll likely run into errors like:
+3. **Start Webhook UI**
 
-> `Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work.`
+   ```bash
+   cd whatsapp-webhook-ui
+   python3 -m http.server 8089
+   ```
 
-## Architecture Overview
+## 🛠️ Advanced Features
 
-This application consists of two main components:
+### Webhook System
 
-1. **Go WhatsApp Bridge** (`whatsapp-bridge/`): A Go application that connects to WhatsApp's web API, handles authentication via QR code, and stores message history in SQLite. It serves as the bridge between WhatsApp and the MCP server.
+#### Configuration Options
+- **Trigger Types**: all, chat_jid, sender, keyword, media_type
+- **Match Types**: exact, contains, regex
+- **Delivery**: Asynchronous with exponential backoff
+- **Security**: HMAC-SHA256 signature authentication
+- **Logging**: Comprehensive delivery logs and status tracking
 
-2. **Python MCP Server** (`whatsapp-mcp-server/`): A Python server implementing the Model Context Protocol (MCP), which provides standardized tools for Claude to interact with WhatsApp data and send/receive messages.
+#### Example Webhook Configuration
+```json
+{
+  "name": "Urgent Messages",
+  "webhook_url": "https://your-system.com/webhook",
+  "secret_token": "your-secret-key",
+  "enabled": true,
+  "triggers": [
+    {
+      "trigger_type": "keyword",
+      "trigger_value": "urgent|emergency|help",
+      "match_type": "regex",
+      "enabled": true
+    }
+  ]
+}
+```
 
-### Data Storage
+### Contact Management
 
-- All message history is stored in a SQLite database within the `whatsapp-bridge/store/` directory
-- The database maintains tables for chats and messages
-- Messages are indexed for efficient searching and retrieval
+#### Advanced Features
+- **Custom Nicknames**: Set personalized names for contacts
+- **Multi-source Resolution**: Combines WhatsApp contacts, chat history, and custom data
+- **Smart Prioritization**: Intelligent name resolution with customizable priority
+- **Bulk Operations**: Mass contact management and updates
 
-## Usage
+#### Priority Order
+1. Custom Nickname (highest priority)
+2. Full Name (from WhatsApp contacts)
+3. Push Name (WhatsApp display name)
+4. First Name (from WhatsApp contacts)
+5. Business Name (for business contacts)
+6. Phone Number (fallback)
 
-Once connected, you can interact with your WhatsApp contacts through Claude, leveraging Claude's AI capabilities in your WhatsApp conversations.
+### Media Handling
 
-### MCP Tools
+#### Supported Media Types
+- **Images**: JPEG, PNG, GIF, WebP
+- **Videos**: MP4, AVI, MOV, WebM
+- **Audio**: MP3, WAV, OGG, M4A (auto-converted to voice messages)
+- **Documents**: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
 
-Claude can access the following tools to interact with WhatsApp:
+#### Features
+- **Automatic Conversion**: Audio files converted to WhatsApp voice message format
+- **Media Download**: Direct download of received media files
+- **Metadata Extraction**: Comprehensive media information and thumbnails
+- **Size Optimization**: Automatic compression for large files
 
-- **search_contacts**: Search for contacts by name or phone number
-- **list_messages**: Retrieve messages with optional filters and context
-- **list_chats**: List available chats with metadata
-- **get_chat**: Get information about a specific chat
-- **get_direct_chat_by_contact**: Find a direct chat with a specific contact
-- **get_contact_chats**: List all chats involving a specific contact
-- **get_last_interaction**: Get the most recent message with a contact
-- **get_message_context**: Retrieve context around a specific message
-- **send_message**: Send a WhatsApp message to a specified phone number or group JID
-- **send_file**: Send a file (image, video, raw audio, document) to a specified recipient
-- **send_audio_message**: Send an audio file as a WhatsApp voice message (requires the file to be an .ogg opus file or ffmpeg must be installed)
-- **download_media**: Download media from a WhatsApp message and get the local file path
+## 🔧 MCP Tools Reference
 
-### Media Handling Features
+### Core Messaging Tools
+- **`send_message`**: Send text messages to contacts or groups
+- **`send_file`**: Send media files with automatic type detection
+- **`send_audio_message`**: Send audio as WhatsApp voice messages
+- **`download_media`**: Download received media files
 
-The MCP server supports both sending and receiving various media types:
+### Search and Discovery
+- **`search_contacts`**: Advanced contact search with multiple criteria
+- **`list_messages`**: Retrieve messages with filtering and pagination
+- **`list_chats`**: Get chat list with metadata and last message info
+- **`get_message_context`**: Get conversation context around specific messages
 
-#### Media Sending
+### Contact Management
+- **`get_contact_details`**: Get comprehensive contact information
+- **`list_all_contacts`**: List all contacts with rich metadata
+- **`set_contact_nickname`**: Set custom nicknames for contacts
+- **`get_contact_nickname`**: Retrieve custom nicknames
+- **`remove_contact_nickname`**: Remove custom nicknames
+- **`list_contact_nicknames`**: List all custom nicknames
 
-You can send various media types to your WhatsApp contacts:
+### Chat Operations
+- **`get_chat`**: Get detailed chat information
+- **`get_direct_chat_by_contact`**: Find direct chat with specific contact
+- **`get_contact_chats`**: List all chats involving a contact
+- **`get_last_interaction`**: Get most recent interaction with contact
 
-- **Images, Videos, Documents**: Use the `send_file` tool to share any supported media type.
-- **Voice Messages**: Use the `send_audio_message` tool to send audio files as playable WhatsApp voice messages.
-  - For optimal compatibility, audio files should be in `.ogg` Opus format.
-  - With FFmpeg installed, the system will automatically convert other audio formats (MP3, WAV, etc.) to the required format.
-  - Without FFmpeg, you can still send raw audio files using the `send_file` tool, but they won't appear as playable voice messages.
+## 📊 API Reference
 
-#### Media Downloading
+### WhatsApp Bridge API (`localhost:8080/api`)
 
-By default, just the metadata of the media is stored in the local database. The message will indicate that media was sent. To access this media you need to use the download_media tool which takes the `message_id` and `chat_jid` (which are shown when printing messages containing the meda), this downloads the media and then returns the file path which can be then opened or passed to another tool.
+#### Message Operations
+```bash
+# Send message
+POST /api/send
+Content-Type: application/json
 
-## Technical Details
+{
+  "recipient": "1234567890@s.whatsapp.net",
+  "message": "Hello World",
+  "media_path": "/path/to/file.jpg"
+}
 
-1. Claude sends requests to the Python MCP server
-2. The MCP server queries the Go bridge for WhatsApp data or directly to the SQLite database
-3. The Go accesses the WhatsApp API and keeps the SQLite database up to date
-4. Data flows back through the chain to Claude
-5. When sending messages, the request flows from Claude through the MCP server to the Go bridge and to WhatsApp
+# Download media
+GET /api/download?message_id=MESSAGE_ID&chat_jid=CHAT_JID
+```
 
-## Troubleshooting
+#### Webhook Management
+```bash
+# List webhooks
+GET /api/webhooks
 
-- If you encounter permission issues when running uv, you may need to add it to your PATH or use the full path to the executable.
-- Make sure both the Go application and the Python server are running for the integration to work properly.
+# Create webhook
+POST /api/webhooks
+{
+  "name": "My Webhook",
+  "webhook_url": "https://example.com/webhook",
+  "secret_token": "optional-secret",
+  "enabled": true,
+  "triggers": [...]
+}
 
-### Authentication Issues
+# Test webhook
+POST /api/webhooks/{id}/test
 
-- **QR Code Not Displaying**: If the QR code doesn't appear, try restarting the authentication script. If issues persist, check if your terminal supports displaying QR codes.
-- **WhatsApp Already Logged In**: If your session is already active, the Go bridge will automatically reconnect without showing a QR code.
-- **Device Limit Reached**: WhatsApp limits the number of linked devices. If you reach this limit, you'll need to remove an existing device from WhatsApp on your phone (Settings > Linked Devices).
-- **No Messages Loading**: After initial authentication, it can take several minutes for your message history to load, especially if you have many chats.
-- **WhatsApp Out of Sync**: If your WhatsApp messages get out of sync with the bridge, delete both database files (`whatsapp-bridge/store/messages.db` and `whatsapp-bridge/store/whatsapp.db`) and restart the bridge to re-authenticate.
+# View webhook logs
+GET /api/webhook-logs?webhook_id={id}
+```
 
-For additional Claude Desktop integration troubleshooting, see the [MCP documentation](https://modelcontextprotocol.io/quickstart/server#claude-for-desktop-integration-issues). The documentation includes helpful tips for checking logs and resolving common issues.
+## 🔐 Security Features
+
+### Authentication
+- **WhatsApp Authentication**: Secure QR code pairing with your personal account
+- **Session Management**: Persistent session storage with automatic reconnection
+- **API Security**: Rate limiting and request validation
+
+### Webhook Security
+- **HMAC Signatures**: SHA256 signature verification for webhook endpoints
+- **Token-based Auth**: Secret token validation for webhook requests
+- **HTTPS Support**: TLS encryption for webhook delivery
+- **Request Validation**: Comprehensive payload validation
+
+### Data Protection
+- **Local Storage**: All data stored locally on your system
+- **Encrypted Databases**: SQLite databases with proper access controls
+- **No Cloud Dependencies**: No external services required for core functionality
+
+## 📈 Monitoring and Logging
+
+### Webhook Monitoring
+- **Delivery Status**: Real-time webhook delivery status tracking
+- **Retry Monitoring**: Exponential backoff retry attempts with full logging
+- **Error Tracking**: Comprehensive error logging and status codes
+
+## 🐳 Docker Configuration
+
+### Container Resources
+```yaml
+# Default resource limits
+whatsapp-bridge:
+  memory: 1G
+  cpus: '0.5'
+
+whatsapp-mcp:
+  memory: 1G
+  cpus: '0.5'
+
+webhook-ui:
+  memory: 500M
+  cpus: '0.5'
+```
+
+### Environment Variables
+```bash
+# Bridge Service
+TZ=UTC
+
+# MCP Service
+BRIDGE_HOST=whatsapp-bridge
+DEBUG=true
+TZ=UTC
+```
+
+### Networking
+- **Internal Network**: `whatsapp_internal` for service communication
+- **External Network**: `n8n_n8n_traefik_network` for external access
+- **Port Mapping**: Configurable port mappings for all services
+
+## 🔧 Development
+
+### Building from Source
+```bash
+# Build all containers
+docker-compose build
+
+# Build specific service
+docker-compose build whatsapp-bridge
+
+# Development mode with hot reload
+docker-compose -f docker-compose.dev.yml up
+```
+
+### Testing
+```bash
+# Run bridge tests
+cd whatsapp-bridge
+go test ./...
+
+# Run MCP server tests
+cd whatsapp-mcp-server
+uv run pytest
+
+# Test webhook delivery
+cd whatsapp-bridge
+./test-webhook-delivery.sh
+```
+
+### Database Management
+```bash
+# Access message database
+sqlite3 store/messages.db
+
+# Access WhatsApp store
+sqlite3 store/whatsapp.db
+
+# Backup databases
+docker-compose exec whatsapp-bridge sqlite3 /app/store/messages.db .backup backup.db
+```
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### Authentication Problems
+- **QR Code Issues**: Ensure terminal supports QR code display
+- **Session Expired**: Delete session files and re-authenticate
+- **Device Limit**: Remove old devices from WhatsApp settings
+
+#### Container Issues
+- **Port Conflicts**: Check for conflicting services on ports 8080-8089
+- **Memory Issues**: Increase container memory limits in docker-compose.yml
+- **Storage Issues**: Ensure sufficient disk space for databases
+
+#### Webhook Problems
+- **Delivery Failures**: Check webhook endpoint accessibility and SSL certificates
+- **Authentication Errors**: Verify HMAC signature implementation
+
+### Debug Commands
+```bash
+# Check container logs
+docker-compose logs -f whatsapp-bridge
+docker-compose logs -f whatsapp-mcp
+
+# Check container health
+docker-compose ps
+
+# Access container shell
+docker-compose exec whatsapp-bridge /bin/bash
+```
+
+### Performance Optimization
+- **Database Optimization**: Regular VACUUM and index maintenance
+- **Memory Management**: Monitor container memory usage
+- **Network Optimization**: Use internal networking for service communication
+- **Storage Optimization**: Regular cleanup of old media files
+
+## 📚 Additional Resources
+
+- **WhatsApp API Documentation**: [whatsmeow library](https://github.com/tulir/whatsmeow)
+- **MCP Protocol**: [Model Context Protocol](https://modelcontextprotocol.io/)
+- **Docker Documentation**: [Docker Compose](https://docs.docker.com/compose/)
+- **Claude Desktop**: [Claude Desktop Integration](https://claude.ai/desktop)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines and submit pull requests for any improvements.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 📞 Support
+
+For support and questions:
+- GitHub Issues: Create an issue for bug reports or feature requests
+- Documentation: Check the comprehensive documentation in the project
+
+---
+

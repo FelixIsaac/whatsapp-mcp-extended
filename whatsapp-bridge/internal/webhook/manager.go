@@ -46,6 +46,16 @@ func (wm *Manager) LoadWebhookConfigs() error {
 
 	wm.configs = configs
 	wm.logger.Infof("Loaded %d webhook configurations", len(configs))
+
+	// Debug logging
+	for i, config := range configs {
+		wm.logger.Infof("Webhook %d: ID=%d, Name=%s, Triggers=%d", i, config.ID, config.Name, len(config.Triggers))
+		for j, trigger := range config.Triggers {
+			wm.logger.Infof("  Trigger %d: type=%s, value=%s, match=%s, enabled=%t",
+				j, trigger.TriggerType, trigger.TriggerValue, trigger.MatchType, trigger.Enabled)
+		}
+	}
+
 	return nil
 }
 

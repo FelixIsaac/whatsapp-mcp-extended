@@ -1,7 +1,6 @@
 import os
 import logging
 import gradio as gr
-from typing import List, Dict, Any, Optional
 from mcp.server.fastmcp import FastMCP
 from whatsapp import (
     search_contacts as whatsapp_search_contacts,
@@ -36,127 +35,138 @@ logging.basicConfig(
 mcp = FastMCP(
     "whatsapp",
     log_level="DEBUG" if os.environ.get('DEBUG') == 'true' else "INFO",
-    auth_required=os.environ.get('DANGEROUSLY_OMIT_AUTH') != 'true'
+    auth_required=os.environ.get('DANGEROUSLY_OMIT_AUTH') != 'true',
+    
 )
 
 # Define MCP tools (these will be exposed through both MCP and Gradio)
 
 @mcp.tool()
-def search_contacts(query: str) -> List[Dict[str, Any]]:
+def search_contacts(query: str) -> str:
     """Search WhatsApp contacts by name or phone number.
     
-    Args:
-        query: Search term to match against contact names or phone numbers
+    Parameters:
+    - query: Search term to match against contact names or phone numbers
     """
     contacts = whatsapp_search_contacts(query)
-    return contacts
+    return str(contacts)
 
 @mcp.tool()
 def list_messages(
-    after: Optional[str] = None,
-    before: Optional[str] = None,
-    sender_phone_number: Optional[str] = None,
-    chat_jid: Optional[str] = None,
-    query: Optional[str] = None,
+    after: str = "",
+    before: str = "",
+    sender_phone_number: str = "",
+    chat_jid: str = "",
+    query: str = "",
     limit: int = 20,
     page: int = 0,
     include_context: bool = True,
     context_before: int = 1,
     context_after: int = 1
-) -> List[Dict[str, Any]]:
+) -> str:
     """Get WhatsApp messages matching specified criteria with optional context.
     
-    Args:
-        after: Optional ISO-8601 formatted string to only return messages after this date
-        before: Optional ISO-8601 formatted string to only return messages before this date
-        sender_phone_number: Optional phone number to filter messages by sender
-        chat_jid: Optional chat JID to filter messages by chat
-        query: Optional search term to filter messages by content
-        limit: Maximum number of messages to return (default 20)
-        page: Page number for pagination (default 0)
-        include_context: Whether to include messages before and after matches (default True)
-        context_before: Number of messages to include before each match (default 1)
-        context_after: Number of messages to include after each match (default 1)
+    Parameters:
+    - after: ISO-8601 formatted date string to only return messages after this date (optional, leave empty if not needed)
+    - before: ISO-8601 formatted date string to only return messages before this date (optional, leave empty if not needed)
+    - sender_phone_number: Phone number to filter messages by sender (optional, leave empty if not needed)
+    - chat_jid: Chat JID to filter messages by chat (optional, leave empty if not needed)
+    - query: Search term to filter messages by content (optional, leave empty if not needed)
+    - limit: Maximum number of messages to return (default: 20)
+    - page: Page number for pagination (default: 0)
+    - include_context: Whether to include messages before and after matches (default: true)
+    - context_before: Number of messages to include before each match (default: 1)
+    - context_after: Number of messages to include after each match (default: 1)
     """
+    # Convert empty strings to None for internal processing
+    after_param = after if after else None
+    before_param = before if before else None
+    sender_param = sender_phone_number if sender_phone_number else None
+    chat_param = chat_jid if chat_jid else None
+    query_param = query if query else None
+    
     messages = whatsapp_list_messages(
-        after=after,
-        before=before,
-        sender_phone_number=sender_phone_number,
-        chat_jid=chat_jid,
-        query=query,
+        after=after_param,
+        before=before_param,
+        sender_phone_number=sender_param,
+        chat_jid=chat_param,
+        query=query_param,
         limit=limit,
         page=page,
         include_context=include_context,
         context_before=context_before,
         context_after=context_after
     )
-    return messages
+    return str(messages)
 
 @mcp.tool()
 def list_chats(
-    query: Optional[str] = None,
+    query: str = "",
     limit: int = 20,
     page: int = 0,
     include_last_message: bool = True,
     sort_by: str = "last_active"
-) -> List[Dict[str, Any]]:
+) -> str:
     """Get WhatsApp chats matching specified criteria.
     
-    Args:
-        query: Optional search term to filter chats by name or JID
-        limit: Maximum number of chats to return (default 20)
-        page: Page number for pagination (default 0)
-        include_last_message: Whether to include the last message in each chat (default True)
-        sort_by: Field to sort results by, either "last_active" or "name" (default "last_active")
+    Parameters:
+    - query: Search term to filter chats by name or JID (optional, leave empty if not needed)
+    - limit: Maximum number of chats to return (default: 20)
+    - page: Page number for pagination (default: 0)
+    - include_last_message: Whether to include the last message in each chat (default: true)
+    - sort_by: Field to sort results by, either "last_active" or "name" (default: "last_active")
     """
+    # Convert empty string to None for internal processing
+    query_param = query if query else None
+    
     chats = whatsapp_list_chats(
-        query=query,
+        query=query_param,
         limit=limit,
         page=page,
         include_last_message=include_last_message,
         sort_by=sort_by
     )
-    return chats
+    return str(chats)
 
 @mcp.tool()
-def get_chat(chat_jid: str, include_last_message: bool = True) -> Dict[str, Any]:
+def get_chat(chat_jid: str, include_last_message: bool = True) -> str:
     """Get WhatsApp chat metadata by JID.
     
-    Args:
-        chat_jid: The JID of the chat to retrieve
-        include_last_message: Whether to include the last message (default True)
+    Parameters:
+    - chat_jid: The JID of the chat to retrieve
+    - include_last_message: Whether to include the last message (default: true)
     """
     chat = whatsapp_get_chat(chat_jid, include_last_message)
-    return chat
+    return str(chat)
 
 @mcp.tool()
-def get_direct_chat_by_contact(sender_phone_number: str) -> Dict[str, Any]:
+def get_direct_chat_by_contact(sender_phone_number: str) -> str:
     """Get WhatsApp chat metadata by sender phone number.
     
-    Args:
-        sender_phone_number: The phone number to search for
+    Parameters:
+    - sender_phone_number: The phone number to search for
     """
     chat = whatsapp_get_direct_chat_by_contact(sender_phone_number)
-    return chat
+    return str(chat)
 
 @mcp.tool()
-def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Dict[str, Any]]:
+def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> str:
     """Get all WhatsApp chats involving the contact.
     
-    Args:
-        jid: The contact's JID to search for
-        limit: Maximum number of chats to return (default 20)
-        page: Page number for pagination (default 0)
+    Parameters:
+    - jid: The contact's JID to search for
+    - limit: Maximum number of chats to return (default: 20)
+    - page: Page number for pagination (default: 0)
     """
     chats = whatsapp_get_contact_chats(jid, limit, page)
-    return chats
+    return str(chats)
 
 @mcp.tool()
 def get_last_interaction(jid: str) -> str:
     """Get most recent WhatsApp message involving the contact.
     
-    Args:
-        jid: The JID of the contact to search for
+    Parameters:
+    - jid: The JID of the contact to search for
     """
     message = whatsapp_get_last_interaction(jid)
     return message
@@ -166,149 +176,129 @@ def get_message_context(
     message_id: str,
     before: int = 5,
     after: int = 5
-) -> Dict[str, Any]:
+) -> str:
     """Get context around a specific WhatsApp message.
     
-    Args:
-        message_id: The ID of the message to get context for
-        before: Number of messages to include before the target message (default 5)
-        after: Number of messages to include after the target message (default 5)
+    Parameters:
+    - message_id: The ID of the message to get context for
+    - before: Number of messages to include before the target message (default: 5)
+    - after: Number of messages to include after the target message (default: 5)
     """
     context = whatsapp_get_message_context(message_id, before, after)
-    return context
+    return str(context)
 
 @mcp.tool()
 def send_message(
     recipient: str,
     message: str
-) -> Dict[str, Any]:
+) -> str:
     """Send a WhatsApp message to a person or group. For group chats use the JID.
 
-    Args:
-        recipient: The recipient - either a phone number with country code but no + or other symbols,
-                 or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
-        message: The message text to send
-    
-    Returns:
-        A dictionary containing success status and a status message
+    Parameters:
+    - recipient: The recipient - either a phone number with country code but no + or other symbols, or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
+    - message: The message text to send
     """
     # Validate input
     if not recipient:
-        return {
+        return str({
             "success": False,
             "message": "Recipient must be provided"
-        }
+        })
     
     # Call the whatsapp_send_message function with the unified recipient parameter
     success, status_message = whatsapp_send_message(recipient, message)
-    return {
+    result = {
         "success": success,
         "message": status_message
     }
+    return str(result)
 
 @mcp.tool()
-def send_file(recipient: str, media_path: str) -> Dict[str, Any]:
+def send_file(recipient: str, media_path: str) -> str:
     """Send a file such as a picture, raw audio, video or document via WhatsApp to the specified recipient. For group messages use the JID.
     
-    Args:
-        recipient: The recipient - either a phone number with country code but no + or other symbols,
-                 or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
-        media_path: The absolute path to the media file to send (image, video, document)
-    
-    Returns:
-        A dictionary containing success status and a status message
+    Parameters:
+    - recipient: The recipient - either a phone number with country code but no + or other symbols, or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
+    - media_path: The absolute path to the media file to send (image, video, document)
     """
-    
     # Call the whatsapp_send_file function
     success, status_message = whatsapp_send_file(recipient, media_path)
-    return {
+    result = {
         "success": success,
         "message": status_message
     }
+    return str(result)
 
 @mcp.tool()
-def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
+def send_audio_message(recipient: str, media_path: str) -> str:
     """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
     
-    Args:
-        recipient: The recipient - either a phone number with country code but no + or other symbols,
-                 or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
-        media_path: The absolute path to the audio file to send (will be converted to Opus .ogg if it's not a .ogg file)
-    
-    Returns:
-        A dictionary containing success status and a status message
+    Parameters:
+    - recipient: The recipient - either a phone number with country code but no + or other symbols, or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
+    - media_path: The absolute path to the audio file to send (will be converted to Opus .ogg if it's not a .ogg file)
     """
     success, status_message = whatsapp_audio_voice_message(recipient, media_path)
-    return {
+    result = {
         "success": success,
         "message": status_message
     }
+    return str(result)
 
 @mcp.tool()
-def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
+def download_media(message_id: str, chat_jid: str) -> str:
     """Download media from a WhatsApp message and get the local file path.
     
-    Args:
-        message_id: The ID of the message containing the media
-        chat_jid: The JID of the chat containing the message
-    
-    Returns:
-        A dictionary containing success status, a status message, and the file path if successful
+    Parameters:
+    - message_id: The ID of the message containing the media
+    - chat_jid: The JID of the chat containing the message
     """
     file_path = whatsapp_download_media(message_id, chat_jid)
     
     if file_path:
-        return {
+        result = {
             "success": True,
             "message": "Media downloaded successfully",
             "file_path": file_path
         }
     else:
-        return {
+        result = {
             "success": False,
             "message": "Failed to download media"
         }
+    return str(result)
 
 @mcp.tool()
-def get_contact_details(jid: Optional[str] = None, phone_number: Optional[str] = None) -> Dict[str, Any]:
-    """Get detailed contact information by JID or phone number.
+def get_contact_details(chat_jid: str) -> str:
+    """Get detailed contact information for a chat.
     
-    Args:
-        jid: WhatsApp JID of the contact
-        phone_number: Phone number of the contact
+    Parameters:
+    - chat_jid: The JID of the chat to get details for
     """
-    if jid:
-        contact = whatsapp_get_contact_by_jid(jid)
-    elif phone_number:
-        contact = whatsapp_get_contact_by_phone(phone_number)
-    else:
-        return {"error": "Either jid or phone_number must be provided"}
+    contact_details = whatsapp_get_contact_by_jid(chat_jid)
     
-    if contact:
-        return {
-            "phone_number": contact.phone_number,
-            "name": contact.name,
-            "jid": contact.jid,
-            "first_name": contact.first_name,
-            "full_name": contact.full_name,
-            "push_name": contact.push_name,
-            "business_name": contact.business_name,
-            "nickname": contact.nickname,
-            "formatted_info": whatsapp_format_contact_info(contact)
+    if contact_details:
+        result = {
+            "success": True,
+            "contact": contact_details
         }
     else:
-        return {"error": "Contact not found"}
+        result = {
+            "success": False,
+            "message": "Contact not found"
+        }
+    return str(result)
 
 
 @mcp.tool()
-def list_all_contacts(limit: int = 100) -> List[Dict[str, Any]]:
+def list_all_contacts(limit: str = "100") -> str:
     """Get all contacts with their detailed information.
     
-    Args:
-        limit: Maximum number of contacts to return
+    Parameters:
+    - limit: Maximum number of contacts to return
     """
-    contacts = whatsapp_list_all_contacts(limit)
-    return [
+    limit_int = int(limit) if limit else 100
+    contacts = whatsapp_list_all_contacts(limit_int)
+    result = [
         {
             "phone_number": contact.phone_number,
             "name": contact.name,
@@ -321,47 +311,56 @@ def list_all_contacts(limit: int = 100) -> List[Dict[str, Any]]:
         }
         for contact in contacts
     ]
+    return str(result)
 
 
 @mcp.tool()
-def set_contact_nickname(jid: str, nickname: str) -> Dict[str, Any]:
+def set_contact_nickname(jid: str, nickname: str) -> str:
     """Set a custom nickname for a contact.
     
-    Args:
-        jid: WhatsApp JID of the contact
-        nickname: Custom nickname to set for the contact
+    Parameters:
+    - jid: WhatsApp JID of the contact
+    - nickname: Custom nickname to set for the contact
     """
     success, message = whatsapp_set_contact_nickname(jid, nickname)
-    return {"success": success, "message": message}
+    result = {"success": success, "message": message}
+    return str(result)
 
 
 @mcp.tool()
-def get_contact_nickname(jid: str) -> Dict[str, Any]:
+def get_contact_nickname(jid: str) -> str:
     """Get a contact's custom nickname.
     
-    Args:
-        jid: WhatsApp JID of the contact
+    Parameters:
+    - jid: WhatsApp JID of the contact
     """
     nickname = whatsapp_get_contact_nickname(jid)
-    return {"jid": jid, "nickname": nickname}
+    result = {"jid": jid, "nickname": nickname}
+    return str(result)
 
 
 @mcp.tool()
-def remove_contact_nickname(jid: str) -> Dict[str, Any]:
+def remove_contact_nickname(jid: str) -> str:
     """Remove a contact's custom nickname.
     
-    Args:
-        jid: WhatsApp JID of the contact
+    Parameters:
+    - jid: WhatsApp JID of the contact
     """
     success, message = whatsapp_remove_contact_nickname(jid)
-    return {"success": success, "message": message}
+    result = {"success": success, "message": message}
+    return str(result)
 
 
 @mcp.tool()
-def list_contact_nicknames() -> List[Dict[str, str]]:
-    """List all custom contact nicknames."""
+def list_contact_nicknames() -> str:
+    """List all custom contact nicknames.
+    
+    Parameters:
+    None required
+    """
     nicknames = whatsapp_list_contact_nicknames()
-    return [{"jid": jid, "nickname": nickname} for jid, nickname in nicknames]
+    result = [{"jid": jid, "nickname": nickname} for jid, nickname in nicknames]
+    return str(result)
 
 # Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)
 
@@ -666,12 +665,40 @@ if __name__ == "__main__":
     host = os.environ.get('HOST', '0.0.0.0')
     port = int(os.environ.get('PORT', '8081'))  # Use a different port to avoid conflicts with the Inspector
     gradio_port = int(os.environ.get('GRADIO_PORT', '8082'))
+    # Check if Gradio should be enabled (default: True for backward compatibility)
+    enable_gradio = os.environ.get('GRADIO', 'true').lower() in ('true', '1', 'yes', 'on')
     
-    # Start MCP server in a separate thread
-    import threading
-    def start_mcp_server():
-        logging.info(f"Starting WhatsApp MCP server with SSE transport on {host}:{port}")
+    if enable_gradio:
+        # Start MCP server in a separate thread
+        import threading
+        def start_mcp_server():
+            logging.info(f"Starting WhatsApp MCP server with SSE transport on {host}:{port}")
+            try:
+                # Initialize and run the server with SSE transport
+                mcp.run(
+                    transport='sse'
+                )
+            except Exception as e:
+                logging.error(f"Error starting MCP server: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Start MCP server in a thread
+        mcp_thread = threading.Thread(target=start_mcp_server)
+        mcp_thread.daemon = True
+        mcp_thread.start()
+        
+        # Start Gradio UI
+        logging.info(f"Starting Gradio UI on port {gradio_port}")
+        app = create_gradio_ui()
+        app.launch(server_name=host, server_port=gradio_port, share=False, mcp_server=True)
+    else:
+        # Run MCP server only (no Gradio UI)
+        logging.info(f"Starting WhatsApp MCP server (API only) with SSE transport on {host}:{port}")
+        logging.info("Gradio UI disabled via GRADIO environment variable")
         try:
+            mcp.settings.host = host
+            mcp.settings.port = port
             # Initialize and run the server with SSE transport
             mcp.run(
                 transport='sse'
@@ -680,13 +707,3 @@ if __name__ == "__main__":
             logging.error(f"Error starting MCP server: {e}")
             import traceback
             traceback.print_exc()
-    
-    # Start MCP server in a thread
-    mcp_thread = threading.Thread(target=start_mcp_server)
-    mcp_thread.daemon = True
-    mcp_thread.start()
-    
-    # Start Gradio UI
-    logging.info(f"Starting Gradio UI on port {gradio_port}")
-    app = create_gradio_ui()
-    app.launch(server_name=host, server_port=gradio_port, share=False,mcp_server=True)

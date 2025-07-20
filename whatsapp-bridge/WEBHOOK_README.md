@@ -330,3 +330,70 @@ Common issues and solutions:
 4. **Security concerns**: Ensure HMAC verification and HTTPS usage
 
 For detailed debugging, check the webhook logs which include full request/response details for each delivery attempt.
+
+## Webhook Update Fix
+
+### Issue
+When updating webhook configurations via the API, the main webhook properties (name, URL, etc.) were being updated successfully, but the triggers were not being updated. This caused the webhook to return HTTP 200 but the trigger configuration remained unchanged.
+
+### Root Cause
+The `UpdateWebhookConfig` method in `/internal/database/webhooks.go` was only updating the main webhook configuration record but not handling the associated triggers.
+
+### Solution
+Modified the `UpdateWebhookConfig` method to:
+
+1. **Use a database transaction** to ensure consistency
+2. **Delete existing triggers** for the webhook before inserting new ones
+3. **Insert new triggers** with proper IDs and relationships
+4. **Commit the transaction** atomically
+
+### Key Changes
+
+#### `/internal/database/webhooks.go`
+- Enhanced `UpdateWebhookConfig` method to handle triggers properly
+- Added transaction support for atomic updates
+- Added better error handling and logging
+- Added row count validation to ensure webhook exists
+
+#### `/internal/api/handlers.go`
+- Added debug logging to track webhook update requests
+- Added trigger details logging for troubleshooting
+
+#### `/internal/webhook/manager.go`
+- Added debug logging to track loaded webhook configurations
+- Added trigger details logging for troubleshooting
+
+### Testing
+- Created unit test `TestUpdateWebhookConfig` to verify the fix
+- Created integration test script `test-webhook-update.sh` for manual testing
+- All tests pass successfully
+
+### API Usage
+The webhook update API now properly handles trigger updates:
+
+```bash
+curl -X PUT "http://localhost:8080/api/webhooks/{id}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": 1,
+    "name": "Updated Webhook",
+    "webhook_url": "https://example.com/updated",
+    "secret_token": "new-secret",
+    "enabled": true,
+    "triggers": [
+      {
+        "trigger_type": "keyword",
+        "trigger_value": "urgent",
+        "match_type": "contains",
+        "enabled": true
+      }
+    ]
+  }'
+```
+
+### Verification
+After the fix:
+1. Webhook configuration updates work correctly
+2. Triggers are properly updated and persisted
+3. The webhook manager reloads the updated configuration
+4. New triggers are applied immediately to incoming messages

@@ -87,14 +87,69 @@ func (store *MessageStore) GetAllWebhookConfigs() ([]*types.WebhookConfig, error
 	return configs, nil
 }
 
-// UpdateWebhookConfig updates a webhook configuration
+// UpdateWebhookConfig updates a webhook configuration and its triggers
+// This method properly handles trigger updates by deleting existing triggers
+// and inserting new ones within a transaction to ensure data consistency.
 func (store *MessageStore) UpdateWebhookConfig(config *types.WebhookConfig) error {
-	_, err := store.db.Exec(
+	// Start a transaction to ensure consistency
+	tx, err := store.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %v", err)
+	}
+	defer tx.Rollback()
+
+	// Update the main webhook configuration
+	result, err := tx.Exec(
 		`UPDATE webhook_configs SET name = ?, webhook_url = ?, secret_token = ?, 
 		 enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		config.Name, config.WebhookURL, config.SecretToken, config.Enabled, config.ID,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update webhook config: %v", err)
+	}
+
+	// Check if the webhook exists
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %v", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("webhook with ID %d not found", config.ID)
+	}
+
+	// Delete existing triggers
+	_, err = tx.Exec("DELETE FROM webhook_triggers WHERE webhook_config_id = ?", config.ID)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing triggers: %v", err)
+	}
+
+	// Insert new triggers
+	for i := range config.Triggers {
+		config.Triggers[i].WebhookConfigID = config.ID
+		result, err := tx.Exec(
+			`INSERT INTO webhook_triggers (webhook_config_id, trigger_type, trigger_value, match_type, enabled) 
+			 VALUES (?, ?, ?, ?, ?)`,
+			config.Triggers[i].WebhookConfigID, config.Triggers[i].TriggerType,
+			config.Triggers[i].TriggerValue, config.Triggers[i].MatchType, config.Triggers[i].Enabled,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert trigger %d: %v", i, err)
+		}
+
+		id, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for trigger %d: %v", i, err)
+		}
+		config.Triggers[i].ID = int(id)
+	}
+
+	// Commit the transaction
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return nil
 }
 
 // DeleteWebhookConfig deletes a webhook configuration and its triggers and logs
