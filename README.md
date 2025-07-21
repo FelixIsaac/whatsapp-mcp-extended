@@ -94,7 +94,8 @@ This application consists of three main containerized services:
 2. **Start all services**
 
    ```bash
-   docker-compose up --build
+   docker network create n8n_n8n_traefik_network
+   docker-compose up -d
    ```
 
    This will start:
