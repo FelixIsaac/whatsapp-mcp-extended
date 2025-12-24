@@ -9,8 +9,13 @@ import (
 
 	"github.com/mdp/qrterminal"
 	"go.mau.fi/whatsmeow"
+	waProto "go.mau.fi/whatsmeow/proto/waCompanionReg"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/protobuf/proto"
+
+	"whatsapp-bridge/internal/config"
 )
 
 // Client wraps the WhatsApp client with additional functionality
@@ -21,6 +26,11 @@ type Client struct {
 
 // NewClient creates a new WhatsApp client instance
 func NewClient(logger waLog.Logger) (*Client, error) {
+	return NewClientWithConfig(logger, config.NewConfig())
+}
+
+// NewClientWithConfig creates a new WhatsApp client with custom configuration
+func NewClientWithConfig(logger waLog.Logger, cfg *config.Config) (*Client, error) {
 	// Create database connection for storing session data
 	dbLog := waLog.Stdout("Database", "INFO", true)
 
@@ -28,6 +38,22 @@ func NewClient(logger waLog.Logger) (*Client, error) {
 	if err := os.MkdirAll("store", 0755); err != nil {
 		return nil, fmt.Errorf("failed to create store directory: %v", err)
 	}
+
+	// Configure HistorySyncConfig BEFORE creating device (Phase 4)
+	// This affects how much message history is synced on first link
+	store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
+		FullSyncDaysLimit:              proto.Uint32(cfg.HistorySyncDaysLimit),
+		FullSyncSizeMbLimit:            proto.Uint32(cfg.HistorySyncSizeMB),
+		StorageQuotaMb:                 proto.Uint32(cfg.StorageQuotaMB),
+		InlineInitialPayloadInE2EeMsg: proto.Bool(true),
+		SupportCallLogHistory:          proto.Bool(false),
+		SupportBotUserAgentChatHistory: proto.Bool(true),
+		SupportCagReactionsAndPolls:    proto.Bool(true),
+		SupportGroupHistory:            proto.Bool(true), // Enable group history
+	}
+
+	logger.Infof("HistorySyncConfig: days=%d, size=%dMB, quota=%dMB",
+		cfg.HistorySyncDaysLimit, cfg.HistorySyncSizeMB, cfg.StorageQuotaMB)
 
 	container, err := sqlstore.New(context.Background(), "sqlite3", "file:store/whatsapp.db?_foreign_keys=on", dbLog)
 	if err != nil {
@@ -40,7 +66,7 @@ func NewClient(logger waLog.Logger) (*Client, error) {
 		if err == sql.ErrNoRows {
 			// No device exists, create one
 			deviceStore = container.NewDevice()
-			logger.Infof("Created new device")
+			logger.Infof("Created new device with HistorySyncConfig")
 		} else {
 			return nil, fmt.Errorf("failed to get device: %v", err)
 		}

@@ -31,8 +31,8 @@ func main() {
 	}
 	defer messageStore.Close()
 
-	// Create WhatsApp client
-	client, err := whatsapp.NewClient(logger)
+	// Create WhatsApp client with config (Phase 4: HistorySyncConfig)
+	client, err := whatsapp.NewClientWithConfig(logger, cfg)
 	if err != nil {
 		logger.Errorf("Failed to create WhatsApp client: %v", err)
 		return

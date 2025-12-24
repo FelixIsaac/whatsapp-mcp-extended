@@ -512,3 +512,53 @@ func (c *Client) CreatePoll(chatJID string, question string, options []string, m
 		Timestamp: resp.Timestamp,
 	}, nil
 }
+
+// Phase 4: On-Demand History Request
+
+// RequestChatHistory requests older messages for a specific chat.
+// The response will come asynchronously via the HistorySync event handler.
+// This requires knowing the oldest message in the chat to request messages before it.
+func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMsgFromMe bool, oldestMsgTimestamp int64, count int) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	// Create MessageInfo for the oldest known message
+	msgInfo := &types.MessageInfo{
+		ID:        types.MessageID(oldestMsgID),
+		Chat:      chat,
+		IsFromMe:  oldestMsgFromMe,
+		Timestamp: time.UnixMilli(oldestMsgTimestamp),
+	}
+
+	// If this is a group chat, we need the sender
+	if chat.Server == "g.us" && !oldestMsgFromMe {
+		// For group chats, we'd need the sender JID
+		// This is a limitation - we might need to store sender info
+		msgInfo.Sender = chat // Use chat as placeholder
+	} else {
+		msgInfo.Sender = c.Store.ID.ToNonAD()
+	}
+
+	// Build the history sync request
+	// Recommended count is 50 messages at a time
+	if count <= 0 || count > 50 {
+		count = 50
+	}
+
+	msg := c.Client.BuildHistorySyncRequest(msgInfo, count)
+
+	// Send the request to the phone
+	// The response comes as events.HistorySync with type ON_DEMAND
+	_, err = c.Client.SendMessage(context.Background(), chat, msg, whatsmeow.SendRequestExtra{Peer: true})
+	if err != nil {
+		return fmt.Errorf("failed to send history request: %v", err)
+	}
+
+	return nil
+}

@@ -79,8 +79,10 @@
 | `update_group` | ❌ | ✅ |
 | **Phase 3 Features** | | |
 | `create_poll` | ❌ | ✅ |
+| **Phase 4 Features** | | |
+| `request_history` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 31 tools (extended)**
+**Total: 12 tools (whatsapp) → 32 tools (extended)**
 
 ---
 
@@ -290,6 +292,10 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 - [x] **Phase 3 Polls** (1 new MCP tool):
   - [x] `create_poll` - Create and send polls with single/multi-select options
   - [ ] `vote_poll` - Deferred (requires poll message storage)
+- [x] **Phase 4 History Sync** (1 new MCP tool + config):
+  - [x] `request_history` - Request older messages for a chat (on-demand sync)
+  - [x] Configurable history sync via env vars (HISTORY_SYNC_DAYS_LIMIT, HISTORY_SYNC_SIZE_MB, STORAGE_QUOTA_MB)
+  - [x] Research documented in `docs/HISTORY_SYNC_RESEARCH.md`
 
 ---
 

@@ -40,6 +40,9 @@ from whatsapp import update_group as whatsapp_update_group
 # Phase 3: Polls
 from whatsapp import create_poll as whatsapp_create_poll
 
+# Phase 4: History Sync
+from whatsapp import request_chat_history as whatsapp_request_chat_history
+
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
 
@@ -504,6 +507,37 @@ def create_poll(
         A dictionary containing success, message_id, timestamp, chat_jid, question, options
     """
     return whatsapp_create_poll(chat_jid, question, options, multi_select)
+
+
+# Phase 4: History Sync
+
+@mcp.tool()
+def request_history(
+    chat_jid: str,
+    oldest_msg_id: str,
+    oldest_msg_timestamp: int,
+    oldest_msg_from_me: bool = False,
+    count: int = 50
+) -> dict[str, Any]:
+    """Request older messages for a chat (on-demand history sync).
+
+    This requests WhatsApp to sync older messages for a specific chat.
+    The messages will appear in the database after the sync completes.
+    Note: Only works if the phone has older messages available.
+
+    Args:
+        chat_jid: The JID of the chat to request history for
+        oldest_msg_id: The ID of the oldest message currently in the chat
+        oldest_msg_timestamp: Unix timestamp in milliseconds of the oldest message
+        oldest_msg_from_me: Whether the oldest message was sent by you (default: False)
+        count: Number of messages to request (max 50, default: 50)
+
+    Returns:
+        A dictionary containing success status and message
+    """
+    return whatsapp_request_chat_history(
+        chat_jid, oldest_msg_id, oldest_msg_timestamp, oldest_msg_from_me, count
+    )
 
 
 if __name__ == "__main__":

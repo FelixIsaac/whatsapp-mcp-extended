@@ -193,3 +193,14 @@ type CreatePollRequest struct {
 	Options     []string `json:"options"`
 	MultiSelect bool     `json:"multi_select"`
 }
+
+// Phase 4: History Sync
+
+// RequestHistoryRequest represents the request body for on-demand history request
+type RequestHistoryRequest struct {
+	ChatJID            string `json:"chat_jid"`
+	OldestMsgID        string `json:"oldest_msg_id"`
+	OldestMsgFromMe    bool   `json:"oldest_msg_from_me"`
+	OldestMsgTimestamp int64  `json:"oldest_msg_timestamp"` // Unix milliseconds
+	Count              int    `json:"count"`                // Max 50
+}

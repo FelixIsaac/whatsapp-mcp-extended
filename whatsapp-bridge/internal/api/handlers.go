@@ -785,3 +785,43 @@ func (s *Server) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 		"options":    req.Options,
 	})
 }
+
+// Phase 4: History Sync
+
+// handleRequestHistory handles on-demand history requests
+func (s *Server) handleRequestHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.RequestHistoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" || req.OldestMsgID == "" || req.OldestMsgTimestamp == 0 {
+		SendJSONError(w, "chat_jid, oldest_msg_id, and oldest_msg_timestamp are required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Count <= 0 || req.Count > 50 {
+		req.Count = 50
+	}
+
+	err := s.client.RequestChatHistory(req.ChatJID, req.OldestMsgID, req.OldestMsgFromMe, req.OldestMsgTimestamp, req.Count)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to request history: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"message":  "History request sent. Messages will arrive via HistorySync event.",
+		"chat_jid": req.ChatJID,
+		"count":    req.Count,
+	})
+}

@@ -1767,3 +1767,59 @@ def create_poll(
 
     except requests.RequestException as e:
         return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
+
+
+# Phase 4: History Sync
+
+
+def request_chat_history(
+    chat_jid: str,
+    oldest_msg_id: str,
+    oldest_msg_timestamp: int,
+    oldest_msg_from_me: bool = False,
+    count: int = 50
+) -> dict[str, Any]:
+    """Request older messages for a specific chat (on-demand history sync).
+
+    This sends a request to your phone to sync older messages.
+    The messages will arrive asynchronously via the HistorySync event handler.
+
+    Args:
+        chat_jid: The JID of the chat to request history for
+        oldest_msg_id: The ID of the oldest message you have (messages before this will be requested)
+        oldest_msg_timestamp: Unix timestamp in milliseconds of the oldest message
+        oldest_msg_from_me: Whether the oldest message was sent by you
+        count: Number of messages to request (max 50)
+
+    Returns:
+        Structured dict with success, message, chat_jid, count
+    """
+    try:
+        if count <= 0 or count > 50:
+            count = 50
+
+        url = f"{WHATSAPP_API_BASE_URL}/history/request"
+        payload = {
+            "chat_jid": chat_jid,
+            "oldest_msg_id": oldest_msg_id,
+            "oldest_msg_from_me": oldest_msg_from_me,
+            "oldest_msg_timestamp": oldest_msg_timestamp,
+            "count": count,
+        }
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "message": result.get("message", "History request sent"),
+                "chat_jid": chat_jid,
+                "count": count,
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}

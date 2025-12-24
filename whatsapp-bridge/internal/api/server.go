@@ -72,4 +72,7 @@ func (s *Server) registerHandlers() {
 
 	// Phase 3: Polls
 	http.HandleFunc("/api/poll/create", CorsMiddleware(s.handleCreatePoll))
+
+	// Phase 4: History Sync
+	http.HandleFunc("/api/history/request", CorsMiddleware(s.handleRequestHistory))
 }
