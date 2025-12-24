@@ -60,4 +60,13 @@ func (s *Server) registerHandlers() {
 	http.HandleFunc("/api/delete", CorsMiddleware(s.handleDeleteMessage))
 	http.HandleFunc("/api/group/", CorsMiddleware(s.handleGetGroupInfo))
 	http.HandleFunc("/api/read", CorsMiddleware(s.handleMarkRead))
+
+	// Phase 2: Group Management
+	http.HandleFunc("/api/group/create", CorsMiddleware(s.handleCreateGroup))
+	http.HandleFunc("/api/group/add-members", CorsMiddleware(s.handleAddGroupMembers))
+	http.HandleFunc("/api/group/remove-members", CorsMiddleware(s.handleRemoveGroupMembers))
+	http.HandleFunc("/api/group/promote", CorsMiddleware(s.handlePromoteAdmin))
+	http.HandleFunc("/api/group/demote", CorsMiddleware(s.handleDemoteAdmin))
+	http.HandleFunc("/api/group/leave", CorsMiddleware(s.handleLeaveGroup))
+	http.HandleFunc("/api/group/update", CorsMiddleware(s.handleUpdateGroup))
 }

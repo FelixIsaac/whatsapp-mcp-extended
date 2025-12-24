@@ -325,3 +325,155 @@ func (c *Client) MarkMessagesRead(chatJID string, messageIDs []string, senderJID
 
 	return c.Client.MarkRead(context.Background(), ids, time.Now(), chat, sender)
 }
+
+// Phase 2: Group Management
+
+// CreateGroup creates a new WhatsApp group
+func (c *Client) CreateGroup(name string, participants []string) (*types.GroupInfo, error) {
+	if !c.IsConnected() {
+		return nil, fmt.Errorf("not connected to WhatsApp")
+	}
+
+	// Parse participant JIDs
+	participantJIDs := make([]types.JID, len(participants))
+	for i, p := range participants {
+		jid, err := types.ParseJID(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid participant JID %s: %v", p, err)
+		}
+		participantJIDs[i] = jid
+	}
+
+	req := whatsmeow.ReqCreateGroup{
+		Name:         name,
+		Participants: participantJIDs,
+	}
+
+	return c.Client.CreateGroup(context.Background(), req)
+}
+
+// AddGroupParticipants adds members to a group
+func (c *Client) AddGroupParticipants(groupJID string, participants []string) ([]types.GroupParticipant, error) {
+	if !c.IsConnected() {
+		return nil, fmt.Errorf("not connected to WhatsApp")
+	}
+
+	group, err := types.ParseJID(groupJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	participantJIDs := make([]types.JID, len(participants))
+	for i, p := range participants {
+		jid, err := types.ParseJID(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid participant JID %s: %v", p, err)
+		}
+		participantJIDs[i] = jid
+	}
+
+	return c.Client.UpdateGroupParticipants(context.Background(), group, participantJIDs, whatsmeow.ParticipantChangeAdd)
+}
+
+// RemoveGroupParticipants removes members from a group
+func (c *Client) RemoveGroupParticipants(groupJID string, participants []string) ([]types.GroupParticipant, error) {
+	if !c.IsConnected() {
+		return nil, fmt.Errorf("not connected to WhatsApp")
+	}
+
+	group, err := types.ParseJID(groupJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	participantJIDs := make([]types.JID, len(participants))
+	for i, p := range participants {
+		jid, err := types.ParseJID(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid participant JID %s: %v", p, err)
+		}
+		participantJIDs[i] = jid
+	}
+
+	return c.Client.UpdateGroupParticipants(context.Background(), group, participantJIDs, whatsmeow.ParticipantChangeRemove)
+}
+
+// PromoteGroupParticipant promotes a participant to admin
+func (c *Client) PromoteGroupParticipant(groupJID string, participant string) ([]types.GroupParticipant, error) {
+	if !c.IsConnected() {
+		return nil, fmt.Errorf("not connected to WhatsApp")
+	}
+
+	group, err := types.ParseJID(groupJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	jid, err := types.ParseJID(participant)
+	if err != nil {
+		return nil, fmt.Errorf("invalid participant JID: %v", err)
+	}
+
+	return c.Client.UpdateGroupParticipants(context.Background(), group, []types.JID{jid}, whatsmeow.ParticipantChangePromote)
+}
+
+// DemoteGroupParticipant demotes an admin to regular participant
+func (c *Client) DemoteGroupParticipant(groupJID string, participant string) ([]types.GroupParticipant, error) {
+	if !c.IsConnected() {
+		return nil, fmt.Errorf("not connected to WhatsApp")
+	}
+
+	group, err := types.ParseJID(groupJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	jid, err := types.ParseJID(participant)
+	if err != nil {
+		return nil, fmt.Errorf("invalid participant JID: %v", err)
+	}
+
+	return c.Client.UpdateGroupParticipants(context.Background(), group, []types.JID{jid}, whatsmeow.ParticipantChangeDemote)
+}
+
+// LeaveGroup leaves a WhatsApp group
+func (c *Client) LeaveGroup(groupJID string) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	group, err := types.ParseJID(groupJID)
+	if err != nil {
+		return fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	return c.Client.LeaveGroup(context.Background(), group)
+}
+
+// SetGroupName updates the group name
+func (c *Client) SetGroupName(groupJID string, name string) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	group, err := types.ParseJID(groupJID)
+	if err != nil {
+		return fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	return c.Client.SetGroupName(group, name)
+}
+
+// SetGroupTopic updates the group description/topic
+func (c *Client) SetGroupTopic(groupJID string, topic string) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	group, err := types.ParseJID(groupJID)
+	if err != nil {
+		return fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	return c.Client.SetGroupTopic(group, "", "", topic)
+}

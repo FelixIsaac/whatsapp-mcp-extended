@@ -28,6 +28,15 @@ from whatsapp import send_message as whatsapp_send_message
 from whatsapp import send_reaction as whatsapp_send_reaction  # Phase 1 features
 from whatsapp import set_contact_nickname as whatsapp_set_contact_nickname
 
+# Phase 2: Group Management
+from whatsapp import add_group_members as whatsapp_add_group_members
+from whatsapp import create_group as whatsapp_create_group
+from whatsapp import demote_admin as whatsapp_demote_admin
+from whatsapp import leave_group as whatsapp_leave_group
+from whatsapp import promote_to_admin as whatsapp_promote_to_admin
+from whatsapp import remove_group_members as whatsapp_remove_group_members
+from whatsapp import update_group as whatsapp_update_group
+
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
 
@@ -369,6 +378,106 @@ def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = No
         A dictionary containing success status, chat_jid, message_ids, and count
     """
     return whatsapp_mark_messages_read(chat_jid, message_ids, sender_jid)
+
+
+# Phase 2: Group Management
+
+@mcp.tool()
+def create_group(name: str, participants: list[str]) -> dict[str, Any]:
+    """Create a new WhatsApp group.
+
+    Args:
+        name: The name for the new group
+        participants: List of participant JIDs to add (e.g., ["123456789@s.whatsapp.net"])
+
+    Returns:
+        A dictionary containing success, group_jid, name, and participants
+    """
+    return whatsapp_create_group(name, participants)
+
+
+@mcp.tool()
+def add_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
+    """Add members to a WhatsApp group.
+
+    Args:
+        group_jid: The JID of the group (e.g., "123456789@g.us")
+        participants: List of participant JIDs to add
+
+    Returns:
+        A dictionary containing success, group_jid, added count
+    """
+    return whatsapp_add_group_members(group_jid, participants)
+
+
+@mcp.tool()
+def remove_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
+    """Remove members from a WhatsApp group.
+
+    Args:
+        group_jid: The JID of the group (e.g., "123456789@g.us")
+        participants: List of participant JIDs to remove
+
+    Returns:
+        A dictionary containing success, group_jid, removed count
+    """
+    return whatsapp_remove_group_members(group_jid, participants)
+
+
+@mcp.tool()
+def promote_to_admin(group_jid: str, participant: str) -> dict[str, Any]:
+    """Promote a group member to admin.
+
+    Args:
+        group_jid: The JID of the group (e.g., "123456789@g.us")
+        participant: The JID of the participant to promote
+
+    Returns:
+        A dictionary containing success, group_jid, participant
+    """
+    return whatsapp_promote_to_admin(group_jid, participant)
+
+
+@mcp.tool()
+def demote_admin(group_jid: str, participant: str) -> dict[str, Any]:
+    """Demote a group admin to regular member.
+
+    Args:
+        group_jid: The JID of the group (e.g., "123456789@g.us")
+        participant: The JID of the admin to demote
+
+    Returns:
+        A dictionary containing success, group_jid, participant
+    """
+    return whatsapp_demote_admin(group_jid, participant)
+
+
+@mcp.tool()
+def leave_group(group_jid: str) -> dict[str, Any]:
+    """Leave a WhatsApp group.
+
+    Args:
+        group_jid: The JID of the group to leave (e.g., "123456789@g.us")
+
+    Returns:
+        A dictionary containing success, group_jid
+    """
+    return whatsapp_leave_group(group_jid)
+
+
+@mcp.tool()
+def update_group(group_jid: str, name: str | None = None, topic: str | None = None) -> dict[str, Any]:
+    """Update group name and/or topic (description).
+
+    Args:
+        group_jid: The JID of the group (e.g., "123456789@g.us")
+        name: New group name (optional)
+        topic: New group topic/description (optional)
+
+    Returns:
+        A dictionary containing success, group_jid, updated fields
+    """
+    return whatsapp_update_group(group_jid, name, topic)
 
 
 if __name__ == "__main__":

@@ -69,8 +69,16 @@
 | `delete_message` | ❌ | ✅ |
 | `get_group_info` | ❌ | ✅ |
 | `mark_read` | ❌ | ✅ |
+| **Phase 2 Features** | | |
+| `create_group` | ❌ | ✅ |
+| `add_group_members` | ❌ | ✅ |
+| `remove_group_members` | ❌ | ✅ |
+| `promote_to_admin` | ❌ | ✅ |
+| `demote_admin` | ❌ | ✅ |
+| `leave_group` | ❌ | ✅ |
+| `update_group` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 23 tools (extended)**
+**Total: 12 tools (whatsapp) → 30 tools (extended)**
 
 ---
 
@@ -269,6 +277,14 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
   - [x] `delete_message` - Delete/revoke messages
   - [x] `get_group_info` - Get group name, description, participants
   - [x] `mark_read` - Mark messages as read (blue ticks)
+- [x] **Phase 2 Group Management** (7 new MCP tools):
+  - [x] `create_group` - Create new WhatsApp group
+  - [x] `add_group_members` - Add members to a group
+  - [x] `remove_group_members` - Remove members from a group
+  - [x] `promote_to_admin` - Promote member to admin
+  - [x] `demote_admin` - Demote admin to regular member
+  - [x] `leave_group` - Leave a group
+  - [x] `update_group` - Update group name/topic
 
 ---
 

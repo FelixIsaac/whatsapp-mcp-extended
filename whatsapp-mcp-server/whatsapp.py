@@ -1488,3 +1488,227 @@ def mark_messages_read(chat_jid: str, message_ids: list[str], sender_jid: str | 
         return {"success": False, "chat_jid": chat_jid, "message_ids": message_ids, "error": f"Error parsing response: {response.text}"}
     except Exception as e:
         return {"success": False, "chat_jid": chat_jid, "message_ids": message_ids, "error": f"Unexpected error: {str(e)}"}
+
+
+# Phase 2: Group Management
+
+def create_group(name: str, participants: list[str]) -> dict[str, Any]:
+    """Create a new WhatsApp group.
+
+    Args:
+        name: The name for the new group
+        participants: List of participant JIDs to add to the group
+
+    Returns:
+        Structured dict with success, group_jid, name, error
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/create"
+        payload = {"name": name, "participants": participants}
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "group_jid": result.get("group_jid"),
+                "name": result.get("name"),
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def add_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
+    """Add members to a WhatsApp group.
+
+    Args:
+        group_jid: The JID of the group
+        participants: List of participant JIDs to add
+
+    Returns:
+        Structured dict with success, group_jid, participants, error
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/add-members"
+        payload = {"group_jid": group_jid, "participants": participants}
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "group_jid": group_jid,
+                "participants": result.get("participants", []),
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "group_jid": group_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "group_jid": group_jid, "error": f"Request error: {str(e)}"}
+
+
+def remove_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
+    """Remove members from a WhatsApp group.
+
+    Args:
+        group_jid: The JID of the group
+        participants: List of participant JIDs to remove
+
+    Returns:
+        Structured dict with success, group_jid, participants, error
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/remove-members"
+        payload = {"group_jid": group_jid, "participants": participants}
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "group_jid": group_jid,
+                "participants": result.get("participants", []),
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "group_jid": group_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "group_jid": group_jid, "error": f"Request error: {str(e)}"}
+
+
+def promote_to_admin(group_jid: str, participant: str) -> dict[str, Any]:
+    """Promote a group member to admin.
+
+    Args:
+        group_jid: The JID of the group
+        participant: The JID of the participant to promote
+
+    Returns:
+        Structured dict with success, group_jid, participant, action, error
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/promote"
+        payload = {"group_jid": group_jid, "participant": participant}
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "group_jid": group_jid,
+                "participant": participant,
+                "action": "promoted",
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "group_jid": group_jid, "participant": participant, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "group_jid": group_jid, "participant": participant, "error": f"Request error: {str(e)}"}
+
+
+def demote_admin(group_jid: str, participant: str) -> dict[str, Any]:
+    """Demote a group admin to regular member.
+
+    Args:
+        group_jid: The JID of the group
+        participant: The JID of the admin to demote
+
+    Returns:
+        Structured dict with success, group_jid, participant, action, error
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/demote"
+        payload = {"group_jid": group_jid, "participant": participant}
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "group_jid": group_jid,
+                "participant": participant,
+                "action": "demoted",
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "group_jid": group_jid, "participant": participant, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "group_jid": group_jid, "participant": participant, "error": f"Request error: {str(e)}"}
+
+
+def leave_group(group_jid: str) -> dict[str, Any]:
+    """Leave a WhatsApp group.
+
+    Args:
+        group_jid: The JID of the group to leave
+
+    Returns:
+        Structured dict with success, group_jid, action, error
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/leave"
+        payload = {"group_jid": group_jid}
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "group_jid": group_jid,
+                "action": "left",
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "group_jid": group_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "group_jid": group_jid, "error": f"Request error: {str(e)}"}
+
+
+def update_group(group_jid: str, name: str | None = None, topic: str | None = None) -> dict[str, Any]:
+    """Update group name and/or topic/description.
+
+    Args:
+        group_jid: The JID of the group
+        name: Optional new name for the group
+        topic: Optional new topic/description for the group
+
+    Returns:
+        Structured dict with success, group_jid, error
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/update"
+        payload: dict[str, Any] = {"group_jid": group_jid}
+        if name:
+            payload["name"] = name
+        if topic:
+            payload["topic"] = topic
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "group_jid": group_jid,
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "group_jid": group_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "group_jid": group_jid, "error": f"Request error: {str(e)}"}

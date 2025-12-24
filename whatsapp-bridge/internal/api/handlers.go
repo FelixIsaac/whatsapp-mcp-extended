@@ -475,3 +475,270 @@ func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 		"message": "Messages marked as read",
 	})
 }
+
+// Phase 2: Group Management Handlers
+
+// handleCreateGroup handles creating a new group
+func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.CreateGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		SendJSONError(w, "Group name is required", http.StatusBadRequest)
+		return
+	}
+
+	groupInfo, err := s.client.CreateGroup(req.Name, req.Participants)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to create group: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"group_jid": groupInfo.JID.String(),
+		"name":      groupInfo.Name,
+	})
+}
+
+// handleAddGroupMembers handles adding members to a group
+func (s *Server) handleAddGroupMembers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.GroupParticipantsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.GroupJID == "" || len(req.Participants) == 0 {
+		SendJSONError(w, "group_jid and participants are required", http.StatusBadRequest)
+		return
+	}
+
+	results, err := s.client.AddGroupParticipants(req.GroupJID, req.Participants)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to add members: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert results to JSON-friendly format
+	added := make([]map[string]interface{}, len(results))
+	for i, p := range results {
+		added[i] = map[string]interface{}{
+			"jid":   p.JID.String(),
+			"error": p.Error,
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"participants": added,
+	})
+}
+
+// handleRemoveGroupMembers handles removing members from a group
+func (s *Server) handleRemoveGroupMembers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.GroupParticipantsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.GroupJID == "" || len(req.Participants) == 0 {
+		SendJSONError(w, "group_jid and participants are required", http.StatusBadRequest)
+		return
+	}
+
+	results, err := s.client.RemoveGroupParticipants(req.GroupJID, req.Participants)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to remove members: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	removed := make([]map[string]interface{}, len(results))
+	for i, p := range results {
+		removed[i] = map[string]interface{}{
+			"jid":   p.JID.String(),
+			"error": p.Error,
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":      true,
+		"participants": removed,
+	})
+}
+
+// handlePromoteAdmin handles promoting a member to admin
+func (s *Server) handlePromoteAdmin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.GroupAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.GroupJID == "" || req.Participant == "" {
+		SendJSONError(w, "group_jid and participant are required", http.StatusBadRequest)
+		return
+	}
+
+	_, err := s.client.PromoteGroupParticipant(req.GroupJID, req.Participant)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to promote admin: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"group_jid":   req.GroupJID,
+		"participant": req.Participant,
+		"action":      "promoted",
+	})
+}
+
+// handleDemoteAdmin handles demoting an admin to regular member
+func (s *Server) handleDemoteAdmin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.GroupAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.GroupJID == "" || req.Participant == "" {
+		SendJSONError(w, "group_jid and participant are required", http.StatusBadRequest)
+		return
+	}
+
+	_, err := s.client.DemoteGroupParticipant(req.GroupJID, req.Participant)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to demote admin: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"group_jid":   req.GroupJID,
+		"participant": req.Participant,
+		"action":      "demoted",
+	})
+}
+
+// handleLeaveGroup handles leaving a group
+func (s *Server) handleLeaveGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.LeaveGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.GroupJID == "" {
+		SendJSONError(w, "group_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.LeaveGroup(req.GroupJID)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to leave group: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"group_jid": req.GroupJID,
+		"action":    "left",
+	})
+}
+
+// handleUpdateGroup handles updating group name/topic
+func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.UpdateGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.GroupJID == "" {
+		SendJSONError(w, "group_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" && req.Topic == "" {
+		SendJSONError(w, "name or topic is required", http.StatusBadRequest)
+		return
+	}
+
+	var errors []string
+
+	if req.Name != "" {
+		if err := s.client.SetGroupName(req.GroupJID, req.Name); err != nil {
+			errors = append(errors, fmt.Sprintf("name: %v", err))
+		}
+	}
+
+	if req.Topic != "" {
+		if err := s.client.SetGroupTopic(req.GroupJID, req.Topic); err != nil {
+			errors = append(errors, fmt.Sprintf("topic: %v", err))
+		}
+	}
+
+	if len(errors) > 0 {
+		SendJSONError(w, fmt.Sprintf("Partial failure: %v", errors), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"group_jid": req.GroupJID,
+	})
+}

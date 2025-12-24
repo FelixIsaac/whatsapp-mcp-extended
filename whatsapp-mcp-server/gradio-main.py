@@ -29,6 +29,15 @@ from whatsapp import send_message as whatsapp_send_message
 from whatsapp import send_reaction as whatsapp_send_reaction  # Phase 1 features
 from whatsapp import set_contact_nickname as whatsapp_set_contact_nickname
 
+# Phase 2: Group Management
+from whatsapp import add_group_members as whatsapp_add_group_members
+from whatsapp import create_group as whatsapp_create_group
+from whatsapp import demote_admin as whatsapp_demote_admin
+from whatsapp import leave_group as whatsapp_leave_group
+from whatsapp import promote_to_admin as whatsapp_promote_to_admin
+from whatsapp import remove_group_members as whatsapp_remove_group_members
+from whatsapp import update_group as whatsapp_update_group
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG if os.environ.get('DEBUG') == 'true' else logging.INFO,
@@ -382,6 +391,90 @@ def mark_read(chat_jid: str, message_ids: str, sender_jid: str = "") -> str:
     ids = [mid.strip() for mid in message_ids.split(",") if mid.strip()]
     sender = sender_jid if sender_jid else None
     return str(whatsapp_mark_messages_read(chat_jid, ids, sender))
+
+
+# Phase 2: Group Management
+
+@mcp.tool()
+def create_group(name: str, participants: str) -> str:
+    """Create a new WhatsApp group.
+
+    Parameters:
+    - name: The name for the new group
+    - participants: Comma-separated list of participant JIDs (e.g., "123@s.whatsapp.net,456@s.whatsapp.net")
+    """
+    participant_list = [p.strip() for p in participants.split(",") if p.strip()]
+    return str(whatsapp_create_group(name, participant_list))
+
+
+@mcp.tool()
+def add_group_members(group_jid: str, participants: str) -> str:
+    """Add members to a WhatsApp group.
+
+    Parameters:
+    - group_jid: The JID of the group (e.g., "123456789@g.us")
+    - participants: Comma-separated list of participant JIDs to add
+    """
+    participant_list = [p.strip() for p in participants.split(",") if p.strip()]
+    return str(whatsapp_add_group_members(group_jid, participant_list))
+
+
+@mcp.tool()
+def remove_group_members(group_jid: str, participants: str) -> str:
+    """Remove members from a WhatsApp group.
+
+    Parameters:
+    - group_jid: The JID of the group (e.g., "123456789@g.us")
+    - participants: Comma-separated list of participant JIDs to remove
+    """
+    participant_list = [p.strip() for p in participants.split(",") if p.strip()]
+    return str(whatsapp_remove_group_members(group_jid, participant_list))
+
+
+@mcp.tool()
+def promote_to_admin(group_jid: str, participant: str) -> str:
+    """Promote a group member to admin.
+
+    Parameters:
+    - group_jid: The JID of the group (e.g., "123456789@g.us")
+    - participant: The JID of the participant to promote
+    """
+    return str(whatsapp_promote_to_admin(group_jid, participant))
+
+
+@mcp.tool()
+def demote_admin(group_jid: str, participant: str) -> str:
+    """Demote a group admin to regular member.
+
+    Parameters:
+    - group_jid: The JID of the group (e.g., "123456789@g.us")
+    - participant: The JID of the admin to demote
+    """
+    return str(whatsapp_demote_admin(group_jid, participant))
+
+
+@mcp.tool()
+def leave_group(group_jid: str) -> str:
+    """Leave a WhatsApp group.
+
+    Parameters:
+    - group_jid: The JID of the group to leave (e.g., "123456789@g.us")
+    """
+    return str(whatsapp_leave_group(group_jid))
+
+
+@mcp.tool()
+def update_group(group_jid: str, name: str = "", topic: str = "") -> str:
+    """Update group name and/or topic (description).
+
+    Parameters:
+    - group_jid: The JID of the group (e.g., "123456789@g.us")
+    - name: New group name (optional, leave empty to not change)
+    - topic: New group topic/description (optional, leave empty to not change)
+    """
+    name_param = name if name else None
+    topic_param = topic if topic else None
+    return str(whatsapp_update_group(group_jid, name_param, topic_param))
 
 
 # Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)

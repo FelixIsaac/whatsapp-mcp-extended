@@ -151,3 +151,35 @@ type MarkReadRequest struct {
 	MessageIDs []string `json:"message_ids"`
 	SenderJID  string   `json:"sender_jid,omitempty"` // required for group chats
 }
+
+// Phase 2: Group Management
+
+// CreateGroupRequest represents the request body for creating a group
+type CreateGroupRequest struct {
+	Name         string   `json:"name"`
+	Participants []string `json:"participants"` // JIDs of participants to add
+}
+
+// GroupParticipantsRequest represents the request body for adding/removing group members
+type GroupParticipantsRequest struct {
+	GroupJID     string   `json:"group_jid"`
+	Participants []string `json:"participants"` // JIDs of participants
+}
+
+// GroupAdminRequest represents the request body for promoting/demoting admins
+type GroupAdminRequest struct {
+	GroupJID    string `json:"group_jid"`
+	Participant string `json:"participant"` // JID of participant
+}
+
+// LeaveGroupRequest represents the request body for leaving a group
+type LeaveGroupRequest struct {
+	GroupJID string `json:"group_jid"`
+}
+
+// UpdateGroupRequest represents the request body for updating group settings
+type UpdateGroupRequest struct {
+	GroupJID string `json:"group_jid"`
+	Name     string `json:"name,omitempty"`
+	Topic    string `json:"topic,omitempty"`
+}
