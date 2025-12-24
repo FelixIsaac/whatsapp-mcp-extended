@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"whatsapp-bridge/internal/database"
+	bridgeTypes "whatsapp-bridge/internal/types"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -17,9 +18,9 @@ import (
 )
 
 // SendMessage sends a WhatsApp message with optional media
-func (c *Client) SendMessage(messageStore *database.MessageStore, recipient string, message string, mediaPath string) (bool, string) {
+func (c *Client) SendMessage(messageStore *database.MessageStore, recipient string, message string, mediaPath string) bridgeTypes.SendResult {
 	if !c.IsConnected() {
-		return false, "Not connected to WhatsApp"
+		return bridgeTypes.SendResult{Success: false, Error: "Not connected to WhatsApp"}
 	}
 
 	// Create JID for recipient
@@ -33,7 +34,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		// Parse the JID string
 		recipientJID, err = types.ParseJID(recipient)
 		if err != nil {
-			return false, fmt.Sprintf("Error parsing JID: %v", err)
+			return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error parsing JID: %v", err)}
 		}
 	} else {
 		// Create JID from phone number
@@ -50,7 +51,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		// Read media file
 		mediaData, err := os.ReadFile(mediaPath)
 		if err != nil {
-			return false, fmt.Sprintf("Error reading media file: %v", err)
+			return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error reading media file: %v", err)}
 		}
 
 		// Determine media type and mime type based on file extension

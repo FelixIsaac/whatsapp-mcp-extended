@@ -109,8 +109,19 @@ type SendMessageRequest struct {
 
 // SendMessageResponse represents the response for the send message API
 type SendMessageResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success   bool      `json:"success"`
+	Message   string    `json:"message,omitempty"`
+	MessageID string    `json:"message_id,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
+	Recipient string    `json:"recipient,omitempty"`
+}
+
+// SendResult contains the result of sending a message (internal use)
+type SendResult struct {
+	Success   bool
+	Error     string
+	MessageID string
+	Timestamp time.Time
 }
 
 // ReactionRequest represents the request body for sending reactions
