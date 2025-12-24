@@ -1,10 +1,9 @@
 """Tests for lib/utils.py utility functions."""
 
 import logging
-import os
 from unittest.mock import patch
 
-from lib.utils import setup_logging, get_sender_name
+from lib.utils import get_sender_name, setup_logging
 
 
 class TestSetupLogging:
@@ -27,7 +26,7 @@ class TestSetupLogging:
 class TestGetSenderName:
     """Tests for get_sender_name function."""
 
-    @patch("lib.utils.get_contact_by_jid")
+    @patch("lib.database.get_contact_by_jid")
     def test_get_sender_name_with_contact(self, mock_get_contact):
         """Test getting sender name when contact exists."""
         from lib.models import Contact
@@ -43,7 +42,7 @@ class TestGetSenderName:
 
         assert result == "John Doe"
 
-    @patch("lib.utils.get_contact_by_jid")
+    @patch("lib.database.get_contact_by_jid")
     def test_get_sender_name_no_contact(self, mock_get_contact):
         """Test getting sender name when contact doesn't exist."""
         mock_get_contact.return_value = None

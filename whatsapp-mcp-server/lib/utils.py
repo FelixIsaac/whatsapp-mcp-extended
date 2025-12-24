@@ -3,6 +3,7 @@
 import logging
 import os
 
+
 # Set up logging
 def setup_logging(debug: bool = False) -> logging.Logger:
     """Configure and return the application logger.

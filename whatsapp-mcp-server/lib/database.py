@@ -4,8 +4,8 @@ import sqlite3
 from datetime import datetime
 from typing import Any
 
-from .models import Message, Chat, Contact, MessageContext
-from .utils import logger, MESSAGES_DB_PATH, WHATSAPP_DB_PATH
+from .models import Chat, Contact, Message, MessageContext
+from .utils import MESSAGES_DB_PATH, WHATSAPP_DB_PATH, logger
 
 
 class DatabaseError(Exception):

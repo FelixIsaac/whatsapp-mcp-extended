@@ -6,11 +6,11 @@ import pytest
 
 from lib.bridge import (
     BridgeError,
+    delete_message,
+    edit_message,
+    get_group_info,
     send_message,
     send_reaction,
-    edit_message,
-    delete_message,
-    get_group_info,
 )
 
 

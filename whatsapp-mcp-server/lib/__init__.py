@@ -10,43 +10,42 @@ organized into submodules:
 """
 
 # Models
-from .models import Message, Chat, Contact, MessageContext
+# Bridge API
+from .bridge import (
+    BridgeError,
+    create_group,
+    create_poll,
+    delete_message,
+    edit_message,
+    get_group_info,
+    mark_read,
+    send_file,
+    send_message,
+    send_reaction,
+)
 
 # Database operations
 from .database import (
     DatabaseError,
-    list_messages,
-    get_message_context,
-    list_chats,
     get_contact_by_jid,
     get_contact_nickname,
-    set_contact_nickname,
+    get_message_context,
+    list_chats,
+    list_messages,
     search_contacts,
+    set_contact_nickname,
 )
-
-# Bridge API
-from .bridge import (
-    BridgeError,
-    send_message,
-    send_file,
-    send_reaction,
-    edit_message,
-    delete_message,
-    mark_read,
-    get_group_info,
-    create_group,
-    create_poll,
-)
+from .models import Chat, Contact, Message, MessageContext
 
 # Utilities
 from .utils import (
+    BRIDGE_HOST,
+    MESSAGES_DB_PATH,
+    WHATSAPP_API_BASE_URL,
+    WHATSAPP_DB_PATH,
+    get_sender_name,
     logger,
     setup_logging,
-    MESSAGES_DB_PATH,
-    WHATSAPP_DB_PATH,
-    BRIDGE_HOST,
-    WHATSAPP_API_BASE_URL,
-    get_sender_name,
 )
 
 __all__ = [

@@ -5,7 +5,7 @@ from typing import Any
 
 import requests
 
-from .utils import logger, WHATSAPP_API_BASE_URL
+from .utils import WHATSAPP_API_BASE_URL, logger
 
 
 class BridgeError(Exception):
