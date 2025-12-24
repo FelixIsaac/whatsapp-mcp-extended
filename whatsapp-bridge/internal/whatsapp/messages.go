@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,6 +17,50 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
 )
+
+// allowedMediaDirs contains directories allowed for media access
+var allowedMediaDirs = []string{
+	"/app/media",
+	"/app/store",
+	"/tmp",
+}
+
+// validateMediaPath checks if the path is within allowed directories
+func validateMediaPath(mediaPath string) error {
+	if mediaPath == "" {
+		return nil
+	}
+
+	// Clean and get absolute path
+	cleanPath := filepath.Clean(mediaPath)
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		return fmt.Errorf("invalid media path: %v", err)
+	}
+
+	// Check for path traversal attempts
+	if strings.Contains(mediaPath, "..") {
+		return fmt.Errorf("path traversal not allowed")
+	}
+
+	// Allow if DISABLE_PATH_CHECK is set (for development)
+	if os.Getenv("DISABLE_PATH_CHECK") == "true" {
+		return nil
+	}
+
+	// Check if path is within allowed directories
+	for _, allowedDir := range allowedMediaDirs {
+		allowedAbs, err := filepath.Abs(allowedDir)
+		if err != nil {
+			continue
+		}
+		if strings.HasPrefix(absPath, allowedAbs) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("media path outside allowed directories")
+}
 
 // SendMessage sends a WhatsApp message with optional media
 func (c *Client) SendMessage(messageStore *database.MessageStore, recipient string, message string, mediaPath string) bridgeTypes.SendResult {
@@ -48,6 +93,11 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 
 	// Check if we have media to send
 	if mediaPath != "" {
+		// Validate media path (prevent path traversal)
+		if err := validateMediaPath(mediaPath); err != nil {
+			return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Invalid media path: %v", err)}
+		}
+
 		// Read media file
 		mediaData, err := os.ReadFile(mediaPath)
 		if err != nil {
@@ -103,8 +153,6 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 			return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error uploading media: %v", err)}
 		}
 
-		fmt.Println("Media uploaded", resp)
-
 		// Create the appropriate message type based on media type
 		switch mediaType {
 		case whatsmeow.MediaImage:
@@ -132,8 +180,6 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				} else {
 					return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Failed to analyze Ogg Opus file: %v", err)}
 				}
-			} else {
-				fmt.Printf("Not an Ogg Opus file: %s\n", mimeType)
 			}
 
 			msg.AudioMessage = &waProto.AudioMessage{

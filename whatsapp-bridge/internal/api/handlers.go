@@ -35,11 +35,8 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Received request to send message", req.Message, req.MediaPath)
-
 	// Send the message
 	result := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath)
-	fmt.Println("Message sent", result.Success, result.Error)
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
@@ -65,11 +62,15 @@ func (s *Server) handleWebhooks(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// List all webhook configurations
+		// List all webhook configurations (with masked secrets)
 		configs := s.webhookManager.GetWebhookConfigs()
+		responses := make([]types.WebhookConfigResponse, len(configs))
+		for i := range configs {
+			responses[i] = configs[i].ToResponse()
+		}
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
-			"data":    configs,
+			"data":    responses,
 		})
 
 	case http.MethodPost:
@@ -128,7 +129,7 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 	case len(pathParts) == 1: // /api/webhooks/{id}
 		switch r.Method {
 		case http.MethodGet:
-			// Get specific webhook configuration
+			// Get specific webhook configuration (with masked secret)
 			config, err := s.messageStore.GetWebhookConfig(webhookID)
 			if err != nil {
 				SendJSONError(w, fmt.Sprintf("Webhook not found: %v", err), http.StatusNotFound)
@@ -137,7 +138,7 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
-				"data":    config,
+				"data":    config.ToResponse(),
 			})
 
 		case http.MethodPut:
@@ -149,12 +150,6 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 			}
 
 			config.ID = webhookID // Ensure ID matches URL
-
-			fmt.Printf("Updating webhook %d with %d triggers\n", webhookID, len(config.Triggers))
-			for i, trigger := range config.Triggers {
-				fmt.Printf("  Trigger %d: type=%s, value=%s, match=%s, enabled=%t\n",
-					i, trigger.TriggerType, trigger.TriggerValue, trigger.MatchType, trigger.Enabled)
-			}
 
 			// Validate configuration
 			if err := s.webhookManager.ValidateWebhookConfig(&config); err != nil {
@@ -171,11 +166,9 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 			// Reload configurations
 			s.webhookManager.LoadWebhookConfigs()
 
-			fmt.Printf("Successfully updated webhook %d\n", webhookID)
-
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
-				"data":    config,
+				"data":    config.ToResponse(),
 			})
 
 		case http.MethodDelete:

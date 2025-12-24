@@ -44,45 +44,45 @@ func (s *Server) Start() {
 	}()
 }
 
-// registerHandlers registers all HTTP handlers
+// registerHandlers registers all HTTP handlers with security middleware
 func (s *Server) registerHandlers() {
 	// Message sending endpoint
-	http.HandleFunc("/api/send", CorsMiddleware(s.handleSendMessage))
+	http.HandleFunc("/api/send", SecureMiddleware(s.handleSendMessage))
 
 	// Webhook management endpoints
-	http.HandleFunc("/api/webhooks", CorsMiddleware(s.handleWebhooks))
-	http.HandleFunc("/api/webhooks/", CorsMiddleware(s.handleWebhookByID))
-	http.HandleFunc("/api/webhook-logs", CorsMiddleware(s.handleWebhookLogs))
+	http.HandleFunc("/api/webhooks", SecureMiddleware(s.handleWebhooks))
+	http.HandleFunc("/api/webhooks/", SecureMiddleware(s.handleWebhookByID))
+	http.HandleFunc("/api/webhook-logs", SecureMiddleware(s.handleWebhookLogs))
 
 	// Phase 1 features: Reactions, Edit, Delete, Group Info, Mark Read
-	http.HandleFunc("/api/reaction", CorsMiddleware(s.handleReaction))
-	http.HandleFunc("/api/edit", CorsMiddleware(s.handleEditMessage))
-	http.HandleFunc("/api/delete", CorsMiddleware(s.handleDeleteMessage))
-	http.HandleFunc("/api/group/", CorsMiddleware(s.handleGetGroupInfo))
-	http.HandleFunc("/api/read", CorsMiddleware(s.handleMarkRead))
+	http.HandleFunc("/api/reaction", SecureMiddleware(s.handleReaction))
+	http.HandleFunc("/api/edit", SecureMiddleware(s.handleEditMessage))
+	http.HandleFunc("/api/delete", SecureMiddleware(s.handleDeleteMessage))
+	http.HandleFunc("/api/group/", SecureMiddleware(s.handleGetGroupInfo))
+	http.HandleFunc("/api/read", SecureMiddleware(s.handleMarkRead))
 
 	// Phase 2: Group Management
-	http.HandleFunc("/api/group/create", CorsMiddleware(s.handleCreateGroup))
-	http.HandleFunc("/api/group/add-members", CorsMiddleware(s.handleAddGroupMembers))
-	http.HandleFunc("/api/group/remove-members", CorsMiddleware(s.handleRemoveGroupMembers))
-	http.HandleFunc("/api/group/promote", CorsMiddleware(s.handlePromoteAdmin))
-	http.HandleFunc("/api/group/demote", CorsMiddleware(s.handleDemoteAdmin))
-	http.HandleFunc("/api/group/leave", CorsMiddleware(s.handleLeaveGroup))
-	http.HandleFunc("/api/group/update", CorsMiddleware(s.handleUpdateGroup))
+	http.HandleFunc("/api/group/create", SecureMiddleware(s.handleCreateGroup))
+	http.HandleFunc("/api/group/add-members", SecureMiddleware(s.handleAddGroupMembers))
+	http.HandleFunc("/api/group/remove-members", SecureMiddleware(s.handleRemoveGroupMembers))
+	http.HandleFunc("/api/group/promote", SecureMiddleware(s.handlePromoteAdmin))
+	http.HandleFunc("/api/group/demote", SecureMiddleware(s.handleDemoteAdmin))
+	http.HandleFunc("/api/group/leave", SecureMiddleware(s.handleLeaveGroup))
+	http.HandleFunc("/api/group/update", SecureMiddleware(s.handleUpdateGroup))
 
 	// Phase 3: Polls
-	http.HandleFunc("/api/poll/create", CorsMiddleware(s.handleCreatePoll))
+	http.HandleFunc("/api/poll/create", SecureMiddleware(s.handleCreatePoll))
 
 	// Phase 4: History Sync
-	http.HandleFunc("/api/history/request", CorsMiddleware(s.handleRequestHistory))
+	http.HandleFunc("/api/history/request", SecureMiddleware(s.handleRequestHistory))
 
 	// Phase 5: Advanced Features
-	http.HandleFunc("/api/presence/set", CorsMiddleware(s.handleSetPresence))
-	http.HandleFunc("/api/presence/subscribe", CorsMiddleware(s.handleSubscribePresence))
-	http.HandleFunc("/api/profile-picture", CorsMiddleware(s.handleGetProfilePicture))
-	http.HandleFunc("/api/blocklist", CorsMiddleware(s.handleGetBlocklist))
-	http.HandleFunc("/api/blocklist/update", CorsMiddleware(s.handleUpdateBlocklist))
-	http.HandleFunc("/api/newsletter/follow", CorsMiddleware(s.handleFollowNewsletter))
-	http.HandleFunc("/api/newsletter/unfollow", CorsMiddleware(s.handleUnfollowNewsletter))
-	http.HandleFunc("/api/newsletter/create", CorsMiddleware(s.handleCreateNewsletter))
+	http.HandleFunc("/api/presence/set", SecureMiddleware(s.handleSetPresence))
+	http.HandleFunc("/api/presence/subscribe", SecureMiddleware(s.handleSubscribePresence))
+	http.HandleFunc("/api/profile-picture", SecureMiddleware(s.handleGetProfilePicture))
+	http.HandleFunc("/api/blocklist", SecureMiddleware(s.handleGetBlocklist))
+	http.HandleFunc("/api/blocklist/update", SecureMiddleware(s.handleUpdateBlocklist))
+	http.HandleFunc("/api/newsletter/follow", SecureMiddleware(s.handleFollowNewsletter))
+	http.HandleFunc("/api/newsletter/unfollow", SecureMiddleware(s.handleUnfollowNewsletter))
+	http.HandleFunc("/api/newsletter/create", SecureMiddleware(s.handleCreateNewsletter))
 }

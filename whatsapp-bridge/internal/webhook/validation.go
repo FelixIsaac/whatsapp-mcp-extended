@@ -3,12 +3,98 @@ package webhook
 import (
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"whatsapp-bridge/internal/types"
 )
+
+// privateIPBlocks contains CIDR ranges for private/reserved IPs
+var privateIPBlocks []*net.IPNet
+
+func init() {
+	// Initialize private IP ranges
+	cidrs := []string{
+		"10.0.0.0/8",      // RFC 1918
+		"172.16.0.0/12",   // RFC 1918
+		"192.168.0.0/16",  // RFC 1918
+		"127.0.0.0/8",     // Loopback
+		"169.254.0.0/16",  // Link-local
+		"0.0.0.0/8",       // Current network
+		"224.0.0.0/4",     // Multicast
+		"240.0.0.0/4",     // Reserved
+		"::1/128",         // IPv6 loopback
+		"fc00::/7",        // IPv6 unique local
+		"fe80::/10",       // IPv6 link-local
+	}
+
+	for _, cidr := range cidrs {
+		_, block, err := net.ParseCIDR(cidr)
+		if err == nil {
+			privateIPBlocks = append(privateIPBlocks, block)
+		}
+	}
+}
+
+// isPrivateIP checks if an IP is in a private/reserved range
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() {
+		return true
+	}
+
+	for _, block := range privateIPBlocks {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateWebhookURL checks if the webhook URL is safe (no SSRF)
+func ValidateWebhookURL(webhookURL string) error {
+	// Skip SSRF check if explicitly disabled (for testing)
+	if os.Getenv("DISABLE_SSRF_CHECK") == "true" {
+		return nil
+	}
+
+	u, err := url.Parse(webhookURL)
+	if err != nil {
+		return fmt.Errorf("invalid webhook URL: %v", err)
+	}
+
+	hostname := u.Hostname()
+
+	// Block common metadata endpoints
+	blockedHosts := []string{
+		"metadata.google.internal",
+		"169.254.169.254",
+		"metadata.azure.com",
+	}
+	for _, blocked := range blockedHosts {
+		if strings.EqualFold(hostname, blocked) {
+			return fmt.Errorf("webhook URL hostname is blocked: %s", hostname)
+		}
+	}
+
+	// Resolve hostname to IP addresses
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return fmt.Errorf("failed to resolve webhook URL hostname: %v", err)
+	}
+
+	// Check all resolved IPs
+	for _, ip := range ips {
+		if isPrivateIP(ip) {
+			return fmt.Errorf("webhook URL resolves to private/reserved IP: %s -> %s", hostname, ip.String())
+		}
+	}
+
+	return nil
+}
 
 // ValidateWebhookConfig validates a webhook configuration
 func (wm *Manager) ValidateWebhookConfig(config *types.WebhookConfig) error {
@@ -30,6 +116,11 @@ func (wm *Manager) ValidateWebhookConfig(config *types.WebhookConfig) error {
 
 	if !strings.HasPrefix(config.WebhookURL, "http://") && !strings.HasPrefix(config.WebhookURL, "https://") {
 		return fmt.Errorf("webhook URL must start with http:// or https://")
+	}
+
+	// SSRF prevention: validate webhook URL doesn't resolve to private IP
+	if err := ValidateWebhookURL(config.WebhookURL); err != nil {
+		return err
 	}
 
 	// Validate triggers

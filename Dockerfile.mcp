@@ -7,10 +7,13 @@ WORKDIR /app
 COPY ./whatsapp-mcp-server /app/whatsapp-mcp-server
 
 # Install Python and other dependencies
-RUN apt-get update 
+RUN apt-get update
 RUN apt-get install -y ffmpeg \
     sqlite3 \
     && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Set up Python environment
 RUN python3 -m pip install --upgrade pip
@@ -25,11 +28,17 @@ RUN pip install -r requirements.txt
 WORKDIR /app/whatsapp-mcp-server
 
 # Create directories for persistent storage
-RUN mkdir -p /app/store
+RUN mkdir -p /app/store /app/media
 
 # Create entrypoint script for MCP server
 RUN echo '#!/bin/bash\ncd /app/whatsapp-mcp-server\npython gradio-main.py' > /app/entrypoint-mcp.sh
 RUN chmod +x /app/entrypoint-mcp.sh
+
+# Set ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose ports for MCP server and Gradio UI
 EXPOSE 8081

@@ -26,6 +26,45 @@ type WebhookConfig struct {
 	Triggers    []WebhookTrigger `json:"triggers"`
 }
 
+// WebhookConfigResponse is the API response format with masked secret
+type WebhookConfigResponse struct {
+	ID          int              `json:"id"`
+	Name        string           `json:"name"`
+	WebhookURL  string           `json:"webhook_url"`
+	HasSecret   bool             `json:"has_secret"`
+	SecretHint  string           `json:"secret_hint,omitempty"`
+	Enabled     bool             `json:"enabled"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	Triggers    []WebhookTrigger `json:"triggers"`
+}
+
+// MaskSecret returns a masked version of a secret token
+func MaskSecret(secret string) string {
+	if secret == "" {
+		return ""
+	}
+	if len(secret) <= 8 {
+		return "****"
+	}
+	return secret[:4] + "****" + secret[len(secret)-4:]
+}
+
+// ToResponse converts WebhookConfig to WebhookConfigResponse (masks secret)
+func (c *WebhookConfig) ToResponse() WebhookConfigResponse {
+	return WebhookConfigResponse{
+		ID:         c.ID,
+		Name:       c.Name,
+		WebhookURL: c.WebhookURL,
+		HasSecret:  c.SecretToken != "",
+		SecretHint: MaskSecret(c.SecretToken),
+		Enabled:    c.Enabled,
+		CreatedAt:  c.CreatedAt,
+		UpdatedAt:  c.UpdatedAt,
+		Triggers:   c.Triggers,
+	}
+}
+
 // WebhookTrigger represents a trigger condition for webhooks
 type WebhookTrigger struct {
 	ID              int    `json:"id"`

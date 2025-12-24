@@ -24,6 +24,9 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 WORKDIR /app
 
 # Copy the GO exec from the previous stage
@@ -32,11 +35,17 @@ COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge/wh
 RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge
 
 # Create directories for persistent storage
-RUN mkdir -p /app/store
+RUN mkdir -p /app/store /app/media
 
 # Create entrypoint script for bridge
 RUN echo '#!/bin/bash\ncd /app/whatsapp-bridge\n./whatsapp-bridge' > /app/entrypoint-bridge.sh
 RUN chmod +x /app/entrypoint-bridge.sh
+
+# Set ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port for WhatsApp Bridge API
 EXPOSE 8080
