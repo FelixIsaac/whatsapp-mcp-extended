@@ -22,7 +22,13 @@ from whatsapp import (
     set_contact_nickname as whatsapp_set_contact_nickname,
     get_contact_nickname as whatsapp_get_contact_nickname,
     remove_contact_nickname as whatsapp_remove_contact_nickname,
-    list_contact_nicknames as whatsapp_list_contact_nicknames
+    list_contact_nicknames as whatsapp_list_contact_nicknames,
+    # Phase 1 features
+    send_reaction as whatsapp_send_reaction,
+    edit_message as whatsapp_edit_message,
+    delete_message as whatsapp_delete_message,
+    get_group_info as whatsapp_get_group_info,
+    mark_messages_read as whatsapp_mark_messages_read
 )
 
 # Configure logging
@@ -35,7 +41,7 @@ logging.basicConfig(
 mcp = FastMCP(
     "whatsapp",
     log_level="DEBUG" if os.environ.get('DEBUG') == 'true' else "INFO",
-    auth_required=os.environ.get('DANGEROUSLY_OMIT_AUTH') != 'true',
+    
     
 )
 
@@ -354,13 +360,90 @@ def remove_contact_nickname(jid: str) -> str:
 @mcp.tool()
 def list_contact_nicknames() -> str:
     """List all custom contact nicknames.
-    
+
     Parameters:
     None required
     """
     nicknames = whatsapp_list_contact_nicknames()
     result = [{"jid": jid, "nickname": nickname} for jid, nickname in nicknames]
     return str(result)
+
+
+# Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read
+
+@mcp.tool()
+def send_reaction(chat_jid: str, message_id: str, emoji: str) -> str:
+    """Send an emoji reaction to a WhatsApp message.
+
+    Parameters:
+    - chat_jid: The JID of the chat containing the message
+    - message_id: The ID of the message to react to
+    - emoji: The emoji to react with (empty string to remove reaction)
+    """
+    success, message = whatsapp_send_reaction(chat_jid, message_id, emoji)
+    result = {"success": success, "message": message}
+    return str(result)
+
+
+@mcp.tool()
+def edit_message(chat_jid: str, message_id: str, new_content: str) -> str:
+    """Edit a previously sent WhatsApp message.
+
+    Parameters:
+    - chat_jid: The JID of the chat containing the message
+    - message_id: The ID of the message to edit
+    - new_content: The new message content
+    """
+    success, message = whatsapp_edit_message(chat_jid, message_id, new_content)
+    result = {"success": success, "message": message}
+    return str(result)
+
+
+@mcp.tool()
+def delete_message(chat_jid: str, message_id: str, sender_jid: str = "") -> str:
+    """Delete/revoke a WhatsApp message.
+
+    Parameters:
+    - chat_jid: The JID of the chat containing the message
+    - message_id: The ID of the message to delete
+    - sender_jid: Optional sender JID for admin revoking others' messages in groups
+    """
+    sender = sender_jid if sender_jid else None
+    success, message = whatsapp_delete_message(chat_jid, message_id, sender)
+    result = {"success": success, "message": message}
+    return str(result)
+
+
+@mcp.tool()
+def get_group_info(group_jid: str) -> str:
+    """Get information about a WhatsApp group.
+
+    Parameters:
+    - group_jid: The JID of the group (e.g., "123456789@g.us")
+    """
+    info = whatsapp_get_group_info(group_jid)
+    if info:
+        result = {"success": True, "data": info}
+    else:
+        result = {"success": False, "message": "Failed to get group info"}
+    return str(result)
+
+
+@mcp.tool()
+def mark_read(chat_jid: str, message_ids: str, sender_jid: str = "") -> str:
+    """Mark WhatsApp messages as read (sends blue ticks).
+
+    Parameters:
+    - chat_jid: The JID of the chat containing the messages
+    - message_ids: Comma-separated list of message IDs to mark as read
+    - sender_jid: Optional sender JID (required for group chats)
+    """
+    ids = [mid.strip() for mid in message_ids.split(",") if mid.strip()]
+    sender = sender_jid if sender_jid else None
+    success, message = whatsapp_mark_messages_read(chat_jid, ids, sender)
+    result = {"success": success, "message": message}
+    return str(result)
+
 
 # Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)
 

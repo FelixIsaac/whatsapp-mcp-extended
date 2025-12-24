@@ -9,7 +9,7 @@ services:
           memory: 1G  # Adjust memory allocation as needed
           cpus: '0.5'  # Adjust CPU allocation as needed
     ports:
-      - "8080:8080"  # WhatsApp Bridge API port
+      - "8180:8080"  # WhatsApp Bridge API port
     volumes:
       - ./store:/app/whatsapp-bridge/store  # Persistent storage for WhatsApp data
     environment:

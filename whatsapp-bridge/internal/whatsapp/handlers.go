@@ -63,7 +63,7 @@ func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID,
 
 		// If we didn't get a name, try group info
 		if name == "" {
-			groupInfo, err := c.GetGroupInfo(jid)
+			groupInfo, err := c.Client.GetGroupInfo(context.Background(), jid)
 			if err == nil && groupInfo.Name != "" {
 				name = groupInfo.Name
 			} else {

@@ -112,3 +112,31 @@ type SendMessageResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
+
+// ReactionRequest represents the request body for sending reactions
+type ReactionRequest struct {
+	ChatJID   string `json:"chat_jid"`
+	MessageID string `json:"message_id"`
+	Emoji     string `json:"emoji"` // empty string to remove reaction
+}
+
+// EditMessageRequest represents the request body for editing messages
+type EditMessageRequest struct {
+	ChatJID    string `json:"chat_jid"`
+	MessageID  string `json:"message_id"`
+	NewContent string `json:"new_content"`
+}
+
+// DeleteMessageRequest represents the request body for deleting/revoking messages
+type DeleteMessageRequest struct {
+	ChatJID   string `json:"chat_jid"`
+	MessageID string `json:"message_id"`
+	SenderJID string `json:"sender_jid,omitempty"` // for admin revoking others' msgs
+}
+
+// MarkReadRequest represents the request body for marking messages as read
+type MarkReadRequest struct {
+	ChatJID    string   `json:"chat_jid"`
+	MessageIDs []string `json:"message_ids"`
+	SenderJID  string   `json:"sender_jid,omitempty"` // required for group chats
+}

@@ -53,4 +53,11 @@ func (s *Server) registerHandlers() {
 	http.HandleFunc("/api/webhooks", CorsMiddleware(s.handleWebhooks))
 	http.HandleFunc("/api/webhooks/", CorsMiddleware(s.handleWebhookByID))
 	http.HandleFunc("/api/webhook-logs", CorsMiddleware(s.handleWebhookLogs))
+
+	// Phase 1 features: Reactions, Edit, Delete, Group Info, Mark Read
+	http.HandleFunc("/api/reaction", CorsMiddleware(s.handleReaction))
+	http.HandleFunc("/api/edit", CorsMiddleware(s.handleEditMessage))
+	http.HandleFunc("/api/delete", CorsMiddleware(s.handleDeleteMessage))
+	http.HandleFunc("/api/group/", CorsMiddleware(s.handleGetGroupInfo))
+	http.HandleFunc("/api/read", CorsMiddleware(s.handleMarkRead))
 }

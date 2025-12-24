@@ -382,6 +382,37 @@ docker-compose exec whatsapp-bridge sqlite3 /app/store/messages.db .backup backu
 - **Memory Issues**: Increase container memory limits in docker-compose.yml
 - **Storage Issues**: Ensure sufficient disk space for databases
 
+#### Connection Issues (Messages Not Delivering)
+
+**Symptom**: API returns `{"success":true}` but messages show single checkmark (✓) and never deliver.
+
+**Cause**: Bridge lost WebSocket connection to WhatsApp. Check logs for DNS errors:
+```
+lookup web.whatsapp.com on 127.0.0.11:53: no such host
+```
+
+**Diagnosis**:
+```bash
+# Check for connection errors
+docker-compose logs whatsapp-bridge | grep -i "error\|disconnect"
+```
+
+**Fix**: Restart the bridge container:
+```bash
+docker-compose restart whatsapp-bridge
+
+# Verify reconnection
+docker-compose logs --tail=10 whatsapp-bridge
+# Should see: "✓ Connected to WhatsApp!"
+```
+
+**Test the connection**:
+```bash
+curl -X POST http://localhost:8180/api/send \
+  -H "Content-Type: application/json" \
+  -d '{"recipient": "PHONE@s.whatsapp.net", "message": "test"}'
+```
+
 #### Webhook Problems
 - **Delivery Failures**: Check webhook endpoint accessibility and SSL certificates
 - **Authentication Errors**: Verify HMAC signature implementation
@@ -428,3 +459,41 @@ For support and questions:
 
 ---
 
+
+## 🔄 Updating WhatsApp Client Library
+
+If you see this error in bridge logs:
+```
+Client outdated (405) connect failure (client version: X.XXXX.XXXXXXXXXX)
+```
+
+The `whatsmeow` library needs updating. WhatsApp periodically deprecates old client versions.
+
+### Fix Steps
+
+```bash
+cd whatsapp-bridge
+
+# Update whatsmeow to latest
+go get -u go.mau.fi/whatsmeow@latest
+
+# Update all dependencies
+go mod tidy
+
+# Rebuild container
+cd ..
+docker-compose build whatsapp-bridge
+docker-compose up -d whatsapp-bridge
+```
+
+### Handling Breaking Changes
+
+New whatsmeow versions may have API changes. Common issues:
+
+| Error | Fix |
+|-------|-----|
+| `not enough arguments in call to GetGroupInfo` | Add `context.Background()` as first param |
+| `not enough arguments in call to GetUserInfo` | Add `context.Context` as first param |
+| `undefined: types.XXX` | Check if type moved to different package |
+
+If build fails, check [whatsmeow releases](https://github.com/tulir/whatsmeow/releases) for migration notes.

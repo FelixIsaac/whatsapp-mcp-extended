@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"whatsapp-bridge/internal/database"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
 )
@@ -196,4 +198,125 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 	)
 
 	return true, fmt.Sprintf("Message sent to %s", recipient)
+}
+
+// SendReaction sends an emoji reaction to a message
+func (c *Client) SendReaction(chatJID, messageID, emoji string) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	msgID := types.MessageID(messageID)
+	senderJID := c.Store.ID.ToNonAD()
+
+	msg := c.Client.BuildReaction(chat, senderJID, msgID, emoji)
+	_, err = c.Client.SendMessage(context.Background(), chat, msg)
+	if err != nil {
+		return fmt.Errorf("failed to send reaction: %v", err)
+	}
+
+	return nil
+}
+
+// EditMessage edits a previously sent message
+func (c *Client) EditMessage(chatJID, messageID, newContent string) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	msgID := types.MessageID(messageID)
+
+	newMsg := &waE2E.Message{
+		Conversation: proto.String(newContent),
+	}
+	msg := c.Client.BuildEdit(chat, msgID, newMsg)
+	_, err = c.Client.SendMessage(context.Background(), chat, msg)
+	if err != nil {
+		return fmt.Errorf("failed to edit message: %v", err)
+	}
+
+	return nil
+}
+
+// DeleteMessage revokes/deletes a message
+func (c *Client) DeleteMessage(chatJID, messageID, senderJID string) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	msgID := types.MessageID(messageID)
+
+	var sender types.JID
+	if senderJID == "" {
+		sender = c.Store.ID.ToNonAD() // own message
+	} else {
+		sender, err = types.ParseJID(senderJID)
+		if err != nil {
+			return fmt.Errorf("invalid sender JID: %v", err)
+		}
+	}
+
+	msg := c.Client.BuildRevoke(chat, sender, msgID)
+	_, err = c.Client.SendMessage(context.Background(), chat, msg)
+	if err != nil {
+		return fmt.Errorf("failed to delete message: %v", err)
+	}
+
+	return nil
+}
+
+// GetGroupInfo retrieves group metadata
+func (c *Client) GetGroupInfo(groupJID string) (*types.GroupInfo, error) {
+	if !c.IsConnected() {
+		return nil, fmt.Errorf("not connected to WhatsApp")
+	}
+
+	jid, err := types.ParseJID(groupJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid group JID: %v", err)
+	}
+
+	return c.Client.GetGroupInfo(context.Background(), jid)
+}
+
+// MarkMessagesRead marks messages as read
+func (c *Client) MarkMessagesRead(chatJID string, messageIDs []string, senderJID string) error {
+	if !c.IsConnected() {
+		return fmt.Errorf("not connected to WhatsApp")
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	ids := make([]types.MessageID, len(messageIDs))
+	for i, id := range messageIDs {
+		ids[i] = types.MessageID(id)
+	}
+
+	var sender types.JID
+	if senderJID != "" {
+		sender, err = types.ParseJID(senderJID)
+		if err != nil {
+			return fmt.Errorf("invalid sender JID: %v", err)
+		}
+	}
+
+	return c.Client.MarkRead(context.Background(), ids, time.Now(), chat, sender)
 }

@@ -8,15 +8,25 @@ import requests
 import json
 import audio
 
-MESSAGES_DB_PATH = os.path.join('/app', 'store', 'messages.db')
-# MESSAGES_DB_PATH = "/home/ubuntu/docker/whatsapp-mcp/store/messages.db"
-WHATSAPP_DB_PATH = os.path.join('/app', 'store', 'whatsapp.db')
-# WHATSAPP_DB_PATH = "/home/ubuntu/docker/whatsapp-mcp/store/whatsapp.db"
+# Database paths - check for Docker (/app) or local development
+if os.path.exists('/app/store'):
+    # Docker environment
+    MESSAGES_DB_PATH = '/app/store/messages.db'
+    WHATSAPP_DB_PATH = '/app/store/whatsapp.db'
+else:
+    # Local development - use relative path from project root
+    _store_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'store')
+    MESSAGES_DB_PATH = os.path.join(_store_path, 'messages.db')
+    WHATSAPP_DB_PATH = os.path.join(_store_path, 'whatsapp.db')
 
 
-# Use environment variable for bridge host, default to localhost for development
-BRIDGE_HOST = os.getenv('BRIDGE_HOST', 'localhost')
-WHATSAPP_API_BASE_URL = f"http://{BRIDGE_HOST}:8080/api"
+# Use environment variable for bridge host, default to localhost:8080 for development
+# BRIDGE_HOST can be "hostname" (uses :8080) or "hostname:port" (uses specified port)
+_bridge_host = os.getenv('BRIDGE_HOST', 'localhost:8080')
+if ':' not in _bridge_host:
+    _bridge_host = f"{_bridge_host}:8080"
+BRIDGE_HOST = _bridge_host
+WHATSAPP_API_BASE_URL = f"http://{BRIDGE_HOST}/api"
 
 @dataclass
 class Message:
@@ -1122,18 +1132,198 @@ def list_contact_nicknames() -> List[Tuple[str, str]]:
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
-        
+
         cursor.execute("""
             SELECT jid, nickname
             FROM contact_nicknames
             ORDER BY nickname
         """)
-        
+
         return cursor.fetchall()
-        
+
     except sqlite3.Error as e:
         print(f"Database error: {e}")
         return []
     finally:
         if 'conn' in locals():
             conn.close()
+
+
+# Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read
+
+def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Tuple[bool, str]:
+    """Send an emoji reaction to a message.
+
+    Args:
+        chat_jid: The JID of the chat containing the message
+        message_id: The ID of the message to react to
+        emoji: The emoji to react with (empty string to remove reaction)
+
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/reaction"
+        payload = {
+            "chat_jid": chat_jid,
+            "message_id": message_id,
+            "emoji": emoji
+        }
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("success", False), result.get("message", "Unknown response")
+        else:
+            return False, f"Error: HTTP {response.status_code} - {response.text}"
+
+    except requests.RequestException as e:
+        return False, f"Request error: {str(e)}"
+    except json.JSONDecodeError:
+        return False, f"Error parsing response: {response.text}"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
+
+
+def edit_message(chat_jid: str, message_id: str, new_content: str) -> Tuple[bool, str]:
+    """Edit a previously sent message.
+
+    Args:
+        chat_jid: The JID of the chat containing the message
+        message_id: The ID of the message to edit
+        new_content: The new message content
+
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/edit"
+        payload = {
+            "chat_jid": chat_jid,
+            "message_id": message_id,
+            "new_content": new_content
+        }
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("success", False), result.get("message", "Unknown response")
+        else:
+            return False, f"Error: HTTP {response.status_code} - {response.text}"
+
+    except requests.RequestException as e:
+        return False, f"Request error: {str(e)}"
+    except json.JSONDecodeError:
+        return False, f"Error parsing response: {response.text}"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
+
+
+def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = None) -> Tuple[bool, str]:
+    """Delete/revoke a message.
+
+    Args:
+        chat_jid: The JID of the chat containing the message
+        message_id: The ID of the message to delete
+        sender_jid: Optional sender JID for admin revoking others' messages in groups
+
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/delete"
+        payload = {
+            "chat_jid": chat_jid,
+            "message_id": message_id
+        }
+        if sender_jid:
+            payload["sender_jid"] = sender_jid
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("success", False), result.get("message", "Unknown response")
+        else:
+            return False, f"Error: HTTP {response.status_code} - {response.text}"
+
+    except requests.RequestException as e:
+        return False, f"Request error: {str(e)}"
+    except json.JSONDecodeError:
+        return False, f"Error parsing response: {response.text}"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
+
+
+def get_group_info(group_jid: str) -> Optional[dict]:
+    """Get information about a WhatsApp group.
+
+    Args:
+        group_jid: The JID of the group (e.g., "123456789@g.us")
+
+    Returns:
+        Dictionary with group info or None if failed
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/group/{group_jid}"
+
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("success", False):
+                return result.get("data")
+            else:
+                print(f"Failed to get group info: {result.get('message', 'Unknown error')}")
+                return None
+        else:
+            print(f"Error: HTTP {response.status_code} - {response.text}")
+            return None
+
+    except requests.RequestException as e:
+        print(f"Request error: {str(e)}")
+        return None
+    except json.JSONDecodeError:
+        print(f"Error parsing response: {response.text}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return None
+
+
+def mark_messages_read(chat_jid: str, message_ids: List[str], sender_jid: Optional[str] = None) -> Tuple[bool, str]:
+    """Mark messages as read.
+
+    Args:
+        chat_jid: The JID of the chat containing the messages
+        message_ids: List of message IDs to mark as read
+        sender_jid: Optional sender JID (required for group chats)
+
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/read"
+        payload = {
+            "chat_jid": chat_jid,
+            "message_ids": message_ids
+        }
+        if sender_jid:
+            payload["sender_jid"] = sender_jid
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return result.get("success", False), result.get("message", "Unknown response")
+        else:
+            return False, f"Error: HTTP {response.status_code} - {response.text}"
+
+    except requests.RequestException as e:
+        return False, f"Request error: {str(e)}"
+    except json.JSONDecodeError:
+        return False, f"Error parsing response: {response.text}"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"

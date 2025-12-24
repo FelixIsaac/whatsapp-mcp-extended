@@ -300,3 +300,175 @@ func (s *Server) handleWebhookLogs(w http.ResponseWriter, r *http.Request) {
 		"data":    logs,
 	})
 }
+
+// handleReaction handles emoji reactions to messages
+func (s *Server) handleReaction(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.ReactionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" || req.MessageID == "" {
+		SendJSONError(w, "chat_jid and message_id are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.client.SendReaction(req.ChatJID, req.MessageID, req.Emoji); err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to send reaction: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Reaction sent",
+	})
+}
+
+// handleEditMessage handles editing previously sent messages
+func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.EditMessageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" || req.MessageID == "" || req.NewContent == "" {
+		SendJSONError(w, "chat_jid, message_id, and new_content are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.client.EditMessage(req.ChatJID, req.MessageID, req.NewContent); err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to edit message: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Message edited",
+	})
+}
+
+// handleDeleteMessage handles deleting/revoking messages
+func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.DeleteMessageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" || req.MessageID == "" {
+		SendJSONError(w, "chat_jid and message_id are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.client.DeleteMessage(req.ChatJID, req.MessageID, req.SenderJID); err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to delete message: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Message deleted",
+	})
+}
+
+// handleGetGroupInfo handles getting group information
+func (s *Server) handleGetGroupInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Parse group JID from URL path: /api/group/{jid}
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/group/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		SendJSONError(w, "Group JID is required", http.StatusBadRequest)
+		return
+	}
+
+	groupJID := pathParts[0]
+
+	groupInfo, err := s.client.GetGroupInfo(groupJID)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to get group info: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert participants to a more JSON-friendly format
+	participants := make([]map[string]interface{}, len(groupInfo.Participants))
+	for i, p := range groupInfo.Participants {
+		participants[i] = map[string]interface{}{
+			"jid":      p.JID.String(),
+			"is_admin": p.IsAdmin,
+			"is_owner": p.IsSuperAdmin,
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data": map[string]interface{}{
+			"jid":               groupInfo.JID.String(),
+			"name":              groupInfo.Name,
+			"topic":             groupInfo.Topic,
+			"owner_jid":         groupInfo.OwnerJID.String(),
+			"participant_count": len(groupInfo.Participants),
+			"participants":      participants,
+			"created_at":        groupInfo.GroupCreated,
+		},
+	})
+}
+
+// handleMarkRead handles marking messages as read
+func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.MarkReadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" || len(req.MessageIDs) == 0 {
+		SendJSONError(w, "chat_jid and message_ids are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.client.MarkMessagesRead(req.ChatJID, req.MessageIDs, req.SenderJID); err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to mark messages as read: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Messages marked as read",
+	})
+}
