@@ -266,9 +266,11 @@ def set_nickname(jid: str, nickname: str) -> Dict[str, Any]:
     Args:
         jid: The JID of the contact
         nickname: The custom nickname to set
+
+    Returns:
+        A dictionary containing success, jid, nickname, and updated_at
     """
-    success, message = whatsapp_set_contact_nickname(jid, nickname)
-    return {"success": success, "message": message}
+    return whatsapp_set_contact_nickname(jid, nickname)
 
 @mcp.tool()
 def get_nickname(jid: str) -> str:
@@ -288,21 +290,20 @@ def remove_nickname(jid: str) -> Dict[str, Any]:
 
     Args:
         jid: The JID of the contact
+
+    Returns:
+        A dictionary containing success and jid
     """
-    success, message = whatsapp_remove_contact_nickname(jid)
-    return {"success": success, "message": message}
+    return whatsapp_remove_contact_nickname(jid)
 
 @mcp.tool()
-def list_nicknames() -> str:
-    """List all custom contact nicknames."""
-    nicknames = whatsapp_list_contact_nicknames()
-    if not nicknames:
-        return "No custom nicknames set."
+def list_nicknames() -> List[Dict[str, Any]]:
+    """List all custom contact nicknames.
 
-    result = f"Found {len(nicknames)} nickname(s):\n\n"
-    for jid, nickname in nicknames:
-        result += f"  {nickname} → {jid}\n"
-    return result
+    Returns:
+        List of dicts with jid, nickname, created_at, updated_at
+    """
+    return whatsapp_list_contact_nicknames()
 
 
 # Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read

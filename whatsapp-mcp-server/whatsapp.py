@@ -1134,23 +1134,38 @@ def format_contact_info(contact: Contact) -> str:
     
     return output
 
-def set_contact_nickname(jid: str, nickname: str) -> Tuple[bool, str]:
-    """Set a custom nickname for a contact."""
+def set_contact_nickname(jid: str, nickname: str) -> Dict[str, Any]:
+    """Set a custom nickname for a contact.
+
+    Returns:
+        Structured dict with success, jid, nickname, updated_at
+    """
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
-        
+
         # Insert or update nickname
         cursor.execute("""
             INSERT OR REPLACE INTO contact_nicknames (jid, nickname, updated_at)
             VALUES (?, ?, CURRENT_TIMESTAMP)
         """, (jid, nickname))
-        
+
         conn.commit()
-        return True, f"Nickname '{nickname}' set for contact {jid}"
-        
+
+        # Get the updated timestamp
+        cursor.execute("SELECT updated_at FROM contact_nicknames WHERE jid = ?", (jid,))
+        row = cursor.fetchone()
+        updated_at = row[0] if row else None
+
+        return {
+            "success": True,
+            "jid": jid,
+            "nickname": nickname,
+            "updated_at": updated_at
+        }
+
     except sqlite3.Error as e:
-        return False, f"Database error: {e}"
+        return {"success": False, "jid": jid, "error": str(e)}
     finally:
         if 'conn' in locals():
             conn.close()
@@ -1179,40 +1194,56 @@ def get_contact_nickname(jid: str) -> Optional[str]:
             conn.close()
 
 
-def remove_contact_nickname(jid: str) -> Tuple[bool, str]:
-    """Remove a contact's custom nickname."""
+def remove_contact_nickname(jid: str) -> Dict[str, Any]:
+    """Remove a contact's custom nickname.
+
+    Returns:
+        Structured dict with success, jid
+    """
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
-        
+
         cursor.execute("DELETE FROM contact_nicknames WHERE jid = ?", (jid,))
-        
+
         if cursor.rowcount > 0:
             conn.commit()
-            return True, f"Nickname removed for contact {jid}"
+            return {"success": True, "jid": jid}
         else:
-            return False, f"No nickname found for contact {jid}"
-        
+            return {"success": False, "jid": jid, "error": "No nickname found"}
+
     except sqlite3.Error as e:
-        return False, f"Database error: {e}"
+        return {"success": False, "jid": jid, "error": str(e)}
     finally:
         if 'conn' in locals():
             conn.close()
 
 
-def list_contact_nicknames() -> List[Tuple[str, str]]:
-    """List all custom contact nicknames."""
+def list_contact_nicknames() -> List[Dict[str, Any]]:
+    """List all custom contact nicknames with timestamps.
+
+    Returns:
+        List of dicts with jid, nickname, created_at, updated_at
+    """
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT jid, nickname
+            SELECT jid, nickname, created_at, updated_at
             FROM contact_nicknames
             ORDER BY nickname
         """)
 
-        return cursor.fetchall()
+        return [
+            {
+                "jid": row[0],
+                "nickname": row[1],
+                "created_at": row[2],
+                "updated_at": row[3]
+            }
+            for row in cursor.fetchall()
+        ]
 
     except sqlite3.Error as e:
         print(f"Database error: {e}")

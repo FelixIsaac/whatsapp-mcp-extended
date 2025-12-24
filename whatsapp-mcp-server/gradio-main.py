@@ -299,14 +299,12 @@ def list_all_contacts(limit: str = "100") -> str:
 @mcp.tool()
 def set_contact_nickname(jid: str, nickname: str) -> str:
     """Set a custom nickname for a contact.
-    
+
     Parameters:
     - jid: WhatsApp JID of the contact
     - nickname: Custom nickname to set for the contact
     """
-    success, message = whatsapp_set_contact_nickname(jid, nickname)
-    result = {"success": success, "message": message}
-    return str(result)
+    return str(whatsapp_set_contact_nickname(jid, nickname))
 
 
 @mcp.tool()
@@ -324,25 +322,21 @@ def get_contact_nickname(jid: str) -> str:
 @mcp.tool()
 def remove_contact_nickname(jid: str) -> str:
     """Remove a contact's custom nickname.
-    
+
     Parameters:
     - jid: WhatsApp JID of the contact
     """
-    success, message = whatsapp_remove_contact_nickname(jid)
-    result = {"success": success, "message": message}
-    return str(result)
+    return str(whatsapp_remove_contact_nickname(jid))
 
 
 @mcp.tool()
 def list_contact_nicknames() -> str:
-    """List all custom contact nicknames.
+    """List all custom contact nicknames with timestamps.
 
     Parameters:
     None required
     """
-    nicknames = whatsapp_list_contact_nicknames()
-    result = [{"jid": jid, "nickname": nickname} for jid, nickname in nicknames]
-    return str(result)
+    return str(whatsapp_list_contact_nicknames())
 
 
 # Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read
