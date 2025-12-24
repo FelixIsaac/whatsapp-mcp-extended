@@ -151,7 +151,7 @@ func (c *Client) SetPresence(presence string) error {
 	default:
 		return fmt.Errorf("invalid presence: %s (must be 'available' or 'unavailable')", presence)
 	}
-	return c.SendPresence(p)
+	return c.SendPresence(context.Background(), p)
 }
 
 // SubscribePresence subscribes to presence updates for a specific user
@@ -160,7 +160,7 @@ func (c *Client) SubscribeToPresence(jidStr string) error {
 	if err != nil {
 		return fmt.Errorf("invalid JID: %v", err)
 	}
-	return c.Client.SubscribePresence(jid)
+	return c.Client.SubscribePresence(context.Background(), jid)
 }
 
 // GetProfilePicture gets the profile picture URL for a user or group
@@ -174,7 +174,7 @@ func (c *Client) GetProfilePicture(jidStr string, preview bool) (*localTypes.Pro
 		Preview: preview,
 	}
 
-	info, err := c.GetProfilePictureInfo(jid, params)
+	info, err := c.GetProfilePictureInfo(context.Background(), jid, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get profile picture: %v", err)
 	}
@@ -193,7 +193,7 @@ func (c *Client) GetProfilePicture(jidStr string, preview bool) (*localTypes.Pro
 
 // GetBlockedUsers returns the list of blocked users
 func (c *Client) GetBlockedUsers() ([]localTypes.BlockedUser, error) {
-	blocklist, err := c.GetBlocklist()
+	blocklist, err := c.GetBlocklist(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blocklist: %v", err)
 	}
@@ -222,7 +222,7 @@ func (c *Client) UpdateBlockedUser(jidStr string, action string) error {
 		return fmt.Errorf("invalid action: %s (must be 'block' or 'unblock')", action)
 	}
 
-	_, err = c.UpdateBlocklist(jid, blockAction)
+	_, err = c.UpdateBlocklist(context.Background(), jid, blockAction)
 	if err != nil {
 		return fmt.Errorf("failed to update blocklist: %v", err)
 	}
@@ -235,7 +235,7 @@ func (c *Client) FollowNewsletterChannel(jidStr string) error {
 	if err != nil {
 		return fmt.Errorf("invalid JID: %v", err)
 	}
-	return c.FollowNewsletter(jid)
+	return c.FollowNewsletter(context.Background(), jid)
 }
 
 // UnfollowNewsletterChannel unfollows a newsletter/channel
@@ -244,7 +244,7 @@ func (c *Client) UnfollowNewsletterChannel(jidStr string) error {
 	if err != nil {
 		return fmt.Errorf("invalid JID: %v", err)
 	}
-	return c.UnfollowNewsletter(jid)
+	return c.UnfollowNewsletter(context.Background(), jid)
 }
 
 // CreateNewsletterChannel creates a new newsletter/channel
@@ -254,7 +254,7 @@ func (c *Client) CreateNewsletterChannel(name, description string) (*localTypes.
 		Description: description,
 	}
 
-	meta, err := c.CreateNewsletter(params)
+	meta, err := c.CreateNewsletter(context.Background(), params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create newsletter: %v", err)
 	}

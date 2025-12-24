@@ -507,7 +507,7 @@ func (c *Client) SetGroupName(groupJID string, name string) error {
 		return fmt.Errorf("invalid group JID: %v", err)
 	}
 
-	return c.Client.SetGroupName(group, name)
+	return c.Client.SetGroupName(context.Background(), group, name)
 }
 
 // SetGroupTopic updates the group description/topic
@@ -521,7 +521,7 @@ func (c *Client) SetGroupTopic(groupJID string, topic string) error {
 		return fmt.Errorf("invalid group JID: %v", err)
 	}
 
-	return c.Client.SetGroupTopic(group, "", "", topic)
+	return c.Client.SetGroupTopic(context.Background(), group, "", "", topic)
 }
 
 // Phase 3: Polls

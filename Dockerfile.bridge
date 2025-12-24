@@ -13,13 +13,12 @@ COPY ./whatsapp-bridge /app/whatsapp-bridge
 
 # Build the Go WhatsApp bridge
 WORKDIR /app/whatsapp-bridge
-RUN go mod download
-RUN go build -o whatsapp-bridge
+RUN go mod download && go build -o whatsapp-bridge
 
 FROM debian:bullseye-slim AS runtime
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -29,20 +28,15 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-# Copy the GO exec from the previous stage
-RUN mkdir -p /app/whatsapp-bridge
+# Copy the GO exec from the previous stage and set up directories
+RUN mkdir -p /app/whatsapp-bridge /app/store /app/media
 COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge/whatsapp-bridge
-RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge
 
-# Create directories for persistent storage
-RUN mkdir -p /app/store /app/media
-
-# Create entrypoint script for bridge
-RUN echo '#!/bin/bash\ncd /app/whatsapp-bridge\n./whatsapp-bridge' > /app/entrypoint-bridge.sh
-RUN chmod +x /app/entrypoint-bridge.sh
-
-# Set ownership to non-root user
-RUN chown -R appuser:appuser /app
+# Create entrypoint script and set permissions
+RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge \
+    && printf '#!/bin/bash\ncd /app/whatsapp-bridge\n./whatsapp-bridge\n' > /app/entrypoint-bridge.sh \
+    && chmod +x /app/entrypoint-bridge.sh \
+    && chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
