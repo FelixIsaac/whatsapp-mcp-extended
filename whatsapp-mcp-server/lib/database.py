@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from .models import Chat, Contact, Message, MessageContext
-from .utils import MESSAGES_DB_PATH, WHATSAPP_DB_PATH, logger
+from .utils import MESSAGES_DB_PATH, WHATSAPP_DB_PATH, get_sender_name, logger
 
 
 class DatabaseError(Exception):
@@ -52,7 +52,8 @@ def list_messages(
         query_parts = [
             "SELECT messages.timestamp, messages.sender, chats.name, "
             "messages.content, messages.is_from_me, chats.jid, messages.id, "
-            "messages.media_type, messages.filename, messages.file_length FROM messages"
+            "messages.media_type, messages.filename, messages.file_length, "
+            "messages.sender_name FROM messages"
         ]
         query_parts.append("JOIN chats ON messages.chat_jid = chats.jid")
         where_clauses = []
@@ -99,6 +100,8 @@ def list_messages(
 
         result = []
         for msg in messages:
+            # Use stored sender_name if available, otherwise fallback to lookup
+            sender_name = msg[10] if msg[10] else get_sender_name(msg[1])
             message = Message(
                 timestamp=datetime.fromisoformat(msg[0]),
                 sender=msg[1],
@@ -109,7 +112,8 @@ def list_messages(
                 id=msg[6],
                 media_type=msg[7],
                 filename=msg[8],
-                file_length=msg[9]
+                file_length=msg[9],
+                sender_name=sender_name
             )
             result.append(message)
 
@@ -163,7 +167,8 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
         cursor.execute("""
             SELECT messages.timestamp, messages.sender, chats.name, messages.content,
                    messages.is_from_me, chats.jid, messages.id, messages.chat_jid,
-                   messages.media_type, messages.filename, messages.file_length
+                   messages.media_type, messages.filename, messages.file_length,
+                   messages.sender_name
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
             WHERE messages.id = ?
@@ -173,6 +178,8 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
         if not msg_data:
             raise ValueError(f"Message with ID {message_id} not found")
 
+        # Use stored sender_name if available, otherwise fallback to lookup
+        sender_name = msg_data[11] if msg_data[11] else get_sender_name(msg_data[1])
         target_message = Message(
             timestamp=datetime.fromisoformat(msg_data[0]),
             sender=msg_data[1],
@@ -183,14 +190,15 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
             id=msg_data[6],
             media_type=msg_data[8],
             filename=msg_data[9],
-            file_length=msg_data[10]
+            file_length=msg_data[10],
+            sender_name=sender_name
         )
 
         # Get messages before
         cursor.execute("""
             SELECT messages.timestamp, messages.sender, chats.name, messages.content,
                    messages.is_from_me, chats.jid, messages.id, messages.media_type,
-                   messages.filename, messages.file_length
+                   messages.filename, messages.file_length, messages.sender_name
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
             WHERE messages.chat_jid = ? AND messages.timestamp < ?
@@ -203,7 +211,8 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
                 timestamp=datetime.fromisoformat(msg[0]),
                 sender=msg[1], chat_name=msg[2], content=msg[3],
                 is_from_me=msg[4], chat_jid=msg[5], id=msg[6],
-                media_type=msg[7], filename=msg[8], file_length=msg[9]
+                media_type=msg[7], filename=msg[8], file_length=msg[9],
+                sender_name=msg[10] if msg[10] else get_sender_name(msg[1])
             )
             for msg in cursor.fetchall()
         ]
@@ -212,7 +221,7 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
         cursor.execute("""
             SELECT messages.timestamp, messages.sender, chats.name, messages.content,
                    messages.is_from_me, chats.jid, messages.id, messages.media_type,
-                   messages.filename, messages.file_length
+                   messages.filename, messages.file_length, messages.sender_name
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
             WHERE messages.chat_jid = ? AND messages.timestamp > ?
@@ -225,7 +234,8 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
                 timestamp=datetime.fromisoformat(msg[0]),
                 sender=msg[1], chat_name=msg[2], content=msg[3],
                 is_from_me=msg[4], chat_jid=msg[5], id=msg[6],
-                media_type=msg[7], filename=msg[8], file_length=msg[9]
+                media_type=msg[7], filename=msg[8], file_length=msg[9],
+                sender_name=msg[10] if msg[10] else get_sender_name(msg[1])
             )
             for msg in cursor.fetchall()
         ]
@@ -270,16 +280,16 @@ def list_chats(
         if include_last_message:
             query_sql = """
                 SELECT c.jid, c.name,
-                       m.timestamp, m.content, m.id, m.sender, m.is_from_me
+                       m.timestamp, m.content, m.id, m.sender, m.is_from_me, m.sender_name
                 FROM chats c
                 LEFT JOIN (
-                    SELECT chat_jid, timestamp, content, id, sender, is_from_me,
+                    SELECT chat_jid, timestamp, content, id, sender, is_from_me, sender_name,
                            ROW_NUMBER() OVER (PARTITION BY chat_jid ORDER BY timestamp DESC) as rn
                     FROM messages
                 ) m ON c.jid = m.chat_jid AND m.rn = 1
             """
         else:
-            query_sql = "SELECT jid, name, NULL, NULL, NULL, NULL, NULL FROM chats"
+            query_sql = "SELECT jid, name, NULL, NULL, NULL, NULL, NULL, NULL FROM chats"
 
         where_clauses = []
         params: list[Any] = []
@@ -305,6 +315,10 @@ def list_chats(
 
         result = []
         for chat in chats:
+            # Use stored sender_name if available, otherwise fallback to lookup
+            last_sender_name = None
+            if chat[5]:  # if there's a last_sender
+                last_sender_name = chat[7] if chat[7] else get_sender_name(chat[5])
             chat_obj = Chat(
                 jid=chat[0],
                 name=chat[1],
@@ -312,6 +326,7 @@ def list_chats(
                 last_message=chat[3],
                 last_message_id=chat[4],
                 last_sender=chat[5],
+                last_sender_name=last_sender_name,
                 last_is_from_me=bool(chat[6]) if chat[6] is not None else None
             )
             result.append(chat_obj.to_dict())

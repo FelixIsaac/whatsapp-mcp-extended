@@ -48,7 +48,7 @@ func NewClientWithConfig(logger waLog.Logger, cfg *config.Config) (*Client, erro
 		FullSyncDaysLimit:              proto.Uint32(cfg.HistorySyncDaysLimit),
 		FullSyncSizeMbLimit:            proto.Uint32(cfg.HistorySyncSizeMB),
 		StorageQuotaMb:                 proto.Uint32(cfg.StorageQuotaMB),
-		InlineInitialPayloadInE2EeMsg: proto.Bool(true),
+		InlineInitialPayloadInE2EeMsg:  proto.Bool(true),
 		SupportCallLogHistory:          proto.Bool(false),
 		SupportBotUserAgentChatHistory: proto.Bool(true),
 		SupportCagReactionsAndPolls:    proto.Bool(true),
@@ -261,7 +261,7 @@ func (c *Client) CreateNewsletterChannel(name, description string) (*localTypes.
 
 	return &localTypes.NewsletterInfo{
 		JID:         meta.ID.String(),
-		Name:        meta.Name,
-		Description: meta.Description,
+		Name:        meta.ThreadMeta.Name.Text,
+		Description: meta.ThreadMeta.Description.Text,
 	}, nil
 }

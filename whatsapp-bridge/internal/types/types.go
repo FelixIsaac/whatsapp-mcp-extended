@@ -6,12 +6,13 @@ import (
 
 // Message represents a chat message for our client
 type Message struct {
-	Time      time.Time
-	Sender    string
-	Content   string
-	IsFromMe  bool
-	MediaType string
-	Filename  string
+	Time       time.Time
+	Sender     string
+	SenderName string
+	Content    string
+	IsFromMe   bool
+	MediaType  string
+	Filename   string
 }
 
 // WebhookConfig represents a webhook configuration
@@ -28,15 +29,15 @@ type WebhookConfig struct {
 
 // WebhookConfigResponse is the API response format with masked secret
 type WebhookConfigResponse struct {
-	ID          int              `json:"id"`
-	Name        string           `json:"name"`
-	WebhookURL  string           `json:"webhook_url"`
-	HasSecret   bool             `json:"has_secret"`
-	SecretHint  string           `json:"secret_hint,omitempty"`
-	Enabled     bool             `json:"enabled"`
-	CreatedAt   time.Time        `json:"created_at"`
-	UpdatedAt   time.Time        `json:"updated_at"`
-	Triggers    []WebhookTrigger `json:"triggers"`
+	ID         int              `json:"id"`
+	Name       string           `json:"name"`
+	WebhookURL string           `json:"webhook_url"`
+	HasSecret  bool             `json:"has_secret"`
+	SecretHint string           `json:"secret_hint,omitempty"`
+	Enabled    bool             `json:"enabled"`
+	CreatedAt  time.Time        `json:"created_at"`
+	UpdatedAt  time.Time        `json:"updated_at"`
+	Triggers   []WebhookTrigger `json:"triggers"`
 }
 
 // MaskSecret returns a masked version of a secret token
@@ -258,10 +259,10 @@ type SubscribePresenceRequest struct {
 
 // PresenceInfo represents presence information for a contact
 type PresenceInfo struct {
-	JID         string `json:"jid"`
-	Available   bool   `json:"available"`
-	LastSeen    string `json:"last_seen,omitempty"` // ISO-8601 or empty
-	LastSeenUnix int64 `json:"last_seen_unix,omitempty"`
+	JID          string `json:"jid"`
+	Available    bool   `json:"available"`
+	LastSeen     string `json:"last_seen,omitempty"` // ISO-8601 or empty
+	LastSeenUnix int64  `json:"last_seen_unix,omitempty"`
 }
 
 // GetProfilePictureRequest represents request to get profile picture

@@ -16,6 +16,7 @@ class Message:
     chat_jid: str
     id: str
     chat_name: str | None = None
+    sender_name: str | None = None
     media_type: str | None = None
     filename: str | None = None
     file_length: int | None = None
@@ -27,6 +28,7 @@ class Message:
             "chat_jid": self.chat_jid,
             "chat_name": self.chat_name,
             "sender": self.sender,
+            "sender_name": self.sender_name,
             "content": self.content,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "is_from_me": self.is_from_me,
@@ -49,6 +51,7 @@ class Chat:
     last_message: str | None = None
     last_message_id: str | None = None
     last_sender: str | None = None
+    last_sender_name: str | None = None
     last_is_from_me: bool | None = None
 
     @property
@@ -66,6 +69,7 @@ class Chat:
             "last_message": self.last_message,
             "last_message_id": self.last_message_id,
             "last_sender": self.last_sender,
+            "last_sender_name": self.last_sender_name,
             "last_is_from_me": self.last_is_from_me,
         }
 

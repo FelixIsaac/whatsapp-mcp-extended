@@ -1,7 +1,9 @@
 package database
 
 import (
+	"database/sql"
 	"time"
+
 	"whatsapp-bridge/internal/types"
 )
 
@@ -15,18 +17,23 @@ func (store *MessageStore) StoreChat(jid, name string, lastMessageTime time.Time
 }
 
 // StoreMessage stores a message in the database
-func (store *MessageStore) StoreMessage(id, chatJID, sender, content string, timestamp time.Time, isFromMe bool,
+func (store *MessageStore) StoreMessage(id, chatJID, sender, senderName, content string, timestamp time.Time, isFromMe bool,
 	mediaType, filename, url string, mediaKey, fileSHA256, fileEncSHA256 []byte, fileLength uint64) error {
 	// Only store if there's actual content or media
 	if content == "" && mediaType == "" {
 		return nil
 	}
 
+	// Use sender JID as fallback if senderName is empty
+	if senderName == "" {
+		senderName = sender
+	}
+
 	_, err := store.db.Exec(
-		`INSERT OR REPLACE INTO messages 
-		(id, chat_jid, sender, content, timestamp, is_from_me, media_type, filename, url, media_key, file_sha256, file_enc_sha256, file_length) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, chatJID, sender, content, timestamp, isFromMe, mediaType, filename, url, mediaKey, fileSHA256, fileEncSHA256, fileLength,
+		`INSERT OR REPLACE INTO messages
+		(id, chat_jid, sender, sender_name, content, timestamp, is_from_me, media_type, filename, url, media_key, file_sha256, file_enc_sha256, file_length)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, chatJID, sender, senderName, content, timestamp, isFromMe, mediaType, filename, url, mediaKey, fileSHA256, fileEncSHA256, fileLength,
 	)
 	return err
 }
@@ -34,7 +41,7 @@ func (store *MessageStore) StoreMessage(id, chatJID, sender, content string, tim
 // GetMessages gets messages from a chat
 func (store *MessageStore) GetMessages(chatJID string, limit int) ([]types.Message, error) {
 	rows, err := store.db.Query(
-		"SELECT sender, content, timestamp, is_from_me, media_type, filename FROM messages WHERE chat_jid = ? ORDER BY timestamp DESC LIMIT ?",
+		"SELECT sender, sender_name, content, timestamp, is_from_me, media_type, filename FROM messages WHERE chat_jid = ? ORDER BY timestamp DESC LIMIT ?",
 		chatJID, limit,
 	)
 	if err != nil {
@@ -46,11 +53,17 @@ func (store *MessageStore) GetMessages(chatJID string, limit int) ([]types.Messa
 	for rows.Next() {
 		var msg types.Message
 		var timestamp time.Time
-		err := rows.Scan(&msg.Sender, &msg.Content, &timestamp, &msg.IsFromMe, &msg.MediaType, &msg.Filename)
+		var senderName sql.NullString
+		err := rows.Scan(&msg.Sender, &senderName, &msg.Content, &timestamp, &msg.IsFromMe, &msg.MediaType, &msg.Filename)
 		if err != nil {
 			return nil, err
 		}
 		msg.Time = timestamp
+		if senderName.Valid {
+			msg.SenderName = senderName.String
+		} else {
+			msg.SenderName = msg.Sender // fallback to JID
+		}
 		messages = append(messages, msg)
 	}
 

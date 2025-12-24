@@ -232,6 +232,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		sendResp.ID, // Use the ID from SendResponse
 		recipientJID.String(),
 		c.Store.ID.User,       // Use the client's user ID as sender
+		c.Store.ID.User,       // SenderName - use our own user ID for sent messages
 		msg.GetConversation(), // Use the conversation text
 		sendResp.Timestamp,    // Use the Timestamp from SendResponse
 		true,                  // IsFromMe is true since we are sending this message
@@ -576,9 +577,11 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 
 	// Create MessageInfo for the oldest known message
 	msgInfo := &types.MessageInfo{
+		MessageSource: types.MessageSource{
+			Chat:     chat,
+			IsFromMe: oldestMsgFromMe,
+		},
 		ID:        types.MessageID(oldestMsgID),
-		Chat:      chat,
-		IsFromMe:  oldestMsgFromMe,
 		Timestamp: time.UnixMilli(oldestMsgTimestamp),
 	}
 
@@ -586,9 +589,9 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 	if chat.Server == "g.us" && !oldestMsgFromMe {
 		// For group chats, we'd need the sender JID
 		// This is a limitation - we might need to store sender info
-		msgInfo.Sender = chat // Use chat as placeholder
+		msgInfo.MessageSource.Sender = chat // Use chat as placeholder
 	} else {
-		msgInfo.Sender = c.Store.ID.ToNonAD()
+		msgInfo.MessageSource.Sender = c.Store.ID.ToNonAD()
 	}
 
 	// Build the history sync request

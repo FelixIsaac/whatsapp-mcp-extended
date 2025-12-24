@@ -121,11 +121,18 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 		return
 	}
 
+	// Get sender name (PushName from WhatsApp)
+	senderName := msg.Info.PushName
+	if senderName == "" {
+		senderName = sender // fallback to JID
+	}
+
 	// Store message in database
 	err = messageStore.StoreMessage(
 		msg.Info.ID,
 		chatJID,
 		sender,
+		senderName,
 		content,
 		msg.Info.Timestamp,
 		msg.Info.IsFromMe,
@@ -262,10 +269,14 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 					continue
 				}
 
+				// For history sync, use sender as senderName fallback (PushName not directly available)
+				senderName := sender
+
 				err = messageStore.StoreMessage(
 					msgID,
 					chatJID,
 					sender,
+					senderName,
 					content,
 					timestamp,
 					isFromMe,

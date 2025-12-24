@@ -33,7 +33,26 @@ func NewMessageStore() (*MessageStore, error) {
 		return nil, fmt.Errorf("failed to create tables: %v", err)
 	}
 
+	// Run migrations for existing databases
+	if err = runMigrations(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to run migrations: %v", err)
+	}
+
 	return &MessageStore{db: db}, nil
+}
+
+// runMigrations applies database migrations for schema updates
+func runMigrations(db *sql.DB) error {
+	// Add sender_name column if it doesn't exist (for existing databases)
+	_, err := db.Exec(`ALTER TABLE messages ADD COLUMN sender_name TEXT`)
+	if err != nil {
+		// Ignore error if column already exists (SQLite returns error for duplicate column)
+		if err.Error() != "duplicate column name: sender_name" {
+			// Log but don't fail - column might already exist
+		}
+	}
+	return nil
 }
 
 // createTables creates all necessary database tables
@@ -44,11 +63,12 @@ func createTables(db *sql.DB) error {
 			name TEXT,
 			last_message_time TIMESTAMP
 		);
-		
+
 		CREATE TABLE IF NOT EXISTS messages (
 			id TEXT,
 			chat_jid TEXT,
 			sender TEXT,
+			sender_name TEXT,
 			content TEXT,
 			timestamp TIMESTAMP,
 			is_from_me BOOLEAN,
