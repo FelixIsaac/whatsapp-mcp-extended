@@ -21,7 +21,7 @@ services:
   whatsapp-mcp:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile.mcp
     deploy:
       resources:
         limits:
