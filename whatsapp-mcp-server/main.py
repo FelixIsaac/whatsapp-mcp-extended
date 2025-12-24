@@ -43,6 +43,16 @@ from whatsapp import create_poll as whatsapp_create_poll
 # Phase 4: History Sync
 from whatsapp import request_chat_history as whatsapp_request_chat_history
 
+# Phase 5: Advanced Features
+from whatsapp import set_presence as whatsapp_set_presence
+from whatsapp import subscribe_presence as whatsapp_subscribe_presence
+from whatsapp import get_profile_picture as whatsapp_get_profile_picture
+from whatsapp import get_blocklist as whatsapp_get_blocklist
+from whatsapp import update_blocklist as whatsapp_update_blocklist
+from whatsapp import follow_newsletter as whatsapp_follow_newsletter
+from whatsapp import unfollow_newsletter as whatsapp_unfollow_newsletter
+from whatsapp import create_newsletter as whatsapp_create_newsletter
+
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
 
@@ -538,6 +548,127 @@ def request_history(
     return whatsapp_request_chat_history(
         chat_jid, oldest_msg_id, oldest_msg_timestamp, oldest_msg_from_me, count
     )
+
+
+# Phase 5: Advanced Features
+
+@mcp.tool()
+def set_presence(presence: str) -> dict[str, Any]:
+    """Set your own presence status (available/unavailable).
+
+    Args:
+        presence: Either "available" or "unavailable"
+
+    Returns:
+        A dictionary containing success status and presence
+    """
+    return whatsapp_set_presence(presence)
+
+
+@mcp.tool()
+def subscribe_presence(jid: str) -> dict[str, Any]:
+    """Subscribe to presence updates for a contact.
+
+    After subscribing, you'll receive presence events for this contact.
+    Note: Presence events arrive asynchronously via event handlers.
+
+    Args:
+        jid: The JID of the contact to subscribe to (e.g., "123456789@s.whatsapp.net")
+
+    Returns:
+        A dictionary containing success status
+    """
+    return whatsapp_subscribe_presence(jid)
+
+
+@mcp.tool()
+def get_profile_picture(jid: str, preview: bool = False) -> dict[str, Any]:
+    """Get the profile picture URL for a user or group.
+
+    Args:
+        jid: The JID of the user or group
+        preview: If True, get thumbnail instead of full resolution (default: False)
+
+    Returns:
+        A dictionary with url, id, type, direct_path (or has_picture=False if none)
+    """
+    return whatsapp_get_profile_picture(jid, preview)
+
+
+@mcp.tool()
+def get_blocklist() -> dict[str, Any]:
+    """Get the list of blocked users.
+
+    Returns:
+        A dictionary with users list and count
+    """
+    return whatsapp_get_blocklist()
+
+
+@mcp.tool()
+def block_user(jid: str) -> dict[str, Any]:
+    """Block a WhatsApp user.
+
+    Args:
+        jid: The JID of the user to block (e.g., "123456789@s.whatsapp.net")
+
+    Returns:
+        A dictionary containing success status
+    """
+    return whatsapp_update_blocklist(jid, "block")
+
+
+@mcp.tool()
+def unblock_user(jid: str) -> dict[str, Any]:
+    """Unblock a WhatsApp user.
+
+    Args:
+        jid: The JID of the user to unblock (e.g., "123456789@s.whatsapp.net")
+
+    Returns:
+        A dictionary containing success status
+    """
+    return whatsapp_update_blocklist(jid, "unblock")
+
+
+@mcp.tool()
+def follow_newsletter(jid: str) -> dict[str, Any]:
+    """Follow (join) a WhatsApp newsletter/channel.
+
+    Args:
+        jid: The JID of the newsletter to follow
+
+    Returns:
+        A dictionary containing success status
+    """
+    return whatsapp_follow_newsletter(jid)
+
+
+@mcp.tool()
+def unfollow_newsletter(jid: str) -> dict[str, Any]:
+    """Unfollow a WhatsApp newsletter/channel.
+
+    Args:
+        jid: The JID of the newsletter to unfollow
+
+    Returns:
+        A dictionary containing success status
+    """
+    return whatsapp_unfollow_newsletter(jid)
+
+
+@mcp.tool()
+def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
+    """Create a new WhatsApp newsletter/channel.
+
+    Args:
+        name: The name for the newsletter
+        description: Optional description for the newsletter
+
+    Returns:
+        A dictionary with jid, name, description of created newsletter
+    """
+    return whatsapp_create_newsletter(name, description)
 
 
 if __name__ == "__main__":

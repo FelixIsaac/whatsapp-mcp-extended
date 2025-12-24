@@ -75,4 +75,14 @@ func (s *Server) registerHandlers() {
 
 	// Phase 4: History Sync
 	http.HandleFunc("/api/history/request", CorsMiddleware(s.handleRequestHistory))
+
+	// Phase 5: Advanced Features
+	http.HandleFunc("/api/presence/set", CorsMiddleware(s.handleSetPresence))
+	http.HandleFunc("/api/presence/subscribe", CorsMiddleware(s.handleSubscribePresence))
+	http.HandleFunc("/api/profile-picture", CorsMiddleware(s.handleGetProfilePicture))
+	http.HandleFunc("/api/blocklist", CorsMiddleware(s.handleGetBlocklist))
+	http.HandleFunc("/api/blocklist/update", CorsMiddleware(s.handleUpdateBlocklist))
+	http.HandleFunc("/api/newsletter/follow", CorsMiddleware(s.handleFollowNewsletter))
+	http.HandleFunc("/api/newsletter/unfollow", CorsMiddleware(s.handleUnfollowNewsletter))
+	http.HandleFunc("/api/newsletter/create", CorsMiddleware(s.handleCreateNewsletter))
 }

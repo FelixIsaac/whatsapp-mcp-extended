@@ -81,8 +81,18 @@
 | `create_poll` | ❌ | ✅ |
 | **Phase 4 Features** | | |
 | `request_history` | ❌ | ✅ |
+| **Phase 5 Features** | | |
+| `set_presence` | ❌ | ✅ |
+| `subscribe_presence` | ❌ | ✅ |
+| `get_profile_picture` | ❌ | ✅ |
+| `get_blocklist` | ❌ | ✅ |
+| `block_user` | ❌ | ✅ |
+| `unblock_user` | ❌ | ✅ |
+| `follow_newsletter` | ❌ | ✅ |
+| `unfollow_newsletter` | ❌ | ✅ |
+| `create_newsletter` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 32 tools (extended)**
+**Total: 12 tools (whatsapp) → 41 tools (extended)**
 
 ---
 
@@ -296,6 +306,16 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
   - [x] `request_history` - Request older messages for a chat (on-demand sync)
   - [x] Configurable history sync via env vars (HISTORY_SYNC_DAYS_LIMIT, HISTORY_SYNC_SIZE_MB, STORAGE_QUOTA_MB)
   - [x] Research documented in `docs/HISTORY_SYNC_RESEARCH.md`
+- [x] **Phase 5 Advanced Features** (9 new MCP tools):
+  - [x] `set_presence` - Set own presence (available/unavailable)
+  - [x] `subscribe_presence` - Subscribe to contact presence updates
+  - [x] `get_profile_picture` - Get profile picture URL for user/group
+  - [x] `get_blocklist` - Get list of blocked users
+  - [x] `block_user` - Block a user
+  - [x] `unblock_user` - Unblock a user
+  - [x] `follow_newsletter` - Follow/join a WhatsApp channel
+  - [x] `unfollow_newsletter` - Unfollow a WhatsApp channel
+  - [x] `create_newsletter` - Create a new WhatsApp channel
 
 ---
 

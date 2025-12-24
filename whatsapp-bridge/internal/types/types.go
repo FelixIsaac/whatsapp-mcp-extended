@@ -204,3 +204,72 @@ type RequestHistoryRequest struct {
 	OldestMsgTimestamp int64  `json:"oldest_msg_timestamp"` // Unix milliseconds
 	Count              int    `json:"count"`                // Max 50
 }
+
+// Phase 5: Advanced Features
+
+// SetPresenceRequest represents request to set own presence
+type SetPresenceRequest struct {
+	Presence string `json:"presence"` // "available" or "unavailable"
+}
+
+// SubscribePresenceRequest represents request to subscribe to a contact's presence
+type SubscribePresenceRequest struct {
+	JID string `json:"jid"`
+}
+
+// PresenceInfo represents presence information for a contact
+type PresenceInfo struct {
+	JID         string `json:"jid"`
+	Available   bool   `json:"available"`
+	LastSeen    string `json:"last_seen,omitempty"` // ISO-8601 or empty
+	LastSeenUnix int64 `json:"last_seen_unix,omitempty"`
+}
+
+// GetProfilePictureRequest represents request to get profile picture
+type GetProfilePictureRequest struct {
+	JID     string `json:"jid"`
+	Preview bool   `json:"preview,omitempty"`
+}
+
+// ProfilePictureInfo represents profile picture information
+type ProfilePictureInfo struct {
+	URL        string `json:"url"`
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	DirectPath string `json:"direct_path,omitempty"`
+}
+
+// BlocklistRequest represents request to block/unblock a user
+type BlocklistRequest struct {
+	JID    string `json:"jid"`
+	Action string `json:"action"` // "block" or "unblock"
+}
+
+// BlockedUser represents a blocked user
+type BlockedUser struct {
+	JID string `json:"jid"`
+}
+
+// BlocklistResponse represents the blocklist response
+type BlocklistResponse struct {
+	Success bool          `json:"success"`
+	Users   []BlockedUser `json:"users"`
+}
+
+// NewsletterRequest represents request to follow/unfollow a newsletter
+type NewsletterRequest struct {
+	JID string `json:"jid"`
+}
+
+// CreateNewsletterRequest represents request to create a newsletter
+type CreateNewsletterRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// NewsletterInfo represents newsletter metadata
+type NewsletterInfo struct {
+	JID         string `json:"jid"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}

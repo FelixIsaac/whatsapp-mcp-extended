@@ -44,6 +44,16 @@ from whatsapp import create_poll as whatsapp_create_poll
 # Phase 4: History Sync
 from whatsapp import request_chat_history as whatsapp_request_chat_history
 
+# Phase 5: Advanced Features
+from whatsapp import set_presence as whatsapp_set_presence
+from whatsapp import subscribe_presence as whatsapp_subscribe_presence
+from whatsapp import get_profile_picture as whatsapp_get_profile_picture
+from whatsapp import get_blocklist as whatsapp_get_blocklist
+from whatsapp import update_blocklist as whatsapp_update_blocklist
+from whatsapp import follow_newsletter as whatsapp_follow_newsletter
+from whatsapp import unfollow_newsletter as whatsapp_unfollow_newsletter
+from whatsapp import create_newsletter as whatsapp_create_newsletter
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG if os.environ.get('DEBUG') == 'true' else logging.INFO,
@@ -525,6 +535,100 @@ def request_history(
     return str(whatsapp_request_chat_history(
         chat_jid, oldest_msg_id, oldest_msg_timestamp, oldest_msg_from_me, count
     ))
+
+
+# Phase 5: Advanced Features
+
+@mcp.tool()
+def set_presence(presence: str) -> str:
+    """Set your own presence status (available/unavailable).
+
+    Parameters:
+    - presence: Either "available" or "unavailable"
+    """
+    return str(whatsapp_set_presence(presence))
+
+
+@mcp.tool()
+def subscribe_presence(jid: str) -> str:
+    """Subscribe to presence updates for a contact.
+
+    Parameters:
+    - jid: The JID of the contact to subscribe to (e.g., "123456789@s.whatsapp.net")
+    """
+    return str(whatsapp_subscribe_presence(jid))
+
+
+@mcp.tool()
+def get_profile_picture(jid: str, preview: bool = False) -> str:
+    """Get the profile picture URL for a user or group.
+
+    Parameters:
+    - jid: The JID of the user or group
+    - preview: If True, get thumbnail instead of full resolution (default: False)
+    """
+    return str(whatsapp_get_profile_picture(jid, preview))
+
+
+@mcp.tool()
+def get_blocklist() -> str:
+    """Get the list of blocked users.
+
+    Parameters:
+    None required
+    """
+    return str(whatsapp_get_blocklist())
+
+
+@mcp.tool()
+def block_user(jid: str) -> str:
+    """Block a WhatsApp user.
+
+    Parameters:
+    - jid: The JID of the user to block (e.g., "123456789@s.whatsapp.net")
+    """
+    return str(whatsapp_update_blocklist(jid, "block"))
+
+
+@mcp.tool()
+def unblock_user(jid: str) -> str:
+    """Unblock a WhatsApp user.
+
+    Parameters:
+    - jid: The JID of the user to unblock (e.g., "123456789@s.whatsapp.net")
+    """
+    return str(whatsapp_update_blocklist(jid, "unblock"))
+
+
+@mcp.tool()
+def follow_newsletter(jid: str) -> str:
+    """Follow (join) a WhatsApp newsletter/channel.
+
+    Parameters:
+    - jid: The JID of the newsletter to follow
+    """
+    return str(whatsapp_follow_newsletter(jid))
+
+
+@mcp.tool()
+def unfollow_newsletter(jid: str) -> str:
+    """Unfollow a WhatsApp newsletter/channel.
+
+    Parameters:
+    - jid: The JID of the newsletter to unfollow
+    """
+    return str(whatsapp_unfollow_newsletter(jid))
+
+
+@mcp.tool()
+def create_newsletter(name: str, description: str = "") -> str:
+    """Create a new WhatsApp newsletter/channel.
+
+    Parameters:
+    - name: The name for the newsletter
+    - description: Optional description for the newsletter
+    """
+    return str(whatsapp_create_newsletter(name, description))
 
 
 # Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)

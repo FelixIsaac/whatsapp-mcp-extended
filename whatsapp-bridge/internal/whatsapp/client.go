@@ -12,10 +12,13 @@ import (
 	waProto "go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
 	"whatsapp-bridge/internal/config"
+	localTypes "whatsapp-bridge/internal/types"
 )
 
 // Client wraps the WhatsApp client with additional functionality
@@ -133,4 +136,132 @@ func (c *Client) Connect() error {
 
 	c.logger.Infof("✓ Connected to WhatsApp!")
 	return nil
+}
+
+// Phase 5: Advanced Features
+
+// SetPresence sets the client's own presence (available/unavailable)
+func (c *Client) SetPresence(presence string) error {
+	var p types.Presence
+	switch presence {
+	case "available":
+		p = types.PresenceAvailable
+	case "unavailable":
+		p = types.PresenceUnavailable
+	default:
+		return fmt.Errorf("invalid presence: %s (must be 'available' or 'unavailable')", presence)
+	}
+	return c.SendPresence(p)
+}
+
+// SubscribePresence subscribes to presence updates for a specific user
+func (c *Client) SubscribeToPresence(jidStr string) error {
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %v", err)
+	}
+	return c.Client.SubscribePresence(jid)
+}
+
+// GetProfilePicture gets the profile picture URL for a user or group
+func (c *Client) GetProfilePicture(jidStr string, preview bool) (*localTypes.ProfilePictureInfo, error) {
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid JID: %v", err)
+	}
+
+	params := &whatsmeow.GetProfilePictureParams{
+		Preview: preview,
+	}
+
+	info, err := c.GetProfilePictureInfo(jid, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profile picture: %v", err)
+	}
+
+	if info == nil {
+		return nil, nil // No profile picture
+	}
+
+	return &localTypes.ProfilePictureInfo{
+		URL:        info.URL,
+		ID:         info.ID,
+		Type:       info.Type,
+		DirectPath: info.DirectPath,
+	}, nil
+}
+
+// GetBlockedUsers returns the list of blocked users
+func (c *Client) GetBlockedUsers() ([]localTypes.BlockedUser, error) {
+	blocklist, err := c.GetBlocklist()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blocklist: %v", err)
+	}
+
+	users := make([]localTypes.BlockedUser, len(blocklist.JIDs))
+	for i, jid := range blocklist.JIDs {
+		users[i] = localTypes.BlockedUser{JID: jid.String()}
+	}
+	return users, nil
+}
+
+// UpdateBlockedUser blocks or unblocks a user
+func (c *Client) UpdateBlockedUser(jidStr string, action string) error {
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %v", err)
+	}
+
+	var blockAction events.BlocklistChangeAction
+	switch action {
+	case "block":
+		blockAction = events.BlocklistChangeActionBlock
+	case "unblock":
+		blockAction = events.BlocklistChangeActionUnblock
+	default:
+		return fmt.Errorf("invalid action: %s (must be 'block' or 'unblock')", action)
+	}
+
+	_, err = c.UpdateBlocklist(jid, blockAction)
+	if err != nil {
+		return fmt.Errorf("failed to update blocklist: %v", err)
+	}
+	return nil
+}
+
+// FollowNewsletterChannel follows (joins) a newsletter/channel
+func (c *Client) FollowNewsletterChannel(jidStr string) error {
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %v", err)
+	}
+	return c.FollowNewsletter(jid)
+}
+
+// UnfollowNewsletterChannel unfollows a newsletter/channel
+func (c *Client) UnfollowNewsletterChannel(jidStr string) error {
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %v", err)
+	}
+	return c.UnfollowNewsletter(jid)
+}
+
+// CreateNewsletterChannel creates a new newsletter/channel
+func (c *Client) CreateNewsletterChannel(name, description string) (*localTypes.NewsletterInfo, error) {
+	params := whatsmeow.CreateNewsletterParams{
+		Name:        name,
+		Description: description,
+	}
+
+	meta, err := c.CreateNewsletter(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create newsletter: %v", err)
+	}
+
+	return &localTypes.NewsletterInfo{
+		JID:         meta.ID.String(),
+		Name:        meta.Name,
+		Description: meta.Description,
+	}, nil
 }

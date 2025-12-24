@@ -1823,3 +1823,187 @@ def request_chat_history(
 
     except requests.RequestException as e:
         return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
+
+
+# Phase 5: Advanced Features
+
+
+def set_presence(presence: str) -> dict[str, Any]:
+    """Set your own presence status (available/unavailable).
+
+    Args:
+        presence: Either "available" or "unavailable"
+
+    Returns:
+        Dict with success status and presence
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/presence/set"
+        payload = {"presence": presence}
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def subscribe_presence(jid: str) -> dict[str, Any]:
+    """Subscribe to presence updates for a contact.
+
+    After subscribing, you'll receive presence events for this contact.
+
+    Args:
+        jid: The JID of the contact to subscribe to
+
+    Returns:
+        Dict with success status
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/presence/subscribe"
+        payload = {"jid": jid}
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def get_profile_picture(jid: str, preview: bool = False) -> dict[str, Any]:
+    """Get the profile picture URL for a user or group.
+
+    Args:
+        jid: The JID of the user or group
+        preview: If True, get thumbnail instead of full resolution
+
+    Returns:
+        Dict with url, id, type, direct_path (or has_picture=False if none)
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/profile-picture"
+        params = {"jid": jid}
+        if preview:
+            params["preview"] = "true"
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def get_blocklist() -> dict[str, Any]:
+    """Get the list of blocked users.
+
+    Returns:
+        Dict with users list and count
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/blocklist"
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def update_blocklist(jid: str, action: str) -> dict[str, Any]:
+    """Block or unblock a user.
+
+    Args:
+        jid: The JID of the user
+        action: Either "block" or "unblock"
+
+    Returns:
+        Dict with success status
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/blocklist/update"
+        payload = {"jid": jid, "action": action}
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def follow_newsletter(jid: str) -> dict[str, Any]:
+    """Follow (join) a WhatsApp newsletter/channel.
+
+    Args:
+        jid: The JID of the newsletter
+
+    Returns:
+        Dict with success status
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/newsletter/follow"
+        payload = {"jid": jid}
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def unfollow_newsletter(jid: str) -> dict[str, Any]:
+    """Unfollow a WhatsApp newsletter/channel.
+
+    Args:
+        jid: The JID of the newsletter
+
+    Returns:
+        Dict with success status
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/newsletter/unfollow"
+        payload = {"jid": jid}
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
+    """Create a new WhatsApp newsletter/channel.
+
+    Args:
+        name: The name for the newsletter
+        description: Optional description
+
+    Returns:
+        Dict with jid, name, description of created newsletter
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/newsletter/create"
+        payload = {"name": name}
+        if description:
+            payload["description"] = description
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}

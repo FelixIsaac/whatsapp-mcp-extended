@@ -825,3 +825,281 @@ func (s *Server) handleRequestHistory(w http.ResponseWriter, r *http.Request) {
 		"count":    req.Count,
 	})
 }
+
+// Phase 5: Advanced Features
+
+// handleSetPresence handles setting own presence (available/unavailable)
+func (s *Server) handleSetPresence(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.SetPresenceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.Presence == "" {
+		SendJSONError(w, "presence is required ('available' or 'unavailable')", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.SetPresence(req.Presence)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to set presence: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"presence": req.Presence,
+	})
+}
+
+// handleSubscribePresence handles subscribing to a contact's presence
+func (s *Server) handleSubscribePresence(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.SubscribePresenceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.JID == "" {
+		SendJSONError(w, "jid is required", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.SubscribeToPresence(req.JID)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to subscribe to presence: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"jid":     req.JID,
+		"message": "Subscribed to presence updates. Use event handler to receive updates.",
+	})
+}
+
+// handleGetProfilePicture handles getting a profile picture URL
+func (s *Server) handleGetProfilePicture(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var jid string
+	var preview bool
+
+	if r.Method == http.MethodGet {
+		jid = r.URL.Query().Get("jid")
+		preview = r.URL.Query().Get("preview") == "true"
+	} else {
+		var req types.GetProfilePictureRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+			return
+		}
+		jid = req.JID
+		preview = req.Preview
+	}
+
+	if jid == "" {
+		SendJSONError(w, "jid is required", http.StatusBadRequest)
+		return
+	}
+
+	info, err := s.client.GetProfilePicture(jid, preview)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to get profile picture: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if info == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"jid":     jid,
+			"has_picture": false,
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"jid":         jid,
+		"has_picture": true,
+		"url":         info.URL,
+		"id":          info.ID,
+		"type":        info.Type,
+		"direct_path": info.DirectPath,
+	})
+}
+
+// handleGetBlocklist handles getting the list of blocked users
+func (s *Server) handleGetBlocklist(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	users, err := s.client.GetBlockedUsers()
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to get blocklist: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"users":   users,
+		"count":   len(users),
+	})
+}
+
+// handleUpdateBlocklist handles blocking/unblocking a user
+func (s *Server) handleUpdateBlocklist(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.BlocklistRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.JID == "" || req.Action == "" {
+		SendJSONError(w, "jid and action ('block' or 'unblock') are required", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.UpdateBlockedUser(req.JID, req.Action)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to update blocklist: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"jid":     req.JID,
+		"action":  req.Action,
+	})
+}
+
+// handleFollowNewsletter handles following a newsletter/channel
+func (s *Server) handleFollowNewsletter(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.NewsletterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.JID == "" {
+		SendJSONError(w, "jid is required", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.FollowNewsletterChannel(req.JID)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to follow newsletter: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"jid":     req.JID,
+		"message": "Successfully followed newsletter",
+	})
+}
+
+// handleUnfollowNewsletter handles unfollowing a newsletter/channel
+func (s *Server) handleUnfollowNewsletter(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.NewsletterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.JID == "" {
+		SendJSONError(w, "jid is required", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.UnfollowNewsletterChannel(req.JID)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to unfollow newsletter: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"jid":     req.JID,
+		"message": "Successfully unfollowed newsletter",
+	})
+}
+
+// handleCreateNewsletter handles creating a new newsletter/channel
+func (s *Server) handleCreateNewsletter(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.CreateNewsletterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		SendJSONError(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	info, err := s.client.CreateNewsletterChannel(req.Name, req.Description)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to create newsletter: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"jid":         info.JID,
+		"name":        info.Name,
+		"description": info.Description,
+	})
+}
