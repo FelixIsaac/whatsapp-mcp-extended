@@ -2,7 +2,7 @@
 
 An extended Model Context Protocol (MCP) server for WhatsApp with **41 tools** - advanced messaging, group management, webhooks, presence, and more.
 
-> **Fork of [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp)** - Extended with reactions, message editing, polls, group management, presence, newsletters, and enterprise features.
+> Built on [AdamRussak/whatsapp-mcp](https://github.com/AdamRussak/whatsapp-mcp) (webhooks, containers) which forked [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) (original). Extended with reactions, message editing, polls, group management, presence, newsletters, and more.
 
 ![WhatsApp MCP](./example-use.png)
 
@@ -208,9 +208,14 @@ docker-compose logs -f whatsapp-bridge
 
 ## Credits
 
-- Original project: [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp)
-- WhatsApp library: [whatsmeow](https://github.com/tulir/whatsmeow)
-- MCP SDK: [FastMCP](https://github.com/jlowin/fastmcp)
+**Fork chain:**
+- [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) - Original MCP server (12 tools)
+- [AdamRussak/whatsapp-mcp](https://github.com/AdamRussak/whatsapp-mcp) - Added webhooks, container split, webhook UI
+- This repo - Added reactions, edit/delete, groups, polls, presence, newsletters (41 tools)
+
+**Libraries:**
+- [whatsmeow](https://github.com/tulir/whatsmeow) - Go WhatsApp Web API
+- [FastMCP](https://github.com/jlowin/fastmcp) - Python MCP SDK
 
 ## License
 
