@@ -3,9 +3,19 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+# Phase 2: Group Management
+from whatsapp import add_group_members as whatsapp_add_group_members
+from whatsapp import create_group as whatsapp_create_group
+from whatsapp import create_newsletter as whatsapp_create_newsletter
+
+# Phase 3: Polls
+from whatsapp import create_poll as whatsapp_create_poll
 from whatsapp import delete_message as whatsapp_delete_message
+from whatsapp import demote_admin as whatsapp_demote_admin
 from whatsapp import download_media as whatsapp_download_media
 from whatsapp import edit_message as whatsapp_edit_message
+from whatsapp import follow_newsletter as whatsapp_follow_newsletter
+from whatsapp import get_blocklist as whatsapp_get_blocklist
 from whatsapp import get_chat as whatsapp_get_chat
 from whatsapp import get_contact_by_jid as whatsapp_get_contact_by_jid
 from whatsapp import get_contact_by_phone as whatsapp_get_contact_by_phone
@@ -15,12 +25,19 @@ from whatsapp import get_direct_chat_by_contact as whatsapp_get_direct_chat_by_c
 from whatsapp import get_group_info as whatsapp_get_group_info
 from whatsapp import get_last_interaction as whatsapp_get_last_interaction
 from whatsapp import get_message_context as whatsapp_get_message_context
+from whatsapp import get_profile_picture as whatsapp_get_profile_picture
+from whatsapp import leave_group as whatsapp_leave_group
 from whatsapp import list_all_contacts as whatsapp_list_all_contacts
 from whatsapp import list_chats as whatsapp_list_chats
 from whatsapp import list_contact_nicknames as whatsapp_list_contact_nicknames
 from whatsapp import list_messages as whatsapp_list_messages
 from whatsapp import mark_messages_read as whatsapp_mark_messages_read
+from whatsapp import promote_to_admin as whatsapp_promote_to_admin
 from whatsapp import remove_contact_nickname as whatsapp_remove_contact_nickname
+from whatsapp import remove_group_members as whatsapp_remove_group_members
+
+# Phase 4: History Sync
+from whatsapp import request_chat_history as whatsapp_request_chat_history
 from whatsapp import search_contacts as whatsapp_search_contacts
 from whatsapp import send_audio_message as whatsapp_audio_voice_message
 from whatsapp import send_file as whatsapp_send_file
@@ -28,30 +45,12 @@ from whatsapp import send_message as whatsapp_send_message
 from whatsapp import send_reaction as whatsapp_send_reaction  # Phase 1 features
 from whatsapp import set_contact_nickname as whatsapp_set_contact_nickname
 
-# Phase 2: Group Management
-from whatsapp import add_group_members as whatsapp_add_group_members
-from whatsapp import create_group as whatsapp_create_group
-from whatsapp import demote_admin as whatsapp_demote_admin
-from whatsapp import leave_group as whatsapp_leave_group
-from whatsapp import promote_to_admin as whatsapp_promote_to_admin
-from whatsapp import remove_group_members as whatsapp_remove_group_members
-from whatsapp import update_group as whatsapp_update_group
-
-# Phase 3: Polls
-from whatsapp import create_poll as whatsapp_create_poll
-
-# Phase 4: History Sync
-from whatsapp import request_chat_history as whatsapp_request_chat_history
-
 # Phase 5: Advanced Features
 from whatsapp import set_presence as whatsapp_set_presence
 from whatsapp import subscribe_presence as whatsapp_subscribe_presence
-from whatsapp import get_profile_picture as whatsapp_get_profile_picture
-from whatsapp import get_blocklist as whatsapp_get_blocklist
-from whatsapp import update_blocklist as whatsapp_update_blocklist
-from whatsapp import follow_newsletter as whatsapp_follow_newsletter
 from whatsapp import unfollow_newsletter as whatsapp_unfollow_newsletter
-from whatsapp import create_newsletter as whatsapp_create_newsletter
+from whatsapp import update_blocklist as whatsapp_update_blocklist
+from whatsapp import update_group as whatsapp_update_group
 
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
