@@ -128,7 +128,27 @@ func CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// SecureMiddleware chains auth, rate limiting, and CORS middleware
+// SecurityHeadersMiddleware adds security headers to all responses
+func SecurityHeadersMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Prevent MIME type sniffing
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		// Prevent clickjacking
+		w.Header().Set("X-Frame-Options", "DENY")
+		// XSS protection (legacy but still useful)
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		// Referrer policy
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		// Content Security Policy for API
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		// Permissions policy
+		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+		next(w, r)
+	}
+}
+
+// SecureMiddleware chains security headers, auth, rate limiting, and CORS middleware
 func SecureMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return CorsMiddleware(RateLimitMiddleware(AuthMiddleware(next)))
+	return SecurityHeadersMiddleware(CorsMiddleware(RateLimitMiddleware(AuthMiddleware(next))))
 }

@@ -40,3 +40,14 @@ Thumbs.db
 # Project-specific
 .claude/
 .task.yaml
+
+# Secrets and credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+credentials.json
+secrets.yaml
+secrets.yml
