@@ -2,12 +2,13 @@ package api
 
 import (
 	"crypto/subtle"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"whatsapp-bridge/internal/security"
 )
 
 // Rate limiter state
@@ -47,14 +48,21 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		// Get client IP
+		ip := r.RemoteAddr
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			ip = strings.Split(forwarded, ",")[0]
+		}
+
 		// Check X-API-Key header using constant-time comparison to prevent timing attacks
 		apiKey := r.Header.Get("X-API-Key")
 		if subtle.ConstantTimeCompare([]byte(apiKey), []byte(expectedKey)) != 1 {
-			log.Printf("SECURITY: Unauthorized request from %s", r.RemoteAddr)
+			security.LogAuthFailure(ip, r.Header.Get("User-Agent"), "Invalid API key")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
+		security.LogAuthSuccess(ip, r.URL.Path)
 		next(w, r)
 	}
 }
@@ -82,7 +90,7 @@ func RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		rateLimitMu.Unlock()
 
 		if count > rateLimit {
-			log.Printf("SECURITY: Rate limit exceeded for %s", ip)
+			security.LogRateLimitExceeded(ip)
 			w.Header().Set("Retry-After", "60")
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
