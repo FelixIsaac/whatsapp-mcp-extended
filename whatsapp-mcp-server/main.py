@@ -317,10 +317,9 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Dict[str, Any]:
         emoji: The emoji to react with (empty string to remove reaction)
 
     Returns:
-        A dictionary containing success status and a status message
+        A dictionary containing success status, chat_jid, message_id, emoji, and action
     """
-    success, message = whatsapp_send_reaction(chat_jid, message_id, emoji)
-    return {"success": success, "message": message}
+    return whatsapp_send_reaction(chat_jid, message_id, emoji)
 
 
 @mcp.tool()
@@ -333,10 +332,9 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> Dict[str, 
         new_content: The new message content
 
     Returns:
-        A dictionary containing success status and a status message
+        A dictionary containing success status, chat_jid, message_id, and new_content
     """
-    success, message = whatsapp_edit_message(chat_jid, message_id, new_content)
-    return {"success": success, "message": message}
+    return whatsapp_edit_message(chat_jid, message_id, new_content)
 
 
 @mcp.tool()
@@ -349,10 +347,9 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = N
         sender_jid: Optional sender JID for admin revoking others' messages in groups
 
     Returns:
-        A dictionary containing success status and a status message
+        A dictionary containing success status, chat_jid, and message_id
     """
-    success, message = whatsapp_delete_message(chat_jid, message_id, sender_jid)
-    return {"success": success, "message": message}
+    return whatsapp_delete_message(chat_jid, message_id, sender_jid)
 
 
 @mcp.tool()
@@ -363,12 +360,9 @@ def get_group_info(group_jid: str) -> Dict[str, Any]:
         group_jid: The JID of the group (e.g., "123456789@g.us")
 
     Returns:
-        A dictionary containing group info (name, topic, participants, etc.)
+        A dictionary containing success, group_jid, name, topic, participant_count, participants
     """
-    info = whatsapp_get_group_info(group_jid)
-    if info:
-        return {"success": True, "data": info}
-    return {"success": False, "message": "Failed to get group info"}
+    return whatsapp_get_group_info(group_jid)
 
 
 @mcp.tool()
@@ -381,10 +375,9 @@ def mark_read(chat_jid: str, message_ids: List[str], sender_jid: Optional[str] =
         sender_jid: Optional sender JID (required for group chats)
 
     Returns:
-        A dictionary containing success status and a status message
+        A dictionary containing success status, chat_jid, message_ids, and count
     """
-    success, message = whatsapp_mark_messages_read(chat_jid, message_ids, sender_jid)
-    return {"success": success, "message": message}
+    return whatsapp_mark_messages_read(chat_jid, message_ids, sender_jid)
 
 
 if __name__ == "__main__":

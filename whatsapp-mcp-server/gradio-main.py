@@ -356,9 +356,7 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> str:
     - message_id: The ID of the message to react to
     - emoji: The emoji to react with (empty string to remove reaction)
     """
-    success, message = whatsapp_send_reaction(chat_jid, message_id, emoji)
-    result = {"success": success, "message": message}
-    return str(result)
+    return str(whatsapp_send_reaction(chat_jid, message_id, emoji))
 
 
 @mcp.tool()
@@ -370,9 +368,7 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> str:
     - message_id: The ID of the message to edit
     - new_content: The new message content
     """
-    success, message = whatsapp_edit_message(chat_jid, message_id, new_content)
-    result = {"success": success, "message": message}
-    return str(result)
+    return str(whatsapp_edit_message(chat_jid, message_id, new_content))
 
 
 @mcp.tool()
@@ -385,9 +381,7 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: str = "") -> str:
     - sender_jid: Optional sender JID for admin revoking others' messages in groups
     """
     sender = sender_jid if sender_jid else None
-    success, message = whatsapp_delete_message(chat_jid, message_id, sender)
-    result = {"success": success, "message": message}
-    return str(result)
+    return str(whatsapp_delete_message(chat_jid, message_id, sender))
 
 
 @mcp.tool()
@@ -397,12 +391,7 @@ def get_group_info(group_jid: str) -> str:
     Parameters:
     - group_jid: The JID of the group (e.g., "123456789@g.us")
     """
-    info = whatsapp_get_group_info(group_jid)
-    if info:
-        result = {"success": True, "data": info}
-    else:
-        result = {"success": False, "message": "Failed to get group info"}
-    return str(result)
+    return str(whatsapp_get_group_info(group_jid))
 
 
 @mcp.tool()
@@ -416,9 +405,7 @@ def mark_read(chat_jid: str, message_ids: str, sender_jid: str = "") -> str:
     """
     ids = [mid.strip() for mid in message_ids.split(",") if mid.strip()]
     sender = sender_jid if sender_jid else None
-    success, message = whatsapp_mark_messages_read(chat_jid, ids, sender)
-    result = {"success": success, "message": message}
-    return str(result)
+    return str(whatsapp_mark_messages_read(chat_jid, ids, sender))
 
 
 # Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)

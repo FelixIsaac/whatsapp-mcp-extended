@@ -1224,7 +1224,7 @@ def list_contact_nicknames() -> List[Tuple[str, str]]:
 
 # Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read
 
-def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Tuple[bool, str]:
+def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Dict[str, Any]:
     """Send an emoji reaction to a message.
 
     Args:
@@ -1233,7 +1233,7 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Tuple[bool, str
         emoji: The emoji to react with (empty string to remove reaction)
 
     Returns:
-        Tuple of (success, message)
+        Structured dict with success, chat_jid, message_id, emoji, error
     """
     try:
         url = f"{WHATSAPP_API_BASE_URL}/reaction"
@@ -1247,19 +1247,26 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Tuple[bool, str
 
         if response.status_code == 200:
             result = response.json()
-            return result.get("success", False), result.get("message", "Unknown response")
+            return {
+                "success": result.get("success", False),
+                "chat_jid": chat_jid,
+                "message_id": message_id,
+                "emoji": emoji,
+                "action": "remove" if emoji == "" else "add",
+                "error": result.get("message") if not result.get("success") else None,
+            }
         else:
-            return False, f"Error: HTTP {response.status_code} - {response.text}"
+            return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"HTTP {response.status_code} - {response.text}"}
 
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Request error: {str(e)}"}
     except json.JSONDecodeError:
-        return False, f"Error parsing response: {response.text}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Error parsing response: {response.text}"}
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Unexpected error: {str(e)}"}
 
 
-def edit_message(chat_jid: str, message_id: str, new_content: str) -> Tuple[bool, str]:
+def edit_message(chat_jid: str, message_id: str, new_content: str) -> Dict[str, Any]:
     """Edit a previously sent message.
 
     Args:
@@ -1268,7 +1275,7 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> Tuple[bool
         new_content: The new message content
 
     Returns:
-        Tuple of (success, message)
+        Structured dict with success, chat_jid, message_id, new_content, error
     """
     try:
         url = f"{WHATSAPP_API_BASE_URL}/edit"
@@ -1282,19 +1289,25 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> Tuple[bool
 
         if response.status_code == 200:
             result = response.json()
-            return result.get("success", False), result.get("message", "Unknown response")
+            return {
+                "success": result.get("success", False),
+                "chat_jid": chat_jid,
+                "message_id": message_id,
+                "new_content": new_content,
+                "error": result.get("message") if not result.get("success") else None,
+            }
         else:
-            return False, f"Error: HTTP {response.status_code} - {response.text}"
+            return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"HTTP {response.status_code} - {response.text}"}
 
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Request error: {str(e)}"}
     except json.JSONDecodeError:
-        return False, f"Error parsing response: {response.text}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Error parsing response: {response.text}"}
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Unexpected error: {str(e)}"}
 
 
-def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = None) -> Tuple[bool, str]:
+def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = None) -> Dict[str, Any]:
     """Delete/revoke a message.
 
     Args:
@@ -1303,7 +1316,7 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = N
         sender_jid: Optional sender JID for admin revoking others' messages in groups
 
     Returns:
-        Tuple of (success, message)
+        Structured dict with success, chat_jid, message_id, error
     """
     try:
         url = f"{WHATSAPP_API_BASE_URL}/delete"
@@ -1318,26 +1331,31 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = N
 
         if response.status_code == 200:
             result = response.json()
-            return result.get("success", False), result.get("message", "Unknown response")
+            return {
+                "success": result.get("success", False),
+                "chat_jid": chat_jid,
+                "message_id": message_id,
+                "error": result.get("message") if not result.get("success") else None,
+            }
         else:
-            return False, f"Error: HTTP {response.status_code} - {response.text}"
+            return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"HTTP {response.status_code} - {response.text}"}
 
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Request error: {str(e)}"}
     except json.JSONDecodeError:
-        return False, f"Error parsing response: {response.text}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Error parsing response: {response.text}"}
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Unexpected error: {str(e)}"}
 
 
-def get_group_info(group_jid: str) -> Optional[dict]:
+def get_group_info(group_jid: str) -> Dict[str, Any]:
     """Get information about a WhatsApp group.
 
     Args:
         group_jid: The JID of the group (e.g., "123456789@g.us")
 
     Returns:
-        Dictionary with group info or None if failed
+        Structured dict with success, group_jid, name, topic, participants, error
     """
     try:
         url = f"{WHATSAPP_API_BASE_URL}/group/{group_jid}"
@@ -1347,26 +1365,51 @@ def get_group_info(group_jid: str) -> Optional[dict]:
         if response.status_code == 200:
             result = response.json()
             if result.get("success", False):
-                return result.get("data")
+                data = result.get("data", {})
+                # Enrich participants with names from contacts
+                participants = data.get("participants", [])
+                enriched_participants = []
+                for p in participants:
+                    jid = p.get("jid", "")
+                    phone = jid.split("@")[0] if "@" in jid else jid
+                    # Try to get contact name
+                    contact_name = None
+                    try:
+                        contacts = search_contacts(phone)
+                        if contacts:
+                            contact_name = contacts[0].get("name") or contacts[0].get("full_name") or contacts[0].get("push_name")
+                    except:
+                        pass
+                    enriched_participants.append({
+                        "jid": jid,
+                        "name": contact_name,
+                        "is_admin": p.get("is_admin", False),
+                        "is_super_admin": p.get("is_super_admin", False),
+                    })
+                return {
+                    "success": True,
+                    "group_jid": group_jid,
+                    "name": data.get("name"),
+                    "topic": data.get("topic"),
+                    "created_at": data.get("created_at"),
+                    "created_by": data.get("created_by"),
+                    "participant_count": len(enriched_participants),
+                    "participants": enriched_participants,
+                }
             else:
-                print(f"Failed to get group info: {result.get('message', 'Unknown error')}")
-                return None
+                return {"success": False, "group_jid": group_jid, "error": result.get("message", "Unknown error")}
         else:
-            print(f"Error: HTTP {response.status_code} - {response.text}")
-            return None
+            return {"success": False, "group_jid": group_jid, "error": f"HTTP {response.status_code} - {response.text}"}
 
     except requests.RequestException as e:
-        print(f"Request error: {str(e)}")
-        return None
+        return {"success": False, "group_jid": group_jid, "error": f"Request error: {str(e)}"}
     except json.JSONDecodeError:
-        print(f"Error parsing response: {response.text}")
-        return None
+        return {"success": False, "group_jid": group_jid, "error": f"Error parsing response: {response.text}"}
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        return None
+        return {"success": False, "group_jid": group_jid, "error": f"Unexpected error: {str(e)}"}
 
 
-def mark_messages_read(chat_jid: str, message_ids: List[str], sender_jid: Optional[str] = None) -> Tuple[bool, str]:
+def mark_messages_read(chat_jid: str, message_ids: List[str], sender_jid: Optional[str] = None) -> Dict[str, Any]:
     """Mark messages as read.
 
     Args:
@@ -1375,7 +1418,7 @@ def mark_messages_read(chat_jid: str, message_ids: List[str], sender_jid: Option
         sender_jid: Optional sender JID (required for group chats)
 
     Returns:
-        Tuple of (success, message)
+        Structured dict with success, chat_jid, message_ids, count, error
     """
     try:
         url = f"{WHATSAPP_API_BASE_URL}/read"
@@ -1390,13 +1433,19 @@ def mark_messages_read(chat_jid: str, message_ids: List[str], sender_jid: Option
 
         if response.status_code == 200:
             result = response.json()
-            return result.get("success", False), result.get("message", "Unknown response")
+            return {
+                "success": result.get("success", False),
+                "chat_jid": chat_jid,
+                "message_ids": message_ids,
+                "count": len(message_ids),
+                "error": result.get("message") if not result.get("success") else None,
+            }
         else:
-            return False, f"Error: HTTP {response.status_code} - {response.text}"
+            return {"success": False, "chat_jid": chat_jid, "message_ids": message_ids, "error": f"HTTP {response.status_code} - {response.text}"}
 
     except requests.RequestException as e:
-        return False, f"Request error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_ids": message_ids, "error": f"Request error: {str(e)}"}
     except json.JSONDecodeError:
-        return False, f"Error parsing response: {response.text}"
+        return {"success": False, "chat_jid": chat_jid, "message_ids": message_ids, "error": f"Error parsing response: {response.text}"}
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return {"success": False, "chat_jid": chat_jid, "message_ids": message_ids, "error": f"Unexpected error: {str(e)}"}
