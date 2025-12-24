@@ -38,21 +38,24 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received request to send message", req.Message, req.MediaPath)
 
 	// Send the message
-	success, message := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath)
-	fmt.Println("Message sent", success, message)
+	result := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath)
+	fmt.Println("Message sent", result.Success, result.Error)
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
 
 	// Set appropriate status code
-	if !success {
+	if !result.Success {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	// Send response
+	// Send response with message_id, timestamp, recipient
 	json.NewEncoder(w).Encode(types.SendMessageResponse{
-		Success: success,
-		Message: message,
+		Success:   result.Success,
+		Message:   result.Error,
+		MessageID: result.MessageID,
+		Timestamp: result.Timestamp,
+		Recipient: req.Recipient,
 	})
 }
 

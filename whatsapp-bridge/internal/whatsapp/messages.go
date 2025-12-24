@@ -100,7 +100,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		// Upload media to WhatsApp servers
 		resp, err := c.Upload(context.Background(), mediaData, mediaType)
 		if err != nil {
-			return false, fmt.Sprintf("Error uploading media: %v", err)
+			return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error uploading media: %v", err)}
 		}
 
 		fmt.Println("Media uploaded", resp)
@@ -130,7 +130,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 					seconds = analyzedSeconds
 					waveform = analyzedWaveform
 				} else {
-					return false, fmt.Sprintf("Failed to analyze Ogg Opus file: %v", err)
+					return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Failed to analyze Ogg Opus file: %v", err)}
 				}
 			} else {
 				fmt.Printf("Not an Ogg Opus file: %s\n", mimeType)
@@ -179,7 +179,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 	// Send message
 	sendResp, err := c.Client.SendMessage(context.Background(), recipientJID, msg)
 	if err != nil {
-		return false, fmt.Sprintf("Error sending message: %v", err)
+		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error sending message: %v", err)}
 	}
 
 	err = messageStore.StoreMessage(
@@ -198,7 +198,11 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		0,
 	)
 
-	return true, fmt.Sprintf("Message sent to %s", recipient)
+	return bridgeTypes.SendResult{
+		Success:   true,
+		MessageID: string(sendResp.ID),
+		Timestamp: sendResp.Timestamp,
+	}
 }
 
 // SendReaction sends an emoji reaction to a message

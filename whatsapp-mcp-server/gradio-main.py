@@ -194,60 +194,36 @@ def get_message_context(
     return str(context)
 
 @mcp.tool()
-def send_message(
-    recipient: str,
-    message: str
-) -> str:
+def send_message(recipient: str, message: str) -> str:
     """Send a WhatsApp message to a person or group. For group chats use the JID.
 
     Parameters:
     - recipient: The recipient - either a phone number with country code but no + or other symbols, or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
     - message: The message text to send
     """
-    # Validate input
-    if not recipient:
-        return str({
-            "success": False,
-            "message": "Recipient must be provided"
-        })
-    
-    # Call the whatsapp_send_message function with the unified recipient parameter
-    success, status_message = whatsapp_send_message(recipient, message)
-    result = {
-        "success": success,
-        "message": status_message
-    }
+    result = whatsapp_send_message(recipient, message)
     return str(result)
 
 @mcp.tool()
 def send_file(recipient: str, media_path: str) -> str:
     """Send a file such as a picture, raw audio, video or document via WhatsApp to the specified recipient. For group messages use the JID.
-    
+
     Parameters:
     - recipient: The recipient - either a phone number with country code but no + or other symbols, or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
     - media_path: The absolute path to the media file to send (image, video, document)
     """
-    # Call the whatsapp_send_file function
-    success, status_message = whatsapp_send_file(recipient, media_path)
-    result = {
-        "success": success,
-        "message": status_message
-    }
+    result = whatsapp_send_file(recipient, media_path)
     return str(result)
 
 @mcp.tool()
 def send_audio_message(recipient: str, media_path: str) -> str:
     """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
-    
+
     Parameters:
     - recipient: The recipient - either a phone number with country code but no + or other symbols, or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
     - media_path: The absolute path to the audio file to send (will be converted to Opus .ogg if it's not a .ogg file)
     """
-    success, status_message = whatsapp_audio_voice_message(recipient, media_path)
-    result = {
-        "success": success,
-        "message": status_message
-    }
+    result = whatsapp_audio_voice_message(recipient, media_path)
     return str(result)
 
 @mcp.tool()
