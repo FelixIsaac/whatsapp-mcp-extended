@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/subtle"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -34,20 +36,21 @@ func getAllowedOrigins() map[string]bool {
 	return origins
 }
 
-// AuthMiddleware validates API key authentication
+// AuthMiddleware validates API key authentication using constant-time comparison
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		expectedKey := os.Getenv("API_KEY")
 
-		// Skip auth if no API_KEY is configured
+		// Skip auth if no API_KEY is configured (dev mode)
 		if expectedKey == "" {
 			next(w, r)
 			return
 		}
 
-		// Check X-API-Key header
+		// Check X-API-Key header using constant-time comparison to prevent timing attacks
 		apiKey := r.Header.Get("X-API-Key")
-		if apiKey != expectedKey {
+		if subtle.ConstantTimeCompare([]byte(apiKey), []byte(expectedKey)) != 1 {
+			log.Printf("SECURITY: Unauthorized request from %s", r.RemoteAddr)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -79,6 +82,7 @@ func RateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		rateLimitMu.Unlock()
 
 		if count > rateLimit {
+			log.Printf("SECURITY: Rate limit exceeded for %s", ip)
 			w.Header().Set("Retry-After", "60")
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return

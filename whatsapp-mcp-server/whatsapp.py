@@ -802,7 +802,7 @@ def send_message(recipient: str, message: str) -> dict[str, Any]:
             "message": message,
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         # Check if the request was successful
         if response.status_code == 200:
@@ -843,7 +843,7 @@ def send_file(recipient: str, media_path: str) -> dict[str, Any]:
             "media_path": media_path
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         # Check if the request was successful
         if response.status_code == 200:
@@ -890,7 +890,7 @@ def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
             "media_path": media_path
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         # Check if the request was successful
         if response.status_code == 200:
@@ -929,7 +929,7 @@ def download_media(message_id: str, chat_jid: str) -> str | None:
             "chat_jid": chat_jid
         }
         
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
         
         if response.status_code == 200:
             result = response.json()
@@ -1282,7 +1282,7 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> dict[str, Any]:
             "emoji": emoji
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1324,7 +1324,7 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> dict[str, 
             "new_content": new_content
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1366,7 +1366,7 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: str | None = None
         if sender_jid:
             payload["sender_jid"] = sender_jid
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1399,7 +1399,7 @@ def get_group_info(group_jid: str) -> dict[str, Any]:
     try:
         url = f"{WHATSAPP_API_BASE_URL}/group/{group_jid}"
 
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1468,7 +1468,7 @@ def mark_messages_read(chat_jid: str, message_ids: list[str], sender_jid: str | 
         if sender_jid:
             payload["sender_jid"] = sender_jid
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1506,7 +1506,7 @@ def create_group(name: str, participants: list[str]) -> dict[str, Any]:
         url = f"{WHATSAPP_API_BASE_URL}/group/create"
         payload = {"name": name, "participants": participants}
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1537,7 +1537,7 @@ def add_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]
         url = f"{WHATSAPP_API_BASE_URL}/group/add-members"
         payload = {"group_jid": group_jid, "participants": participants}
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1568,7 +1568,7 @@ def remove_group_members(group_jid: str, participants: list[str]) -> dict[str, A
         url = f"{WHATSAPP_API_BASE_URL}/group/remove-members"
         payload = {"group_jid": group_jid, "participants": participants}
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1599,7 +1599,7 @@ def promote_to_admin(group_jid: str, participant: str) -> dict[str, Any]:
         url = f"{WHATSAPP_API_BASE_URL}/group/promote"
         payload = {"group_jid": group_jid, "participant": participant}
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1631,7 +1631,7 @@ def demote_admin(group_jid: str, participant: str) -> dict[str, Any]:
         url = f"{WHATSAPP_API_BASE_URL}/group/demote"
         payload = {"group_jid": group_jid, "participant": participant}
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1662,7 +1662,7 @@ def leave_group(group_jid: str) -> dict[str, Any]:
         url = f"{WHATSAPP_API_BASE_URL}/group/leave"
         payload = {"group_jid": group_jid}
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1698,7 +1698,7 @@ def update_group(group_jid: str, name: str | None = None, topic: str | None = No
         if topic:
             payload["topic"] = topic
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1748,7 +1748,7 @@ def create_poll(
             "multi_select": multi_select,
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1807,7 +1807,7 @@ def request_chat_history(
             "count": count,
         }
 
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             result = response.json()
@@ -1840,7 +1840,7 @@ def set_presence(presence: str) -> dict[str, Any]:
     try:
         url = f"{WHATSAPP_API_BASE_URL}/presence/set"
         payload = {"presence": presence}
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -1864,7 +1864,7 @@ def subscribe_presence(jid: str) -> dict[str, Any]:
     try:
         url = f"{WHATSAPP_API_BASE_URL}/presence/subscribe"
         payload = {"jid": jid}
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -1889,7 +1889,7 @@ def get_profile_picture(jid: str, preview: bool = False) -> dict[str, Any]:
         params = {"jid": jid}
         if preview:
             params["preview"] = "true"
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -1907,7 +1907,7 @@ def get_blocklist() -> dict[str, Any]:
     """
     try:
         url = f"{WHATSAPP_API_BASE_URL}/blocklist"
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -1930,7 +1930,7 @@ def update_blocklist(jid: str, action: str) -> dict[str, Any]:
     try:
         url = f"{WHATSAPP_API_BASE_URL}/blocklist/update"
         payload = {"jid": jid, "action": action}
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -1952,7 +1952,7 @@ def follow_newsletter(jid: str) -> dict[str, Any]:
     try:
         url = f"{WHATSAPP_API_BASE_URL}/newsletter/follow"
         payload = {"jid": jid}
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -1974,7 +1974,7 @@ def unfollow_newsletter(jid: str) -> dict[str, Any]:
     try:
         url = f"{WHATSAPP_API_BASE_URL}/newsletter/unfollow"
         payload = {"jid": jid}
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -1999,7 +1999,7 @@ def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
         payload = {"name": name}
         if description:
             payload["description"] = description
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=30)
 
         if response.status_code == 200:
             return response.json()

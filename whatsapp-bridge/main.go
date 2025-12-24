@@ -20,6 +20,19 @@ func main() {
 	logger := waLog.Stdout("Client", "INFO", true)
 	logger.Infof("Starting WhatsApp client...")
 
+	// Security: Require API_KEY in production
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		if os.Getenv("DISABLE_AUTH_CHECK") != "true" {
+			logger.Errorf("SECURITY: API_KEY environment variable is required")
+			logger.Errorf("Set API_KEY or DISABLE_AUTH_CHECK=true for development")
+			os.Exit(1)
+		}
+		logger.Warnf("WARNING: Running without API authentication (DISABLE_AUTH_CHECK=true)")
+	} else {
+		logger.Infof("API authentication enabled")
+	}
+
 	// Load configuration
 	cfg := config.NewConfig()
 

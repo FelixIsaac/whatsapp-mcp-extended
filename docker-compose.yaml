@@ -6,14 +6,16 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G  # Adjust memory allocation as needed
-          cpus: '0.5'  # Adjust CPU allocation as needed
+          memory: 1G
+          cpus: '0.5'
     ports:
-      - "8180:8080"  # WhatsApp Bridge API port
+      - "127.0.0.1:8180:8080"  # Localhost only for security
     volumes:
-      - ./store:/app/whatsapp-bridge/store  # Persistent storage for WhatsApp data
+      - ./store:/app/whatsapp-bridge/store
     environment:
       - TZ=UTC
+      - API_KEY=${API_KEY:?API_KEY is required - see .env.example}
+      - DISABLE_AUTH_CHECK=${DISABLE_AUTH_CHECK:-false}
     restart: unless-stopped
     networks:
       - whatsapp_internal
@@ -25,18 +27,19 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G  # Adjust memory allocation as needed
-          cpus: '1'  # Adjust CPU allocation as needed
+          memory: 2G
+          cpus: '1'
     ports:
-      - "8081:8081"  # MCP server port with SSE
-      - "8082:8082"  # Gradio UI port (only used when GRADIO=true)
+      - "127.0.0.1:8081:8081"  # MCP server (localhost only)
+      - "127.0.0.1:8082:8082"  # Gradio UI (localhost only)
     volumes:
-      - ./store:/app/store  # Shared persistent storage for WhatsApp data
+      - ./store:/app/store
     environment:
       - TZ=UTC
-      - DEBUG=true  # Enable debug mode for development
-      - GRADIO=false  # Enable/disable Gradio UI (true/false)
-      - BRIDGE_HOST=whatsapp-mcp-whatsapp-bridge-1  # Set bridge hostname for MCP server
+      - DEBUG=true
+      - GRADIO=false
+      - BRIDGE_HOST=whatsapp-mcp-whatsapp-bridge-1
+      - API_KEY=${API_KEY}
     depends_on:
       - whatsapp-bridge
     restart: unless-stopped
@@ -51,10 +54,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 500M  # Lightweight nginx container
+          memory: 500M
           cpus: '0.5'
     ports:
-      - "8089:8080"  # Webhook UI port
+      - "127.0.0.1:8089:8080"  # Webhook UI (localhost only)
     depends_on:
       - whatsapp-bridge
       - whatsapp-mcp
