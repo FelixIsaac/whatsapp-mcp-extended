@@ -11,3 +11,24 @@ dependencies = [
     "starlette>=0.37.2",
     "uvicorn>=0.23.2",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]  # line too long - handled by formatter
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_ignores = true
+ignore_missing_imports = true
+check_untyped_defs = true

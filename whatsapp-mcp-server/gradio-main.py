@@ -1,35 +1,32 @@
-import os
 import logging
+import os
+
 import gradio as gr
 from mcp.server.fastmcp import FastMCP
-from whatsapp import (
-    search_contacts as whatsapp_search_contacts,
-    list_messages as whatsapp_list_messages,
-    list_chats as whatsapp_list_chats,
-    get_chat as whatsapp_get_chat,
-    get_direct_chat_by_contact as whatsapp_get_direct_chat_by_contact,
-    get_contact_chats as whatsapp_get_contact_chats,
-    get_last_interaction as whatsapp_get_last_interaction,
-    get_message_context as whatsapp_get_message_context,
-    send_message as whatsapp_send_message,
-    send_file as whatsapp_send_file,
-    send_audio_message as whatsapp_audio_voice_message,
-    download_media as whatsapp_download_media,
-    get_contact_by_jid as whatsapp_get_contact_by_jid,
-    get_contact_by_phone as whatsapp_get_contact_by_phone,
-    list_all_contacts as whatsapp_list_all_contacts,
-    format_contact_info as whatsapp_format_contact_info,
-    set_contact_nickname as whatsapp_set_contact_nickname,
-    get_contact_nickname as whatsapp_get_contact_nickname,
-    remove_contact_nickname as whatsapp_remove_contact_nickname,
-    list_contact_nicknames as whatsapp_list_contact_nicknames,
-    # Phase 1 features
-    send_reaction as whatsapp_send_reaction,
-    edit_message as whatsapp_edit_message,
-    delete_message as whatsapp_delete_message,
-    get_group_info as whatsapp_get_group_info,
-    mark_messages_read as whatsapp_mark_messages_read
-)
+
+from whatsapp import delete_message as whatsapp_delete_message
+from whatsapp import download_media as whatsapp_download_media
+from whatsapp import edit_message as whatsapp_edit_message
+from whatsapp import get_chat as whatsapp_get_chat
+from whatsapp import get_contact_by_jid as whatsapp_get_contact_by_jid
+from whatsapp import get_contact_chats as whatsapp_get_contact_chats
+from whatsapp import get_contact_nickname as whatsapp_get_contact_nickname
+from whatsapp import get_direct_chat_by_contact as whatsapp_get_direct_chat_by_contact
+from whatsapp import get_group_info as whatsapp_get_group_info
+from whatsapp import get_last_interaction as whatsapp_get_last_interaction
+from whatsapp import get_message_context as whatsapp_get_message_context
+from whatsapp import list_all_contacts as whatsapp_list_all_contacts
+from whatsapp import list_chats as whatsapp_list_chats
+from whatsapp import list_contact_nicknames as whatsapp_list_contact_nicknames
+from whatsapp import list_messages as whatsapp_list_messages
+from whatsapp import mark_messages_read as whatsapp_mark_messages_read
+from whatsapp import remove_contact_nickname as whatsapp_remove_contact_nickname
+from whatsapp import search_contacts as whatsapp_search_contacts
+from whatsapp import send_audio_message as whatsapp_audio_voice_message
+from whatsapp import send_file as whatsapp_send_file
+from whatsapp import send_message as whatsapp_send_message
+from whatsapp import send_reaction as whatsapp_send_reaction  # Phase 1 features
+from whatsapp import set_contact_nickname as whatsapp_set_contact_nickname
 
 # Configure logging
 logging.basicConfig(

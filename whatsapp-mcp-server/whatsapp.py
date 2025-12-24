@@ -1,11 +1,13 @@
-import sqlite3
-from datetime import datetime
-from dataclasses import dataclass
-from typing import Optional, List, Tuple
+import json
 import os
 import os.path
+import sqlite3
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
 import requests
-import json
+
 import audio
 
 # Database paths - check for Docker (/app) or local development
@@ -36,12 +38,12 @@ class Message:
     is_from_me: bool
     chat_jid: str
     id: str
-    chat_name: Optional[str] = None
-    media_type: Optional[str] = None
-    filename: Optional[str] = None
-    file_length: Optional[int] = None
+    chat_name: str | None = None
+    media_type: str | None = None
+    filename: str | None = None
+    file_length: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert Message to dictionary for structured output."""
         result = {
             "id": self.id,
@@ -62,18 +64,18 @@ class Message:
 @dataclass
 class Chat:
     jid: str
-    name: Optional[str]
-    last_message_time: Optional[datetime]
-    last_message: Optional[str] = None
-    last_sender: Optional[str] = None
-    last_is_from_me: Optional[bool] = None
+    name: str | None
+    last_message_time: datetime | None
+    last_message: str | None = None
+    last_sender: str | None = None
+    last_is_from_me: bool | None = None
 
     @property
     def is_group(self) -> bool:
         """Determine if chat is a group based on JID pattern."""
         return self.jid.endswith("@g.us")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert Chat to dictionary for structured output."""
         return {
             "jid": self.jid,
@@ -88,15 +90,15 @@ class Chat:
 @dataclass
 class Contact:
     phone_number: str
-    name: Optional[str]
+    name: str | None
     jid: str
-    first_name: Optional[str] = None
-    full_name: Optional[str] = None
-    push_name: Optional[str] = None
-    business_name: Optional[str] = None
-    nickname: Optional[str] = None  # User-defined nickname
+    first_name: str | None = None
+    full_name: str | None = None
+    push_name: str | None = None
+    business_name: str | None = None
+    nickname: str | None = None  # User-defined nickname
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert Contact to dictionary for structured output."""
         return {
             "jid": self.jid,
@@ -112,8 +114,8 @@ class Contact:
 @dataclass
 class MessageContext:
     message: Message
-    before: List[Message]
-    after: List[Message]
+    before: list[Message]
+    after: list[Message]
 
 def get_sender_name(sender_jid: str) -> str:
     """Get the best available name for a sender using both contact and chat data."""
@@ -206,7 +208,7 @@ def format_message(message: Message, show_chat_info: bool = True) -> None:
         print(f"Error formatting message: {e}")
     return output
 
-def format_messages_list(messages: List[Message], show_chat_info: bool = True) -> None:
+def format_messages_list(messages: list[Message], show_chat_info: bool = True) -> None:
     output = ""
     if not messages:
         output += "No messages to display."
@@ -217,17 +219,17 @@ def format_messages_list(messages: List[Message], show_chat_info: bool = True) -
     return output
 
 def list_messages(
-    after: Optional[str] = None,
-    before: Optional[str] = None,
-    sender_phone_number: Optional[str] = None,
-    chat_jid: Optional[str] = None,
-    query: Optional[str] = None,
+    after: str | None = None,
+    before: str | None = None,
+    sender_phone_number: str | None = None,
+    chat_jid: str | None = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0,
     include_context: bool = False,
     context_before: int = 1,
     context_after: int = 1
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get messages matching the specified criteria with optional context.
 
     Returns a list of message dictionaries with structured data.
@@ -429,12 +431,12 @@ def get_message_context(
 
 
 def list_chats(
-    query: Optional[str] = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0,
     include_last_message: bool = True,
     sort_by: str = "last_active"
-) -> List[Chat]:
+) -> list[Chat]:
     """Get chats matching the specified criteria."""
     print(f"Debug: Database path: {MESSAGES_DB_PATH}")
     print(f"Debug: Database exists: {os.path.exists(MESSAGES_DB_PATH)}")
@@ -518,7 +520,7 @@ def list_chats(
             conn.close()
 
 
-def search_contacts(query: str) -> List[Dict[str, Any]]:
+def search_contacts(query: str) -> list[dict[str, Any]]:
     """Search contacts by name or phone number using both WhatsApp contacts and chat data."""
     try:
         # Connect to both databases
@@ -585,7 +587,7 @@ def search_contacts(query: str) -> List[Dict[str, Any]]:
             whatsapp_conn.close()
 
 
-def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Dict[str, Any]]:
+def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str, Any]]:
     """Get all chats involving the contact.
 
     Args:
@@ -636,7 +638,7 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Dict[str
             conn.close()
 
 
-def get_last_interaction(jid: str) -> Optional[Dict[str, Any]]:
+def get_last_interaction(jid: str) -> dict[str, Any] | None:
     """Get most recent message involving the contact."""
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
@@ -689,7 +691,7 @@ def get_last_interaction(jid: str) -> Optional[Dict[str, Any]]:
             conn.close()
 
 
-def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Dict[str, Any]]:
+def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any] | None:
     """Get chat metadata by JID."""
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
@@ -738,7 +740,7 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> Optional[Dict[
             conn.close()
 
 
-def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Dict[str, Any]]:
+def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any] | None:
     """Get chat metadata by sender phone number."""
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
@@ -781,7 +783,7 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Optional[Dict[str, A
         if 'conn' in locals():
             conn.close()
 
-def send_message(recipient: str, message: str) -> Dict[str, Any]:
+def send_message(recipient: str, message: str) -> dict[str, Any]:
     """Send a WhatsApp message and return structured result with message_id."""
     try:
         # Validate input
@@ -816,7 +818,7 @@ def send_message(recipient: str, message: str) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
-def send_file(recipient: str, media_path: str) -> Dict[str, Any]:
+def send_file(recipient: str, media_path: str) -> dict[str, Any]:
     """Send a file via WhatsApp and return structured result with message_id."""
     try:
         # Validate input
@@ -857,7 +859,7 @@ def send_file(recipient: str, media_path: str) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
-def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
+def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
     """Send an audio message via WhatsApp and return structured result with message_id."""
     try:
         # Validate input
@@ -904,7 +906,7 @@ def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
-def download_media(message_id: str, chat_jid: str) -> Optional[str]:
+def download_media(message_id: str, chat_jid: str) -> str | None:
     """Download media from a message and return the local file path.
     
     Args:
@@ -946,7 +948,7 @@ def download_media(message_id: str, chat_jid: str) -> Optional[str]:
         print(f"Unexpected error: {str(e)}")
         return None
 
-def get_contact_by_jid(jid: str) -> Optional[Contact]:
+def get_contact_by_jid(jid: str) -> Contact | None:
     """Get detailed contact information by JID."""
     try:
         # First try WhatsApp contacts database
@@ -1013,7 +1015,7 @@ def get_contact_by_jid(jid: str) -> Optional[Contact]:
         return None
 
 
-def get_contact_by_phone(phone_number: str) -> Optional[Contact]:
+def get_contact_by_phone(phone_number: str) -> Contact | None:
     """Get contact information by phone number."""
     try:
         # Try different JID formats
@@ -1057,7 +1059,7 @@ def get_contact_by_phone(phone_number: str) -> Optional[Contact]:
         return None
 
 
-def list_all_contacts(limit: int = 100) -> List[Contact]:
+def list_all_contacts(limit: int = 100) -> list[Contact]:
     """Get all contacts with their detailed information."""
     try:
         contacts = []
@@ -1066,7 +1068,7 @@ def list_all_contacts(limit: int = 100) -> List[Contact]:
         whatsapp_conn = sqlite3.connect(WHATSAPP_DB_PATH)
         whatsapp_cursor = whatsapp_conn.cursor()
                 
-        whatsapp_cursor.execute(f"""
+        whatsapp_cursor.execute("""
             SELECT their_jid, first_name, full_name, push_name, business_name
             FROM whatsmeow_contacts
             WHERE 1=1 AND their_jid NOT LIKE '%@g.us'
@@ -1134,7 +1136,7 @@ def format_contact_info(contact: Contact) -> str:
     
     return output
 
-def set_contact_nickname(jid: str, nickname: str) -> Dict[str, Any]:
+def set_contact_nickname(jid: str, nickname: str) -> dict[str, Any]:
     """Set a custom nickname for a contact.
 
     Returns:
@@ -1171,7 +1173,7 @@ def set_contact_nickname(jid: str, nickname: str) -> Dict[str, Any]:
             conn.close()
 
 
-def get_contact_nickname(jid: str) -> Optional[str]:
+def get_contact_nickname(jid: str) -> str | None:
     """Get a contact's custom nickname."""
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
@@ -1194,7 +1196,7 @@ def get_contact_nickname(jid: str) -> Optional[str]:
             conn.close()
 
 
-def remove_contact_nickname(jid: str) -> Dict[str, Any]:
+def remove_contact_nickname(jid: str) -> dict[str, Any]:
     """Remove a contact's custom nickname.
 
     Returns:
@@ -1219,7 +1221,7 @@ def remove_contact_nickname(jid: str) -> Dict[str, Any]:
             conn.close()
 
 
-def list_contact_nicknames() -> List[Dict[str, Any]]:
+def list_contact_nicknames() -> list[dict[str, Any]]:
     """List all custom contact nicknames with timestamps.
 
     Returns:
@@ -1255,7 +1257,7 @@ def list_contact_nicknames() -> List[Dict[str, Any]]:
 
 # Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read
 
-def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Dict[str, Any]:
+def send_reaction(chat_jid: str, message_id: str, emoji: str) -> dict[str, Any]:
     """Send an emoji reaction to a message.
 
     Args:
@@ -1297,7 +1299,7 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Dict[str, Any]:
         return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Unexpected error: {str(e)}"}
 
 
-def edit_message(chat_jid: str, message_id: str, new_content: str) -> Dict[str, Any]:
+def edit_message(chat_jid: str, message_id: str, new_content: str) -> dict[str, Any]:
     """Edit a previously sent message.
 
     Args:
@@ -1338,7 +1340,7 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> Dict[str, 
         return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Unexpected error: {str(e)}"}
 
 
-def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = None) -> Dict[str, Any]:
+def delete_message(chat_jid: str, message_id: str, sender_jid: str | None = None) -> dict[str, Any]:
     """Delete/revoke a message.
 
     Args:
@@ -1379,7 +1381,7 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = N
         return {"success": False, "chat_jid": chat_jid, "message_id": message_id, "error": f"Unexpected error: {str(e)}"}
 
 
-def get_group_info(group_jid: str) -> Dict[str, Any]:
+def get_group_info(group_jid: str) -> dict[str, Any]:
     """Get information about a WhatsApp group.
 
     Args:
@@ -1409,7 +1411,7 @@ def get_group_info(group_jid: str) -> Dict[str, Any]:
                         contacts = search_contacts(phone)
                         if contacts:
                             contact_name = contacts[0].get("name") or contacts[0].get("full_name") or contacts[0].get("push_name")
-                    except:
+                    except Exception:
                         pass
                     enriched_participants.append({
                         "jid": jid,
@@ -1440,7 +1442,7 @@ def get_group_info(group_jid: str) -> Dict[str, Any]:
         return {"success": False, "group_jid": group_jid, "error": f"Unexpected error: {str(e)}"}
 
 
-def mark_messages_read(chat_jid: str, message_ids: List[str], sender_jid: Optional[str] = None) -> Dict[str, Any]:
+def mark_messages_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = None) -> dict[str, Any]:
     """Mark messages as read.
 
     Args:

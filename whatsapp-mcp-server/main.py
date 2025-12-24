@@ -1,35 +1,33 @@
 """WhatsApp MCP Server - stdio transport for Claude Code CLI"""
-import os
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 from mcp.server.fastmcp import FastMCP
-from whatsapp import (
-    search_contacts as whatsapp_search_contacts,
-    list_messages as whatsapp_list_messages,
-    list_chats as whatsapp_list_chats,
-    get_chat as whatsapp_get_chat,
-    get_direct_chat_by_contact as whatsapp_get_direct_chat_by_contact,
-    get_contact_chats as whatsapp_get_contact_chats,
-    get_last_interaction as whatsapp_get_last_interaction,
-    get_message_context as whatsapp_get_message_context,
-    send_message as whatsapp_send_message,
-    send_file as whatsapp_send_file,
-    send_audio_message as whatsapp_audio_voice_message,
-    download_media as whatsapp_download_media,
-    get_contact_by_jid as whatsapp_get_contact_by_jid,
-    get_contact_by_phone as whatsapp_get_contact_by_phone,
-    list_all_contacts as whatsapp_list_all_contacts,
-    format_contact_info as whatsapp_format_contact_info,
-    set_contact_nickname as whatsapp_set_contact_nickname,
-    get_contact_nickname as whatsapp_get_contact_nickname,
-    remove_contact_nickname as whatsapp_remove_contact_nickname,
-    list_contact_nicknames as whatsapp_list_contact_nicknames,
-    # Phase 1 features
-    send_reaction as whatsapp_send_reaction,
-    edit_message as whatsapp_edit_message,
-    delete_message as whatsapp_delete_message,
-    get_group_info as whatsapp_get_group_info,
-    mark_messages_read as whatsapp_mark_messages_read
-)
+
+from whatsapp import delete_message as whatsapp_delete_message
+from whatsapp import download_media as whatsapp_download_media
+from whatsapp import edit_message as whatsapp_edit_message
+from whatsapp import format_contact_info as whatsapp_format_contact_info
+from whatsapp import get_chat as whatsapp_get_chat
+from whatsapp import get_contact_by_jid as whatsapp_get_contact_by_jid
+from whatsapp import get_contact_by_phone as whatsapp_get_contact_by_phone
+from whatsapp import get_contact_chats as whatsapp_get_contact_chats
+from whatsapp import get_contact_nickname as whatsapp_get_contact_nickname
+from whatsapp import get_direct_chat_by_contact as whatsapp_get_direct_chat_by_contact
+from whatsapp import get_group_info as whatsapp_get_group_info
+from whatsapp import get_last_interaction as whatsapp_get_last_interaction
+from whatsapp import get_message_context as whatsapp_get_message_context
+from whatsapp import list_all_contacts as whatsapp_list_all_contacts
+from whatsapp import list_chats as whatsapp_list_chats
+from whatsapp import list_contact_nicknames as whatsapp_list_contact_nicknames
+from whatsapp import list_messages as whatsapp_list_messages
+from whatsapp import mark_messages_read as whatsapp_mark_messages_read
+from whatsapp import remove_contact_nickname as whatsapp_remove_contact_nickname
+from whatsapp import search_contacts as whatsapp_search_contacts
+from whatsapp import send_audio_message as whatsapp_audio_voice_message
+from whatsapp import send_file as whatsapp_send_file
+from whatsapp import send_message as whatsapp_send_message
+from whatsapp import send_reaction as whatsapp_send_reaction  # Phase 1 features
+from whatsapp import set_contact_nickname as whatsapp_set_contact_nickname
 
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
@@ -52,13 +50,13 @@ def search_contacts(query: str) -> str:
 
 @mcp.tool()
 def list_messages(
-    after: Optional[str] = None,
-    before: Optional[str] = None,
-    chat_jid: Optional[str] = None,
-    query: Optional[str] = None,
+    after: str | None = None,
+    before: str | None = None,
+    chat_jid: str | None = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get WhatsApp messages matching specified criteria.
 
     Args:
@@ -85,12 +83,12 @@ def list_messages(
 
 @mcp.tool()
 def list_chats(
-    query: Optional[str] = None,
+    query: str | None = None,
     limit: int = 20,
     page: int = 0,
     include_last_message: bool = True,
     sort_by: str = "last_active"
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get WhatsApp chats matching specified criteria.
 
     Args:
@@ -110,7 +108,7 @@ def list_chats(
     return chats
 
 @mcp.tool()
-def get_chat(chat_jid: str, include_last_message: bool = True) -> Dict[str, Any]:
+def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]:
     """Get WhatsApp chat metadata by JID.
 
     Args:
@@ -121,7 +119,7 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> Dict[str, Any]
     return chat
 
 @mcp.tool()
-def get_direct_chat_by_contact(sender_phone_number: str) -> Dict[str, Any]:
+def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any]:
     """Get WhatsApp chat metadata by sender phone number.
 
     Args:
@@ -131,7 +129,7 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> Dict[str, Any]:
     return chat
 
 @mcp.tool()
-def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> List[Dict[str, Any]]:
+def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str, Any]]:
     """Get all WhatsApp chats involving the contact.
 
     Args:
@@ -157,7 +155,7 @@ def get_message_context(
     message_id: str,
     before: int = 5,
     after: int = 5
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get context around a specific WhatsApp message.
 
     Args:
@@ -169,7 +167,7 @@ def get_message_context(
     return context
 
 @mcp.tool()
-def send_message(recipient: str, message: str) -> Dict[str, Any]:
+def send_message(recipient: str, message: str) -> dict[str, Any]:
     """Send a WhatsApp message to a person or group. For group chats use the JID.
 
     Args:
@@ -183,7 +181,7 @@ def send_message(recipient: str, message: str) -> Dict[str, Any]:
     return whatsapp_send_message(recipient, message)
 
 @mcp.tool()
-def send_file(recipient: str, media_path: str) -> Dict[str, Any]:
+def send_file(recipient: str, media_path: str) -> dict[str, Any]:
     """Send a file such as a picture, raw audio, video or document via WhatsApp to the specified recipient. For group messages use the JID.
 
     Args:
@@ -197,7 +195,7 @@ def send_file(recipient: str, media_path: str) -> Dict[str, Any]:
     return whatsapp_send_file(recipient, media_path)
 
 @mcp.tool()
-def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
+def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
     """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
 
     Args:
@@ -211,7 +209,7 @@ def send_audio_message(recipient: str, media_path: str) -> Dict[str, Any]:
     return whatsapp_audio_voice_message(recipient, media_path)
 
 @mcp.tool()
-def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
+def download_media(message_id: str, chat_jid: str) -> dict[str, Any]:
     """Download media from a WhatsApp message and get the local file path.
 
     Args:
@@ -260,7 +258,7 @@ def list_all_contacts(limit: int = 100) -> str:
     return result
 
 @mcp.tool()
-def set_nickname(jid: str, nickname: str) -> Dict[str, Any]:
+def set_nickname(jid: str, nickname: str) -> dict[str, Any]:
     """Set a custom nickname for a WhatsApp contact.
 
     Args:
@@ -285,7 +283,7 @@ def get_nickname(jid: str) -> str:
     return f"No nickname set for {jid}"
 
 @mcp.tool()
-def remove_nickname(jid: str) -> Dict[str, Any]:
+def remove_nickname(jid: str) -> dict[str, Any]:
     """Remove the custom nickname for a WhatsApp contact.
 
     Args:
@@ -297,7 +295,7 @@ def remove_nickname(jid: str) -> Dict[str, Any]:
     return whatsapp_remove_contact_nickname(jid)
 
 @mcp.tool()
-def list_nicknames() -> List[Dict[str, Any]]:
+def list_nicknames() -> list[dict[str, Any]]:
     """List all custom contact nicknames.
 
     Returns:
@@ -309,7 +307,7 @@ def list_nicknames() -> List[Dict[str, Any]]:
 # Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read
 
 @mcp.tool()
-def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Dict[str, Any]:
+def send_reaction(chat_jid: str, message_id: str, emoji: str) -> dict[str, Any]:
     """Send an emoji reaction to a WhatsApp message.
 
     Args:
@@ -324,7 +322,7 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def edit_message(chat_jid: str, message_id: str, new_content: str) -> Dict[str, Any]:
+def edit_message(chat_jid: str, message_id: str, new_content: str) -> dict[str, Any]:
     """Edit a previously sent WhatsApp message.
 
     Args:
@@ -339,7 +337,7 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> Dict[str, 
 
 
 @mcp.tool()
-def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = None) -> Dict[str, Any]:
+def delete_message(chat_jid: str, message_id: str, sender_jid: str | None = None) -> dict[str, Any]:
     """Delete/revoke a WhatsApp message.
 
     Args:
@@ -354,7 +352,7 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: Optional[str] = N
 
 
 @mcp.tool()
-def get_group_info(group_jid: str) -> Dict[str, Any]:
+def get_group_info(group_jid: str) -> dict[str, Any]:
     """Get information about a WhatsApp group.
 
     Args:
@@ -367,7 +365,7 @@ def get_group_info(group_jid: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def mark_read(chat_jid: str, message_ids: List[str], sender_jid: Optional[str] = None) -> Dict[str, Any]:
+def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = None) -> dict[str, Any]:
     """Mark WhatsApp messages as read (sends blue ticks).
 
     Args:

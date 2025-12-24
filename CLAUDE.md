@@ -57,6 +57,22 @@ cd whatsapp-mcp-server && uv run python whatsapp.py
 cd whatsapp-webhook-ui && python3 -m http.server 8089
 ```
 
+### Pre-build Checks (run BEFORE docker-compose build)
+```bash
+cd whatsapp-mcp-server
+
+# Install dev tools (first time only)
+uv sync --all-extras
+
+# Quick syntax check (~1s) - catches missing imports, syntax errors
+uv run python check.py --quick
+
+# Full check (~5s) - includes ruff linting + mypy type checking
+uv run python check.py
+```
+
+This catches errors like missing imports before waiting 4-5 min for Docker build.
+
 ### Updating whatsmeow (when 405 errors appear)
 ```bash
 cd whatsapp-bridge
