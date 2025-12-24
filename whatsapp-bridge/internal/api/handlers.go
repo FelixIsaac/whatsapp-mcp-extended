@@ -742,3 +742,46 @@ func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 		"group_jid": req.GroupJID,
 	})
 }
+
+// Phase 3: Polls
+
+// handleCreatePoll handles creating a new poll
+func (s *Server) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.CreatePollRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" || req.Question == "" || len(req.Options) < 2 {
+		SendJSONError(w, "chat_jid, question, and at least 2 options are required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Options) > 12 {
+		SendJSONError(w, "Maximum 12 options allowed", http.StatusBadRequest)
+		return
+	}
+
+	result, err := s.client.CreatePoll(req.ChatJID, req.Question, req.Options, req.MultiSelect)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to create poll: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    result.Success,
+		"message_id": result.MessageID,
+		"timestamp":  result.Timestamp,
+		"chat_jid":   req.ChatJID,
+		"question":   req.Question,
+		"options":    req.Options,
+	})
+}

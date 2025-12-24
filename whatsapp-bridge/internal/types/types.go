@@ -183,3 +183,13 @@ type UpdateGroupRequest struct {
 	Name     string `json:"name,omitempty"`
 	Topic    string `json:"topic,omitempty"`
 }
+
+// Phase 3: Polls
+
+// CreatePollRequest represents the request body for creating a poll
+type CreatePollRequest struct {
+	ChatJID     string   `json:"chat_jid"`
+	Question    string   `json:"question"`
+	Options     []string `json:"options"`
+	MultiSelect bool     `json:"multi_select"`
+}

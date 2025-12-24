@@ -37,6 +37,9 @@ from whatsapp import promote_to_admin as whatsapp_promote_to_admin
 from whatsapp import remove_group_members as whatsapp_remove_group_members
 from whatsapp import update_group as whatsapp_update_group
 
+# Phase 3: Polls
+from whatsapp import create_poll as whatsapp_create_poll
+
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
 
@@ -478,6 +481,29 @@ def update_group(group_jid: str, name: str | None = None, topic: str | None = No
         A dictionary containing success, group_jid, updated fields
     """
     return whatsapp_update_group(group_jid, name, topic)
+
+
+# Phase 3: Polls
+
+@mcp.tool()
+def create_poll(
+    chat_jid: str,
+    question: str,
+    options: list[str],
+    multi_select: bool = False
+) -> dict[str, Any]:
+    """Create and send a poll to a WhatsApp chat.
+
+    Args:
+        chat_jid: The JID of the chat to send the poll to
+        question: The poll question
+        options: List of poll options (2-12 options required)
+        multi_select: If True, allows multiple selections; if False, single selection only (default: False)
+
+    Returns:
+        A dictionary containing success, message_id, timestamp, chat_jid, question, options
+    """
+    return whatsapp_create_poll(chat_jid, question, options, multi_select)
 
 
 if __name__ == "__main__":

@@ -477,3 +477,38 @@ func (c *Client) SetGroupTopic(groupJID string, topic string) error {
 
 	return c.Client.SetGroupTopic(group, "", "", topic)
 }
+
+// Phase 3: Polls
+
+// CreatePoll creates and sends a poll to a chat
+func (c *Client) CreatePoll(chatJID string, question string, options []string, multiSelect bool) (bridgeTypes.SendResult, error) {
+	if !c.IsConnected() {
+		return bridgeTypes.SendResult{Success: false, Error: "not connected to WhatsApp"}, fmt.Errorf("not connected to WhatsApp")
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("invalid chat JID: %v", err)}, err
+	}
+
+	// Determine selectable count based on multiSelect
+	selectableCount := 1
+	if multiSelect {
+		selectableCount = len(options)
+	}
+
+	// Build poll creation message
+	pollMsg := c.Client.BuildPollCreation(question, options, selectableCount)
+
+	// Send the poll
+	resp, err := c.Client.SendMessage(context.Background(), chat, pollMsg)
+	if err != nil {
+		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("failed to send poll: %v", err)}, err
+	}
+
+	return bridgeTypes.SendResult{
+		Success:   true,
+		MessageID: string(resp.ID),
+		Timestamp: resp.Timestamp,
+	}, nil
+}

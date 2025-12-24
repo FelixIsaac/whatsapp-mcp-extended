@@ -38,6 +38,9 @@ from whatsapp import promote_to_admin as whatsapp_promote_to_admin
 from whatsapp import remove_group_members as whatsapp_remove_group_members
 from whatsapp import update_group as whatsapp_update_group
 
+# Phase 3: Polls
+from whatsapp import create_poll as whatsapp_create_poll
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG if os.environ.get('DEBUG') == 'true' else logging.INFO,
@@ -475,6 +478,22 @@ def update_group(group_jid: str, name: str = "", topic: str = "") -> str:
     name_param = name if name else None
     topic_param = topic if topic else None
     return str(whatsapp_update_group(group_jid, name_param, topic_param))
+
+
+# Phase 3: Polls
+
+@mcp.tool()
+def create_poll(chat_jid: str, question: str, options: str, multi_select: bool = False) -> str:
+    """Create and send a poll to a WhatsApp chat.
+
+    Parameters:
+    - chat_jid: The JID of the chat to send the poll to
+    - question: The poll question
+    - options: Comma-separated list of poll options (2-12 options required)
+    - multi_select: If True, allows multiple selections (default: False)
+    """
+    option_list = [opt.strip() for opt in options.split(",") if opt.strip()]
+    return str(whatsapp_create_poll(chat_jid, question, option_list, multi_select))
 
 
 # Gradio UI functions (these wrap the MCP tools for use with the Gradio UI)

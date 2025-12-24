@@ -1712,3 +1712,58 @@ def update_group(group_jid: str, name: str | None = None, topic: str | None = No
 
     except requests.RequestException as e:
         return {"success": False, "group_jid": group_jid, "error": f"Request error: {str(e)}"}
+
+
+# Phase 3: Polls
+
+
+def create_poll(
+    chat_jid: str,
+    question: str,
+    options: list[str],
+    multi_select: bool = False
+) -> dict[str, Any]:
+    """Create and send a poll to a chat.
+
+    Args:
+        chat_jid: The JID of the chat to send the poll to
+        question: The poll question
+        options: List of poll options (2-12 options)
+        multi_select: If True, allows multiple selections; if False, single selection only
+
+    Returns:
+        Structured dict with success, message_id, timestamp, chat_jid, question, options
+    """
+    try:
+        if len(options) < 2:
+            return {"success": False, "error": "At least 2 options are required"}
+        if len(options) > 12:
+            return {"success": False, "error": "Maximum 12 options allowed"}
+
+        url = f"{WHATSAPP_API_BASE_URL}/poll/create"
+        payload = {
+            "chat_jid": chat_jid,
+            "question": question,
+            "options": options,
+            "multi_select": multi_select,
+        }
+
+        response = requests.post(url, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": result.get("success", False),
+                "message_id": result.get("message_id"),
+                "timestamp": result.get("timestamp"),
+                "chat_jid": chat_jid,
+                "question": question,
+                "options": options,
+                "multi_select": multi_select,
+                "error": result.get("error") if not result.get("success") else None,
+            }
+        else:
+            return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+
+    except requests.RequestException as e:
+        return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}

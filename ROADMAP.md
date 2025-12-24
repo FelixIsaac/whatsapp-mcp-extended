@@ -77,8 +77,10 @@
 | `demote_admin` | ❌ | ✅ |
 | `leave_group` | ❌ | ✅ |
 | `update_group` | ❌ | ✅ |
+| **Phase 3 Features** | | |
+| `create_poll` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 30 tools (extended)**
+**Total: 12 tools (whatsapp) → 31 tools (extended)**
 
 ---
 
@@ -285,6 +287,9 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
   - [x] `demote_admin` - Demote admin to regular member
   - [x] `leave_group` - Leave a group
   - [x] `update_group` - Update group name/topic
+- [x] **Phase 3 Polls** (1 new MCP tool):
+  - [x] `create_poll` - Create and send polls with single/multi-select options
+  - [ ] `vote_poll` - Deferred (requires poll message storage)
 
 ---
 

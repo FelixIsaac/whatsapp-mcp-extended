@@ -69,4 +69,7 @@ func (s *Server) registerHandlers() {
 	http.HandleFunc("/api/group/demote", CorsMiddleware(s.handleDemoteAdmin))
 	http.HandleFunc("/api/group/leave", CorsMiddleware(s.handleLeaveGroup))
 	http.HandleFunc("/api/group/update", CorsMiddleware(s.handleUpdateGroup))
+
+	// Phase 3: Polls
+	http.HandleFunc("/api/poll/create", CorsMiddleware(s.handleCreatePoll))
 }
