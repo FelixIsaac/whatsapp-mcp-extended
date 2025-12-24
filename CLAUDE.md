@@ -143,3 +143,59 @@ All tools return structured dictionaries:
 - `list_messages`: `[{id, chat_jid, chat_name, sender, content, timestamp, is_from_me, media_type, filename?, file_length?}]`
 - `list_chats`: `[{jid, name, is_group, last_message_time, last_message, last_sender, last_is_from_me}]`
 - `search_contacts`: `[{jid, phone_number, name, first_name, full_name, push_name, business_name, nickname}]`
+
+## Security
+
+### API Authentication
+Set `API_KEY` env var to require `X-API-Key` header on all bridge API requests. Empty = disabled.
+
+### Webhook URLs
+Private IPs blocked by default (10.x, 172.16.x, 192.168.x, 127.x, 169.254.x). Set `DISABLE_SSRF_CHECK=true` for testing.
+
+### Media Paths
+Must be within `/app/media`, `/app/store`, or `/tmp`. Set `DISABLE_PATH_CHECK=true` for development.
+
+### Rate Limiting
+100 requests/minute per IP on bridge API.
+
+### CORS
+Allowed origins: `localhost:8089`, `localhost:8082`. Configurable in `middleware.go`.
+
+### Containers
+Run as non-root `appuser` in production.
+
+## Code Standards
+
+### Go
+- Use `logger` for logging, not `fmt.Println` (except QR/server status)
+- All exported functions need godoc comments
+- Table-driven tests preferred
+- Error wrapping: `fmt.Errorf("context: %w", err)`
+- Critical startup errors: `os.Exit(1)` not `return`
+
+### Python
+- Use `logger` from `lib.utils`, not `print()`
+- Type hints on all functions
+- Docstrings on all public functions
+- Raise exceptions, don't return empty on error
+- Python modules live in `lib/`: models, database, bridge, utils
+
+## Testing
+
+### Running Tests
+```bash
+# Python
+cd whatsapp-mcp-server && uv run pytest --cov=lib -v
+
+# Go
+cd whatsapp-bridge && go test -v -race ./...
+```
+
+### Coverage Target
+Minimum 50% coverage. See `docs/TESTING_ROADMAP.md` for gaps and priorities.
+
+### CI/CD
+GitHub Actions run on push/PR to main:
+- `.github/workflows/go-test.yml` - Go tests + build
+- `.github/workflows/python-test.yml` - Python tests + type check
+- `.github/workflows/lint.yml` - golangci-lint, ruff, hadolint
