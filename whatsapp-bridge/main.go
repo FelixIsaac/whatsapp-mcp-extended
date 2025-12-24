@@ -27,7 +27,7 @@ func main() {
 	messageStore, err := database.NewMessageStore()
 	if err != nil {
 		logger.Errorf("Failed to initialize message store: %v", err)
-		return
+		os.Exit(1)
 	}
 	defer messageStore.Close()
 
@@ -35,7 +35,7 @@ func main() {
 	client, err := whatsapp.NewClientWithConfig(logger, cfg)
 	if err != nil {
 		logger.Errorf("Failed to create WhatsApp client: %v", err)
-		return
+		os.Exit(1)
 	}
 
 	// Initialize webhook manager
@@ -43,7 +43,7 @@ func main() {
 	err = webhookManager.LoadWebhookConfigs()
 	if err != nil {
 		logger.Errorf("Failed to load webhook configs: %v", err)
-		return
+		os.Exit(1)
 	}
 
 	// Setup event handling for messages and history sync
@@ -68,7 +68,7 @@ func main() {
 	// Connect to WhatsApp
 	if err := client.Connect(); err != nil {
 		logger.Errorf("Failed to connect to WhatsApp: %v", err)
-		return
+		os.Exit(1)
 	}
 
 	fmt.Println("\n✓ Connected to WhatsApp! Type 'help' for commands.")

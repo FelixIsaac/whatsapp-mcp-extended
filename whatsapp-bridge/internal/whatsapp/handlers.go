@@ -142,18 +142,6 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 		c.logger.Warnf("Failed to store message: %v", err)
 	} else {
 		// Log message reception
-		timestamp := msg.Info.Timestamp.Format("2006-01-02 15:04:05")
-		direction := "←"
-		if msg.Info.IsFromMe {
-			direction = "→"
-		}
-
-		// Log based on message type
-		if mediaType != "" {
-			fmt.Printf("[%s] %s %s: [%s: %s] %s\n", timestamp, direction, sender, mediaType, filename, content)
-		} else if content != "" {
-			fmt.Printf("[%s] %s %s: %s\n", timestamp, direction, sender, content)
-		}
 	}
 
 	// Process webhooks if manager is available
@@ -169,7 +157,7 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 
 // HandleHistorySync processes history sync events
 func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historySync *events.HistorySync) {
-	fmt.Printf("Received history sync event with %d conversations\n", len(historySync.Data.Conversations))
+	c.logger.Infof("Received history sync event with %d conversations", len(historySync.Data.Conversations))
 
 	syncedCount := 0
 	for _, conversation := range historySync.Data.Conversations {
@@ -306,5 +294,5 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 		}
 	}
 
-	fmt.Printf("History sync complete. Stored %d messages.\n", syncedCount)
+	c.logger.Infof("History sync complete. Stored %d messages.", syncedCount)
 }

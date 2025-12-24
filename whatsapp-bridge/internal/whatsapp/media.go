@@ -124,7 +124,6 @@ func AnalyzeOggOpus(data []byte) (duration uint32, waveform []byte, err error) {
 					preSkip = binary.LittleEndian.Uint16(pageData[headPos+10 : headPos+12])
 					sampleRate = binary.LittleEndian.Uint32(pageData[headPos+12 : headPos+16])
 					foundOpusHead = true
-					fmt.Printf("Found OpusHead: sampleRate=%d, preSkip=%d\n", sampleRate, preSkip)
 				}
 			}
 		}
@@ -138,20 +137,13 @@ func AnalyzeOggOpus(data []byte) (duration uint32, waveform []byte, err error) {
 		i += pageSize
 	}
 
-	if !foundOpusHead {
-		fmt.Println("Warning: OpusHead not found, using default values")
-	}
-
 	// Calculate duration based on granule position
 	if lastGranule > 0 {
 		// Formula for duration: (lastGranule - preSkip) / sampleRate
 		durationSeconds := float64(lastGranule-uint64(preSkip)) / float64(sampleRate)
 		duration = uint32(math.Ceil(durationSeconds))
-		fmt.Printf("Calculated Opus duration from granule: %f seconds (lastGranule=%d)\n",
-			durationSeconds, lastGranule)
 	} else {
 		// Fallback to rough estimation if granule position not found
-		fmt.Println("Warning: No valid granule position found, using estimation")
 		durationEstimate := float64(len(data)) / 2000.0 // Very rough approximation
 		duration = uint32(durationEstimate)
 	}
@@ -165,9 +157,6 @@ func AnalyzeOggOpus(data []byte) (duration uint32, waveform []byte, err error) {
 
 	// Generate waveform
 	waveform = placeholderWaveform(duration)
-
-	fmt.Printf("Ogg Opus analysis: size=%d bytes, calculated duration=%d sec, waveform=%d bytes\n",
-		len(data), duration, len(waveform))
 
 	return duration, waveform, nil
 }
