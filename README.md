@@ -341,6 +341,30 @@ docker-compose build whatsapp-bridge
 docker-compose -f docker-compose.dev.yml up
 ```
 
+### Pre-build Checks (Recommended)
+
+Run these checks **before** `docker-compose build` to catch errors quickly (~5s) instead of waiting for the full build (~4-5 min):
+
+```bash
+cd whatsapp-mcp-server
+
+# Install dev tools (first time only)
+uv sync --all-extras
+
+# Quick syntax check (~1s) - catches missing imports, syntax errors
+uv run python check.py --quick
+
+# Full check (~5s) - includes ruff linting + mypy type checking
+uv run python check.py
+```
+
+**What it catches:**
+- Missing imports (e.g., `NameError: name 'Dict' is not defined`)
+- Syntax errors
+- Undefined variables
+- Unused imports
+- Type annotation mismatches
+
 ### Testing
 ```bash
 # Run bridge tests
