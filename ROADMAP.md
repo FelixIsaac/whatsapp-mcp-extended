@@ -319,9 +319,73 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 
 ---
 
-## Unresolved Questions
+## Future Phases (Pre-Release Roadmap)
 
-1. Reactions: separate table or JSON in messages?
-2. Priority order for Phase 1 features?
-3. Config file format for history sync days?
-4. Backwards compatibility with existing DBs?
+### Phase 6: Must Have (v0.1.0 Pre-Release)
+
+| Feature | Tools | whatsmeow Method | Priority |
+|---------|-------|------------------|----------|
+| **Disappearing Messages** | `set_disappearing_timer`, `get_disappearing_timer` | `SetDisappearingTimer()`, `SetDefaultDisappearingTimer()` | 🔴 High |
+| **Chat Settings** | `pin_chat`, `unpin_chat`, `mute_chat`, `unmute_chat`, `archive_chat`, `unarchive_chat`, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🔴 High |
+| **Status/About** | `set_about_text`, `post_status` | `SetStatusMessage()`, `SendMessage(StatusBroadcastJID)` | 🔴 High |
+| **Privacy Settings** | `get_privacy_settings`, `set_privacy_setting` | `TryFetchPrivacySettings()`, `SetPrivacySetting()` | 🔴 High |
+| **Typing Indicator** | `send_typing`, `send_paused` | `SendChatPresence(Composing/Paused)` | 🔴 High |
+| **Reply/Quote** | `reply_message` | `ContextInfo.QuotedMessage` | 🔴 High |
+
+### Phase 7: Should Have (v0.2.0)
+
+| Feature | Tools | Notes |
+|---------|-------|-------|
+| **Starred Messages** | `star_message`, `unstar_message`, `get_starred_messages` | `appstate.BuildStar()` |
+| **Forward Message** | `forward_message` | `ContextInfo.IsForwarded` |
+| **Send Location** | `send_location` | Lat/lng with optional name |
+| **Send Contact** | `send_contact` | vCard format |
+| **Set Profile Picture** | `set_profile_picture`, `remove_profile_picture` | Own avatar management |
+
+### Phase 8: Could Have (v0.3.0+)
+
+| Feature | Tools | Notes |
+|---------|-------|-------|
+| **Labels** | `create_label`, `assign_label`, `remove_label`, `list_labels` | Business accounts only |
+| **Broadcast Lists** | `create_broadcast`, `send_broadcast` | Different from newsletters |
+| **Community** | `create_community`, `manage_community` | Complex, newer feature |
+| **Call Signaling** | `initiate_call`, `reject_call` | Signaling only, no media |
+
+---
+
+## Quick Wins for v0.1.0
+
+Easiest to implement (single method calls):
+
+1. **`send_typing`** - `client.SendChatPresence(chat, types.ChatPresenceComposing)`
+2. **`set_about_text`** - `client.SetStatusMessage(msg)`
+3. **`set_disappearing_timer`** - `client.SetDisappearingTimer(chat, duration)`
+4. **`get_privacy_settings`** - `client.TryFetchPrivacySettings(ctx)`
+5. **`pin_chat`** - `client.SendAppState(appstate.BuildPin(chat, true))`
+
+Disappearing timer constants:
+```go
+DisappearingTimerOff     = 0
+DisappearingTimer24Hours = 24 * time.Hour
+DisappearingTimer7Days   = 7 * 24 * time.Hour
+DisappearingTimer90Days  = 90 * 24 * time.Hour
+```
+
+Privacy setting types:
+```go
+PrivacySettingTypeGroupAdd     = "groupadd"
+PrivacySettingTypeLastSeen     = "last"
+PrivacySettingTypeStatus       = "status"
+PrivacySettingTypeProfile      = "profile"
+PrivacySettingTypeReadReceipts = "readreceipts"
+PrivacySettingTypeOnline       = "online"
+```
+
+---
+
+## Resolved Questions
+
+1. ~~Reactions: separate table or JSON in messages?~~ → Deferred, using webhook delivery
+2. ~~Priority order for Phase 1 features?~~ → Completed all Phase 1-5
+3. ~~Config file format for history sync days?~~ → Environment variables
+4. ~~Backwards compatibility with existing DBs?~~ → Yes, additive changes only
