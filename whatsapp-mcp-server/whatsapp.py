@@ -38,10 +38,12 @@ class Message:
     id: str
     chat_name: Optional[str] = None
     media_type: Optional[str] = None
+    filename: Optional[str] = None
+    file_length: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert Message to dictionary for structured output."""
-        return {
+        result = {
             "id": self.id,
             "chat_jid": self.chat_jid,
             "chat_name": self.chat_name,
@@ -51,6 +53,11 @@ class Message:
             "is_from_me": self.is_from_me,
             "media_type": self.media_type,
         }
+        # Include media metadata if present
+        if self.media_type:
+            result["filename"] = self.filename
+            result["file_length"] = self.file_length
+        return result
 
 @dataclass
 class Chat:
@@ -229,8 +236,8 @@ def list_messages(
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
 
-        # Build base query
-        query_parts = ["SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type FROM messages"]
+        # Build base query - include filename and file_length for media metadata
+        query_parts = ["SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type, messages.filename, messages.file_length FROM messages"]
         query_parts.append("JOIN chats ON messages.chat_jid = chats.jid")
         where_clauses = []
         params = []
@@ -286,7 +293,9 @@ def list_messages(
                 is_from_me=msg[4],
                 chat_jid=msg[5],
                 id=msg[6],
-                media_type=msg[7]
+                media_type=msg[7],
+                filename=msg[8],
+                file_length=msg[9]
             )
             result.append(message)
 
@@ -329,19 +338,19 @@ def get_message_context(
     try:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
-        
+
         # Get the target message first
         cursor.execute("""
-            SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.chat_jid, messages.media_type
+            SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.chat_jid, messages.media_type, messages.filename, messages.file_length
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
             WHERE messages.id = ?
         """, (message_id,))
         msg_data = cursor.fetchone()
-        
+
         if not msg_data:
             raise ValueError(f"Message with ID {message_id} not found")
-            
+
         target_message = Message(
             timestamp=datetime.fromisoformat(msg_data[0]),
             sender=msg_data[1],
@@ -350,19 +359,21 @@ def get_message_context(
             is_from_me=msg_data[4],
             chat_jid=msg_data[5],
             id=msg_data[6],
-            media_type=msg_data[8]
+            media_type=msg_data[8],
+            filename=msg_data[9],
+            file_length=msg_data[10]
         )
-        
+
         # Get messages before
         cursor.execute("""
-            SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type
+            SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type, messages.filename, messages.file_length
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
             WHERE messages.chat_jid = ? AND messages.timestamp < ?
             ORDER BY messages.timestamp DESC
             LIMIT ?
         """, (msg_data[7], msg_data[0], before))
-        
+
         before_messages = []
         for msg in cursor.fetchall():
             before_messages.append(Message(
@@ -373,19 +384,21 @@ def get_message_context(
                 is_from_me=msg[4],
                 chat_jid=msg[5],
                 id=msg[6],
-                media_type=msg[7]
+                media_type=msg[7],
+                filename=msg[8],
+                file_length=msg[9]
             ))
-        
+
         # Get messages after
         cursor.execute("""
-            SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type
+            SELECT messages.timestamp, messages.sender, chats.name, messages.content, messages.is_from_me, chats.jid, messages.id, messages.media_type, messages.filename, messages.file_length
             FROM messages
             JOIN chats ON messages.chat_jid = chats.jid
             WHERE messages.chat_jid = ? AND messages.timestamp > ?
             ORDER BY messages.timestamp ASC
             LIMIT ?
         """, (msg_data[7], msg_data[0], after))
-        
+
         after_messages = []
         for msg in cursor.fetchall():
             after_messages.append(Message(
@@ -396,9 +409,11 @@ def get_message_context(
                 is_from_me=msg[4],
                 chat_jid=msg[5],
                 id=msg[6],
-                media_type=msg[7]
+                media_type=msg[7],
+                filename=msg[8],
+                file_length=msg[9]
             ))
-        
+
         return MessageContext(
             message=target_message,
             before=before_messages,
@@ -636,7 +651,9 @@ def get_last_interaction(jid: str) -> Optional[Dict[str, Any]]:
                 m.is_from_me,
                 c.jid,
                 m.id,
-                m.media_type
+                m.media_type,
+                m.filename,
+                m.file_length
             FROM messages m
             JOIN chats c ON m.chat_jid = c.jid
             WHERE m.sender = ? OR c.jid = ?
@@ -657,7 +674,9 @@ def get_last_interaction(jid: str) -> Optional[Dict[str, Any]]:
             is_from_me=msg_data[4],
             chat_jid=msg_data[5],
             id=msg_data[6],
-            media_type=msg_data[7]
+            media_type=msg_data[7],
+            filename=msg_data[8],
+            file_length=msg_data[9]
         )
 
         return message.to_dict()

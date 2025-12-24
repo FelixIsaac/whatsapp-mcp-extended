@@ -98,3 +98,32 @@ Delivery: async with exponential backoff, HMAC-SHA256 signatures
 - `BRIDGE_HOST`: Go bridge hostname (default: localhost, set to container name in docker)
 - `GRADIO`: Enable/disable Gradio UI (true/false)
 - `DEBUG`: Enable debug logging
+
+## Technology References
+
+### whatsmeow (Go WhatsApp Library)
+- **Repo:** https://github.com/tulir/whatsmeow
+- **Docs:** https://pkg.go.dev/go.mau.fi/whatsmeow
+- **Key Types:**
+  - `SendResponse` - Returns ID, Timestamp from SendMessage
+  - `events.Message` - Incoming message structure
+  - `types.GroupInfo` - Group metadata (name, topic, participants)
+  - `types.JID` - WhatsApp identifier format
+
+### Message ID Format
+- Format: Hex string (e.g., `3EB028A580CF7CC9AAF3A2`)
+- Used for: edit, delete, react, mark_read operations
+- Returned by: send_message, send_file, send_audio_message
+
+### JID (Jabber ID) Format
+- Individual: `{phone}@s.whatsapp.net` (e.g., `6593439326@s.whatsapp.net`)
+- Group: `{id}@g.us` (e.g., `120363123456789012@g.us`)
+- LID (linked device): `{id}@lid`
+- Broadcast: `status@broadcast`
+
+### MCP Tool Output Format
+All tools return structured dictionaries:
+- `send_message/send_file/send_audio`: `{success, message_id, timestamp, recipient, error?}`
+- `list_messages`: `[{id, chat_jid, chat_name, sender, content, timestamp, is_from_me, media_type, filename?, file_length?}]`
+- `list_chats`: `[{jid, name, is_group, last_message_time, last_message, last_sender, last_is_from_me}]`
+- `search_contacts`: `[{jid, phone_number, name, first_name, full_name, push_name, business_name, nickname}]`
