@@ -147,7 +147,10 @@ All tools return structured dictionaries:
 ## Security
 
 ### API Authentication
-Set `API_KEY` env var to require `X-API-Key` header on all bridge API requests. Empty = disabled.
+**Required in production.** Set `API_KEY` env var - bridge fails to start if unset.
+- Dev mode: `DISABLE_AUTH_CHECK=true` to skip
+- Generate: `openssl rand -hex 32`
+- Uses constant-time comparison
 
 ### Webhook URLs
 Private IPs blocked by default (10.x, 172.16.x, 192.168.x, 127.x, 169.254.x). Set `DISABLE_SSRF_CHECK=true` for testing.
