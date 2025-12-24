@@ -6,7 +6,6 @@ from mcp.server.fastmcp import FastMCP
 from whatsapp import delete_message as whatsapp_delete_message
 from whatsapp import download_media as whatsapp_download_media
 from whatsapp import edit_message as whatsapp_edit_message
-from whatsapp import format_contact_info as whatsapp_format_contact_info
 from whatsapp import get_chat as whatsapp_get_chat
 from whatsapp import get_contact_by_jid as whatsapp_get_contact_by_jid
 from whatsapp import get_contact_by_phone as whatsapp_get_contact_by_phone
@@ -33,20 +32,16 @@ from whatsapp import set_contact_nickname as whatsapp_set_contact_nickname
 mcp = FastMCP("whatsapp-extended")
 
 @mcp.tool()
-def search_contacts(query: str) -> str:
+def search_contacts(query: str) -> list[dict[str, Any]]:
     """Search WhatsApp contacts by name or phone number.
 
     Args:
         query: Search term to match against contact names or phone numbers
-    """
-    contacts = whatsapp_search_contacts(query)
-    if not contacts:
-        return "No contacts found matching your query."
 
-    result = f"Found {len(contacts)} contact(s):\n\n"
-    for contact in contacts:
-        result += whatsapp_format_contact_info(contact) + "\n"
-    return result
+    Returns:
+        List of contact dicts with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
+    """
+    return whatsapp_search_contacts(query)
 
 @mcp.tool()
 def list_messages(
@@ -227,35 +222,32 @@ def download_media(message_id: str, chat_jid: str) -> dict[str, Any]:
         return {"success": False, "message": "Failed to download media"}
 
 @mcp.tool()
-def get_contact_details(identifier: str) -> str:
+def get_contact_details(identifier: str) -> dict[str, Any] | None:
     """Get detailed information about a WhatsApp contact.
 
     Args:
         identifier: Either a JID or phone number of the contact
+
+    Returns:
+        Contact dict with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
+        or None if not found
     """
     contact = whatsapp_get_contact_by_jid(identifier)
     if not contact:
         contact = whatsapp_get_contact_by_phone(identifier)
-
-    if contact:
-        return whatsapp_format_contact_info(contact)
-    return f"No contact found for: {identifier}"
+    return contact
 
 @mcp.tool()
-def list_all_contacts(limit: int = 100) -> str:
+def list_all_contacts(limit: int = 100) -> list[dict[str, Any]]:
     """List all WhatsApp contacts with their information.
 
     Args:
         limit: Maximum number of contacts to return (default 100)
-    """
-    contacts = whatsapp_list_all_contacts(limit)
-    if not contacts:
-        return "No contacts found."
 
-    result = f"Found {len(contacts)} contact(s):\n\n"
-    for contact in contacts:
-        result += whatsapp_format_contact_info(contact) + "\n"
-    return result
+    Returns:
+        List of contact dicts with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
+    """
+    return whatsapp_list_all_contacts(limit)
 
 @mcp.tool()
 def set_nickname(jid: str, nickname: str) -> dict[str, Any]:

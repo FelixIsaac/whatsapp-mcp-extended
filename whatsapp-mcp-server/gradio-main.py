@@ -9,6 +9,7 @@ from whatsapp import download_media as whatsapp_download_media
 from whatsapp import edit_message as whatsapp_edit_message
 from whatsapp import get_chat as whatsapp_get_chat
 from whatsapp import get_contact_by_jid as whatsapp_get_contact_by_jid
+from whatsapp import get_contact_by_phone as whatsapp_get_contact_by_phone
 from whatsapp import get_contact_chats as whatsapp_get_contact_chats
 from whatsapp import get_contact_nickname as whatsapp_get_contact_nickname
 from whatsapp import get_direct_chat_by_contact as whatsapp_get_direct_chat_by_contact
@@ -47,12 +48,14 @@ mcp = FastMCP(
 @mcp.tool()
 def search_contacts(query: str) -> str:
     """Search WhatsApp contacts by name or phone number.
-    
+
     Parameters:
     - query: Search term to match against contact names or phone numbers
+
+    Returns:
+        JSON list of contact dicts with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
     """
-    contacts = whatsapp_search_contacts(query)
-    return str(contacts)
+    return str(whatsapp_search_contacts(query))
 
 @mcp.tool()
 def list_messages(
@@ -247,50 +250,32 @@ def download_media(message_id: str, chat_jid: str) -> str:
     return str(result)
 
 @mcp.tool()
-def get_contact_details(chat_jid: str) -> str:
-    """Get detailed contact information for a chat.
-    
+def get_contact_details(identifier: str) -> str:
+    """Get detailed contact information.
+
     Parameters:
-    - chat_jid: The JID of the chat to get details for
+    - identifier: Either a JID or phone number of the contact
+
+    Returns:
+        Contact dict with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
     """
-    contact_details = whatsapp_get_contact_by_jid(chat_jid)
-    
-    if contact_details:
-        result = {
-            "success": True,
-            "contact": contact_details
-        }
-    else:
-        result = {
-            "success": False,
-            "message": "Contact not found"
-        }
-    return str(result)
+    contact = whatsapp_get_contact_by_jid(identifier)
+    if not contact:
+        contact = whatsapp_get_contact_by_phone(identifier)
+    return str(contact)
 
 
 @mcp.tool()
-def list_all_contacts(limit: str = "100") -> str:
+def list_all_contacts(limit: int = 100) -> str:
     """Get all contacts with their detailed information.
-    
+
     Parameters:
     - limit: Maximum number of contacts to return
+
+    Returns:
+        JSON list of contact dicts
     """
-    limit_int = int(limit) if limit else 100
-    contacts = whatsapp_list_all_contacts(limit_int)
-    result = [
-        {
-            "phone_number": contact.phone_number,
-            "name": contact.name,
-            "jid": contact.jid,
-            "first_name": contact.first_name,
-            "full_name": contact.full_name,
-            "push_name": contact.push_name,
-            "business_name": contact.business_name,
-            "nickname": contact.nickname
-        }
-        for contact in contacts
-    ]
-    return str(result)
+    return str(whatsapp_list_all_contacts(limit))
 
 
 @mcp.tool()

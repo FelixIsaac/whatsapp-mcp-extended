@@ -67,6 +67,7 @@ class Chat:
     name: str | None
     last_message_time: datetime | None
     last_message: str | None = None
+    last_message_id: str | None = None
     last_sender: str | None = None
     last_is_from_me: bool | None = None
 
@@ -83,6 +84,7 @@ class Chat:
             "is_group": self.is_group,
             "last_message_time": self.last_message_time.isoformat() if self.last_message_time else None,
             "last_message": self.last_message,
+            "last_message_id": self.last_message_id,
             "last_sender": self.last_sender,
             "last_is_from_me": self.last_is_from_me,
         }
@@ -460,11 +462,12 @@ def list_chats(
         
         # Build base query
         query_parts = ["""
-            SELECT 
+            SELECT
                 chats.jid,
                 chats.name,
                 chats.last_message_time,
                 messages.content as last_message,
+                messages.id as last_message_id,
                 messages.sender as last_sender,
                 messages.is_from_me as last_is_from_me
             FROM chats
@@ -505,8 +508,9 @@ def list_chats(
                 name=chat_data[1],
                 last_message_time=datetime.fromisoformat(chat_data[2]) if chat_data[2] else None,
                 last_message=chat_data[3],
-                last_sender=chat_data[4],
-                last_is_from_me=chat_data[5]
+                last_message_id=chat_data[4],
+                last_sender=chat_data[5],
+                last_is_from_me=chat_data[6]
             )
             result.append(chat.to_dict())
 
@@ -605,6 +609,7 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str
                 c.name,
                 c.last_message_time,
                 m.content as last_message,
+                m.id as last_message_id,
                 m.sender as last_sender,
                 m.is_from_me as last_is_from_me
             FROM chats c
@@ -623,8 +628,9 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str
                 name=chat_data[1],
                 last_message_time=datetime.fromisoformat(chat_data[2]) if chat_data[2] else None,
                 last_message=chat_data[3],
-                last_sender=chat_data[4],
-                last_is_from_me=chat_data[5]
+                last_message_id=chat_data[4],
+                last_sender=chat_data[5],
+                last_is_from_me=chat_data[6]
             )
             result.append(chat.to_dict())
 
