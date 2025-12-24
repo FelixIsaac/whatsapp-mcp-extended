@@ -1,0 +1,60 @@
+name: Go Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'whatsapp-bridge/**'
+      - '.github/workflows/go-test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'whatsapp-bridge/**'
+      - '.github/workflows/go-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: whatsapp-bridge/go.sum
+
+      - name: Install dependencies
+        run: |
+          cd whatsapp-bridge
+          go mod download
+
+      - name: Run tests
+        run: |
+          cd whatsapp-bridge
+          go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: whatsapp-bridge/coverage.out
+          flags: go
+          fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: whatsapp-bridge/go.sum
+
+      - name: Build
+        run: |
+          cd whatsapp-bridge
+          go build -v ./...

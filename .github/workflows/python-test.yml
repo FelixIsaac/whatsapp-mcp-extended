@@ -1,0 +1,69 @@
+name: Python Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'whatsapp-mcp-server/**'
+      - '.github/workflows/python-test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'whatsapp-mcp-server/**'
+      - '.github/workflows/python-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: |
+          cd whatsapp-mcp-server
+          uv sync --all-extras
+
+      - name: Run tests
+        run: |
+          cd whatsapp-mcp-server
+          uv run pytest --cov=lib --cov-report=xml --cov-report=term-missing -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: whatsapp-mcp-server/coverage.xml
+          flags: python
+          fail_ci_if_error: false
+
+  type-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: |
+          cd whatsapp-mcp-server
+          uv sync --all-extras
+
+      - name: Run type checking
+        run: |
+          cd whatsapp-mcp-server
+          uv run python -m mypy lib/ --ignore-missing-imports || true
