@@ -9,7 +9,19 @@ import (
 	"whatsapp-bridge/internal/types"
 )
 
-// handleSendMessage handles the message sending API endpoint
+// handleSendMessage handles POST /api/send for sending WhatsApp messages.
+//
+// Request body:
+//   - recipient: WhatsApp JID (required, e.g., "1234567890@s.whatsapp.net")
+//   - message: Text content (required if media_path not provided)
+//   - media_path: Path to media file (optional, for images/videos/documents)
+//
+// Response:
+//   - success: boolean
+//   - message_id: string (WhatsApp message ID on success)
+//   - timestamp: int64 (Unix timestamp)
+//   - recipient: string (echo of recipient JID)
+//   - error: string (on failure)
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	// Only allow POST requests
 	if r.Method != http.MethodPost {
@@ -56,7 +68,19 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleWebhooks handles webhook CRUD operations
+// handleWebhooks handles GET/POST /api/webhooks for webhook management.
+//
+// GET: List all webhook configurations (secrets are masked)
+// POST: Create a new webhook configuration
+//
+// POST Request body:
+//   - name: Webhook name (required)
+//   - webhook_url: HTTP(S) URL to POST to (required)
+//   - secret_token: HMAC-SHA256 signing secret (optional)
+//   - enabled: boolean (default true)
+//   - triggers: array of trigger configurations
+//
+// Response: { success: bool, data: WebhookConfig[] | WebhookConfig }
 func (s *Server) handleWebhooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -106,7 +130,15 @@ func (s *Server) handleWebhooks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleWebhookByID handles individual webhook operations
+// handleWebhookByID handles operations on individual webhooks.
+//
+// Routes:
+//   - GET    /api/webhooks/{id}        - Get webhook config
+//   - PUT    /api/webhooks/{id}        - Update webhook config
+//   - DELETE /api/webhooks/{id}        - Delete webhook
+//   - POST   /api/webhooks/{id}/test   - Test webhook delivery
+//   - GET    /api/webhooks/{id}/logs   - Get delivery logs
+//   - POST   /api/webhooks/{id}/enable - Enable/disable webhook
 func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -275,7 +307,10 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleWebhookLogs handles webhook logs endpoint
+// handleWebhookLogs handles GET /api/webhook-logs for all webhook delivery logs.
+//
+// Returns the last 100 webhook delivery attempts across all webhooks.
+// For logs of a specific webhook, use GET /api/webhooks/{id}/logs instead.
 func (s *Server) handleWebhookLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -297,7 +332,14 @@ func (s *Server) handleWebhookLogs(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleReaction handles emoji reactions to messages
+// handleReaction handles POST /api/reaction for sending emoji reactions.
+//
+// Request body:
+//   - chat_jid: Chat containing the message (required)
+//   - message_id: Target message ID (required)
+//   - emoji: Reaction emoji (empty string to remove reaction)
+//
+// Response: { success: bool, message: string }
 func (s *Server) handleReaction(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -328,7 +370,14 @@ func (s *Server) handleReaction(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleEditMessage handles editing previously sent messages
+// handleEditMessage handles POST /api/edit for editing sent messages.
+//
+// Request body:
+//   - chat_jid: Chat containing the message (required)
+//   - message_id: Message to edit (required, must be your own message)
+//   - new_content: Updated message text (required)
+//
+// Response: { success: bool, message: string }
 func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -359,7 +408,14 @@ func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleDeleteMessage handles deleting/revoking messages
+// handleDeleteMessage handles POST /api/delete for revoking messages.
+//
+// Request body:
+//   - chat_jid: Chat containing the message (required)
+//   - message_id: Message to delete (required)
+//   - sender_jid: Original sender (required for group admin revoking others' messages)
+//
+// Response: { success: bool, message: string }
 func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -390,7 +446,13 @@ func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleGetGroupInfo handles getting group information
+// handleGetGroupInfo handles GET /api/group/{jid} for group metadata.
+//
+// URL parameter:
+//   - jid: Group JID (e.g., "123456789@g.us")
+//
+// Response includes: jid, name, topic, owner_jid, participant_count,
+// participants (with is_admin, is_owner flags), created_at
 func (s *Server) handleGetGroupInfo(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -438,7 +500,14 @@ func (s *Server) handleGetGroupInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleMarkRead handles marking messages as read
+// handleMarkRead handles POST /api/read for sending read receipts (blue ticks).
+//
+// Request body:
+//   - chat_jid: Chat containing the messages (required)
+//   - message_ids: Array of message IDs to mark read (required)
+//   - sender_jid: Sender JID (required for group chats)
+//
+// Response: { success: bool, message: string }
 func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -471,7 +540,13 @@ func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 
 // Phase 2: Group Management Handlers
 
-// handleCreateGroup handles creating a new group
+// handleCreateGroup handles POST /api/group/create for creating WhatsApp groups.
+//
+// Request body:
+//   - name: Group name (required)
+//   - participants: Array of JIDs to add (optional)
+//
+// Response: { success: bool, group_jid: string, name: string }
 func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -504,7 +579,13 @@ func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleAddGroupMembers handles adding members to a group
+// handleAddGroupMembers handles POST /api/group/add for adding group members.
+//
+// Request body:
+//   - group_jid: Target group (required)
+//   - participants: Array of JIDs to add (required)
+//
+// Response: { success: bool, participants: [{jid, error}] }
 func (s *Server) handleAddGroupMembers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -545,7 +626,13 @@ func (s *Server) handleAddGroupMembers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleRemoveGroupMembers handles removing members from a group
+// handleRemoveGroupMembers handles POST /api/group/remove for removing members.
+//
+// Request body:
+//   - group_jid: Target group (required)
+//   - participants: Array of JIDs to remove (required)
+//
+// Response: { success: bool, participants: [{jid, error}] }
 func (s *Server) handleRemoveGroupMembers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -585,7 +672,13 @@ func (s *Server) handleRemoveGroupMembers(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// handlePromoteAdmin handles promoting a member to admin
+// handlePromoteAdmin handles POST /api/group/promote for promoting to admin.
+//
+// Request body:
+//   - group_jid: Target group (required)
+//   - participant: JID to promote (required)
+//
+// Response: { success: bool, group_jid, participant, action: "promoted" }
 func (s *Server) handlePromoteAdmin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -619,7 +712,13 @@ func (s *Server) handlePromoteAdmin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleDemoteAdmin handles demoting an admin to regular member
+// handleDemoteAdmin handles POST /api/group/demote for demoting admins.
+//
+// Request body:
+//   - group_jid: Target group (required)
+//   - participant: Admin JID to demote (required)
+//
+// Response: { success: bool, group_jid, participant, action: "demoted" }
 func (s *Server) handleDemoteAdmin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -653,7 +752,12 @@ func (s *Server) handleDemoteAdmin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleLeaveGroup handles leaving a group
+// handleLeaveGroup handles POST /api/group/leave for leaving a group.
+//
+// Request body:
+//   - group_jid: Group to leave (required)
+//
+// Response: { success: bool, group_jid, action: "left" }
 func (s *Server) handleLeaveGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -686,7 +790,14 @@ func (s *Server) handleLeaveGroup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleUpdateGroup handles updating group name/topic
+// handleUpdateGroup handles POST /api/group/update for modifying group settings.
+//
+// Request body:
+//   - group_jid: Target group (required)
+//   - name: New group name (optional)
+//   - topic: New group description (optional)
+//
+// At least one of name or topic must be provided.
 func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -738,7 +849,15 @@ func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 
 // Phase 3: Polls
 
-// handleCreatePoll handles creating a new poll
+// handleCreatePoll handles POST /api/poll for creating WhatsApp polls.
+//
+// Request body:
+//   - chat_jid: Target chat (required)
+//   - question: Poll question (required)
+//   - options: Array of 2-12 answer options (required)
+//   - multi_select: Allow multiple selections (default false)
+//
+// Response: { success, message_id, timestamp, chat_jid, question, options }
 func (s *Server) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -781,7 +900,16 @@ func (s *Server) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 
 // Phase 4: History Sync
 
-// handleRequestHistory handles on-demand history requests
+// handleRequestHistory handles POST /api/history for requesting older messages.
+//
+// Request body:
+//   - chat_jid: Target chat (required)
+//   - oldest_msg_id: ID of oldest known message (required)
+//   - oldest_msg_timestamp: Unix timestamp in ms of oldest message (required)
+//   - oldest_msg_from_me: Whether oldest message was sent by you (default false)
+//   - count: Number of messages to request (max 50, default 50)
+//
+// Note: Messages arrive asynchronously via HistorySync events.
 func (s *Server) handleRequestHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -821,7 +949,12 @@ func (s *Server) handleRequestHistory(w http.ResponseWriter, r *http.Request) {
 
 // Phase 5: Advanced Features
 
-// handleSetPresence handles setting own presence (available/unavailable)
+// handleSetPresence handles POST /api/presence for setting online status.
+//
+// Request body:
+//   - presence: "available" or "unavailable" (required)
+//
+// Response: { success: bool, presence: string }
 func (s *Server) handleSetPresence(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -853,7 +986,12 @@ func (s *Server) handleSetPresence(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleSubscribePresence handles subscribing to a contact's presence
+// handleSubscribePresence handles POST /api/presence/subscribe for presence updates.
+//
+// Request body:
+//   - jid: Contact JID to subscribe to (required)
+//
+// After subscribing, presence events will arrive via event handlers.
 func (s *Server) handleSubscribePresence(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -886,7 +1024,13 @@ func (s *Server) handleSubscribePresence(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// handleGetProfilePicture handles getting a profile picture URL
+// handleGetProfilePicture handles GET/POST /api/profile-picture for avatars.
+//
+// GET query params or POST body:
+//   - jid: User or group JID (required)
+//   - preview: Return thumbnail instead of full image (default false)
+//
+// Response: { success, jid, has_picture, url, id, type, direct_path }
 func (s *Server) handleGetProfilePicture(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -942,7 +1086,9 @@ func (s *Server) handleGetProfilePicture(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// handleGetBlocklist handles getting the list of blocked users
+// handleGetBlocklist handles GET /api/blocklist for listing blocked users.
+//
+// Response: { success: bool, users: [{jid}], count: int }
 func (s *Server) handleGetBlocklist(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -964,7 +1110,13 @@ func (s *Server) handleGetBlocklist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleUpdateBlocklist handles blocking/unblocking a user
+// handleUpdateBlocklist handles POST /api/blocklist for blocking/unblocking.
+//
+// Request body:
+//   - jid: User JID to block/unblock (required)
+//   - action: "block" or "unblock" (required)
+//
+// Response: { success: bool, jid, action }
 func (s *Server) handleUpdateBlocklist(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -997,7 +1149,12 @@ func (s *Server) handleUpdateBlocklist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleFollowNewsletter handles following a newsletter/channel
+// handleFollowNewsletter handles POST /api/newsletter/follow for joining channels.
+//
+// Request body:
+//   - jid: Newsletter/channel JID (required)
+//
+// Response: { success: bool, jid, message }
 func (s *Server) handleFollowNewsletter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1030,7 +1187,12 @@ func (s *Server) handleFollowNewsletter(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// handleUnfollowNewsletter handles unfollowing a newsletter/channel
+// handleUnfollowNewsletter handles POST /api/newsletter/unfollow for leaving channels.
+//
+// Request body:
+//   - jid: Newsletter/channel JID (required)
+//
+// Response: { success: bool, jid, message }
 func (s *Server) handleUnfollowNewsletter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1063,7 +1225,13 @@ func (s *Server) handleUnfollowNewsletter(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// handleCreateNewsletter handles creating a new newsletter/channel
+// handleCreateNewsletter handles POST /api/newsletter/create for new channels.
+//
+// Request body:
+//   - name: Newsletter name (required)
+//   - description: Newsletter description (optional)
+//
+// Response: { success: bool, jid, name, description }
 func (s *Server) handleCreateNewsletter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)

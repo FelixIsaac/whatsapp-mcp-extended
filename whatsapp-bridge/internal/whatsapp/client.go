@@ -1,3 +1,5 @@
+// Package whatsapp provides the WhatsApp client wrapper and message handling.
+// It uses the whatsmeow library for WhatsApp Web multi-device API access.
 package whatsapp
 
 import (
@@ -21,18 +23,21 @@ import (
 	localTypes "whatsapp-bridge/internal/types"
 )
 
-// Client wraps the WhatsApp client with additional functionality
+// Client wraps the whatsmeow client with additional functionality
+// for message handling, media operations, and group management.
 type Client struct {
 	*whatsmeow.Client
 	logger waLog.Logger
 }
 
-// NewClient creates a new WhatsApp client instance
+// NewClient creates a new WhatsApp client with default configuration.
+// Uses environment defaults for history sync settings.
 func NewClient(logger waLog.Logger) (*Client, error) {
 	return NewClientWithConfig(logger, config.NewConfig())
 }
 
-// NewClientWithConfig creates a new WhatsApp client with custom configuration
+// NewClientWithConfig creates a new WhatsApp client with custom configuration.
+// Configures history sync limits and creates/opens the session database.
 func NewClientWithConfig(logger waLog.Logger, cfg *config.Config) (*Client, error) {
 	// Create database connection for storing session data
 	dbLog := waLog.Stdout("Database", "INFO", true)
@@ -87,7 +92,9 @@ func NewClientWithConfig(logger waLog.Logger, cfg *config.Config) (*Client, erro
 	}, nil
 }
 
-// Connect establishes connection to WhatsApp with QR code handling if needed
+// Connect establishes connection to WhatsApp servers.
+// For new devices, displays QR code for phone pairing.
+// For existing sessions, reconnects using stored credentials.
 func (c *Client) Connect() error {
 	// Create channel to track connection success
 	connected := make(chan bool, 1)
@@ -140,7 +147,8 @@ func (c *Client) Connect() error {
 
 // Phase 5: Advanced Features
 
-// SetPresence sets the client's own presence (available/unavailable)
+// SetPresence sets the client's online status.
+// Valid values: "available" (online) or "unavailable" (offline).
 func (c *Client) SetPresence(presence string) error {
 	var p types.Presence
 	switch presence {
@@ -154,7 +162,8 @@ func (c *Client) SetPresence(presence string) error {
 	return c.SendPresence(context.Background(), p)
 }
 
-// SubscribePresence subscribes to presence updates for a specific user
+// SubscribeToPresence subscribes to presence updates for a contact.
+// After subscribing, presence events will be received via event handlers.
 func (c *Client) SubscribeToPresence(jidStr string) error {
 	jid, err := types.ParseJID(jidStr)
 	if err != nil {
@@ -163,7 +172,8 @@ func (c *Client) SubscribeToPresence(jidStr string) error {
 	return c.Client.SubscribePresence(context.Background(), jid)
 }
 
-// GetProfilePicture gets the profile picture URL for a user or group
+// GetProfilePicture retrieves the profile picture URL for a user or group.
+// Set preview=true for thumbnail, false for full resolution image.
 func (c *Client) GetProfilePicture(jidStr string, preview bool) (*localTypes.ProfilePictureInfo, error) {
 	jid, err := types.ParseJID(jidStr)
 	if err != nil {
@@ -191,7 +201,7 @@ func (c *Client) GetProfilePicture(jidStr string, preview bool) (*localTypes.Pro
 	}, nil
 }
 
-// GetBlockedUsers returns the list of blocked users
+// GetBlockedUsers returns the list of currently blocked users.
 func (c *Client) GetBlockedUsers() ([]localTypes.BlockedUser, error) {
 	blocklist, err := c.GetBlocklist(context.Background())
 	if err != nil {
@@ -205,7 +215,8 @@ func (c *Client) GetBlockedUsers() ([]localTypes.BlockedUser, error) {
 	return users, nil
 }
 
-// UpdateBlockedUser blocks or unblocks a user
+// UpdateBlockedUser blocks or unblocks a user.
+// Action must be "block" or "unblock".
 func (c *Client) UpdateBlockedUser(jidStr string, action string) error {
 	jid, err := types.ParseJID(jidStr)
 	if err != nil {
@@ -229,7 +240,7 @@ func (c *Client) UpdateBlockedUser(jidStr string, action string) error {
 	return nil
 }
 
-// FollowNewsletterChannel follows (joins) a newsletter/channel
+// FollowNewsletterChannel subscribes to a WhatsApp newsletter/channel.
 func (c *Client) FollowNewsletterChannel(jidStr string) error {
 	jid, err := types.ParseJID(jidStr)
 	if err != nil {
@@ -238,7 +249,7 @@ func (c *Client) FollowNewsletterChannel(jidStr string) error {
 	return c.FollowNewsletter(context.Background(), jid)
 }
 
-// UnfollowNewsletterChannel unfollows a newsletter/channel
+// UnfollowNewsletterChannel unsubscribes from a WhatsApp newsletter/channel.
 func (c *Client) UnfollowNewsletterChannel(jidStr string) error {
 	jid, err := types.ParseJID(jidStr)
 	if err != nil {
@@ -247,7 +258,8 @@ func (c *Client) UnfollowNewsletterChannel(jidStr string) error {
 	return c.UnfollowNewsletter(context.Background(), jid)
 }
 
-// CreateNewsletterChannel creates a new newsletter/channel
+// CreateNewsletterChannel creates a new WhatsApp newsletter/channel.
+// Returns the created newsletter's JID, name, and description.
 func (c *Client) CreateNewsletterChannel(name, description string) (*localTypes.NewsletterInfo, error) {
 	params := whatsmeow.CreateNewsletterParams{
 		Name:        name,

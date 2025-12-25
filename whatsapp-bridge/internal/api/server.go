@@ -9,7 +9,9 @@ import (
 	"whatsapp-bridge/internal/whatsapp"
 )
 
-// Server represents the HTTP API server
+// Server is the HTTP REST API server for the WhatsApp bridge.
+// It exposes endpoints for sending messages, managing webhooks,
+// group operations, and other WhatsApp features.
 type Server struct {
 	client         *whatsapp.Client
 	messageStore   *database.MessageStore
@@ -17,7 +19,13 @@ type Server struct {
 	port           int
 }
 
-// NewServer creates a new API server instance
+// NewServer creates a new API server with the given dependencies.
+//
+// Parameters:
+//   - client: WhatsApp client for sending messages and interacting with WhatsApp
+//   - messageStore: Database for message history and webhook configurations
+//   - webhookManager: Manager for webhook trigger matching and delivery
+//   - port: TCP port to listen on (e.g., 8080)
 func NewServer(client *whatsapp.Client, messageStore *database.MessageStore, webhookManager *webhook.Manager, port int) *Server {
 	return &Server{
 		client:         client,
@@ -27,7 +35,9 @@ func NewServer(client *whatsapp.Client, messageStore *database.MessageStore, web
 	}
 }
 
-// Start starts the HTTP server
+// Start launches the HTTP server in a background goroutine.
+// The server listens on the configured port and serves the REST API.
+// This method returns immediately; use a blocking mechanism in main().
 func (s *Server) Start() {
 	// Register handlers
 	s.registerHandlers()
@@ -44,7 +54,9 @@ func (s *Server) Start() {
 	}()
 }
 
-// registerHandlers registers all HTTP handlers with security middleware
+// registerHandlers sets up all API routes with security middleware.
+// All endpoints are protected by SecureMiddleware which enforces:
+// API key authentication, rate limiting, CORS, and security headers.
 func (s *Server) registerHandlers() {
 	// Message sending endpoint
 	http.HandleFunc("/api/send", SecureMiddleware(s.handleSendMessage))
