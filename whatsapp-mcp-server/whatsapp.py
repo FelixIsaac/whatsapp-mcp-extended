@@ -2064,3 +2064,33 @@ def set_about_text(text: str) -> dict[str, Any]:
             return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
     except requests.RequestException as e:
         return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def set_disappearing_timer(chat_jid: str, duration: str) -> dict[str, Any]:
+    """Set disappearing messages timer for a WhatsApp chat.
+
+    Controls how long messages remain visible before being automatically deleted.
+    In groups, only admins can change this setting.
+
+    Args:
+        chat_jid: The JID of the chat to configure
+        duration: Timer duration - "off" (disabled), "24h", "7d", or "90d"
+
+    Returns:
+        Dict with success status, chat_jid, and duration
+    """
+    try:
+        valid_durations = ("off", "24h", "7d", "90d")
+        if duration not in valid_durations:
+            return {"success": False, "error": f"duration must be one of: {', '.join(valid_durations)}"}
+
+        url = f"{WHATSAPP_API_BASE_URL}/disappearing"
+        payload = {"chat_jid": chat_jid, "duration": duration}
+        response = requests.post(url, json=payload, timeout=30)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}

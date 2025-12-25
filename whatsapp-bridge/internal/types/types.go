@@ -326,3 +326,9 @@ type SendTypingRequest struct {
 type SetAboutRequest struct {
 	Text string `json:"text"`
 }
+
+// SetDisappearingTimerRequest represents request to set disappearing messages timer
+type SetDisappearingTimerRequest struct {
+	ChatJID  string `json:"chat_jid"`
+	Duration string `json:"duration"` // "off", "24h", "7d", "90d"
+}

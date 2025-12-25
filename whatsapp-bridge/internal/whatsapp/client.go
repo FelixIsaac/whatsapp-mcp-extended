@@ -313,3 +313,29 @@ func (c *Client) SendTypingIndicator(chatJID string, state string) error {
 func (c *Client) SetAboutText(text string) error {
 	return c.SetStatusMessage(context.Background(), text)
 }
+
+// SetDisappearingTimer sets the disappearing messages timer for a chat.
+// Valid durations: "off", "24h", "7d", "90d".
+// In groups, only admins can change this setting.
+func (c *Client) SetDisappearingTimer(chatJID string, duration string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	var timer time.Duration
+	switch duration {
+	case "off", "0":
+		timer = 0
+	case "24h":
+		timer = 24 * time.Hour
+	case "7d":
+		timer = 7 * 24 * time.Hour
+	case "90d":
+		timer = 90 * 24 * time.Hour
+	default:
+		return fmt.Errorf("invalid duration: %s (must be 'off', '24h', '7d', or '90d')", duration)
+	}
+
+	return c.Client.SetDisappearingTimer(context.Background(), jid, timer, time.Now())
+}

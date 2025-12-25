@@ -1342,3 +1342,47 @@ func (s *Server) handleSetAbout(w http.ResponseWriter, r *http.Request) {
 		"text":    req.Text,
 	})
 }
+
+// handleSetDisappearingTimer handles POST /api/disappearing for setting disappearing messages timer.
+//
+// Request body:
+//   - chat_jid: Target chat JID (required)
+//   - duration: "off", "24h", "7d", or "90d" (required)
+//
+// Response: { success: bool, chat_jid, duration }
+func (s *Server) handleSetDisappearingTimer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.SetDisappearingTimerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" {
+		SendJSONError(w, "chat_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Duration == "" {
+		SendJSONError(w, "duration is required", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.SetDisappearingTimer(req.ChatJID, req.Duration)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to set disappearing timer: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"chat_jid": req.ChatJID,
+		"duration": req.Duration,
+	})
+}

@@ -338,3 +338,30 @@ def set_about_text(text: str) -> dict[str, Any]:
     except requests.RequestException as e:
         logger.error("Bridge API error in set_about_text: %s", e)
         raise BridgeError(f"Failed to set about text: {e}") from e
+
+
+def set_disappearing_timer(chat_jid: str, duration: str) -> dict[str, Any]:
+    """Set disappearing messages timer for a chat.
+
+    Args:
+        chat_jid: Target chat JID.
+        duration: Timer duration - "off", "24h", "7d", or "90d".
+
+    Returns:
+        Response with success status, chat_jid, and duration.
+
+    Raises:
+        BridgeError: If API call fails.
+    """
+    try:
+        response = requests.post(
+            f"{WHATSAPP_API_BASE_URL}/disappearing",
+            json={"chat_jid": chat_jid, "duration": duration},
+            headers=_get_headers(),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error("Bridge API error in set_disappearing_timer: %s", e)
+        raise BridgeError(f"Failed to set disappearing timer: {e}") from e
