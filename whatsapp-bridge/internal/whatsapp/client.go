@@ -386,3 +386,42 @@ func (c *Client) UnpinChat(chatJID string) error {
 	patch := appstate.BuildPin(jid, false)
 	return c.Client.SendAppState(context.Background(), patch)
 }
+
+// MuteChat mutes a chat for the specified duration.
+// Duration examples: "forever" (0), "15m", "1h", "8h", "1w".
+func (c *Client) MuteChat(chatJID string, duration string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	var muteDuration time.Duration
+	switch duration {
+	case "forever", "0":
+		muteDuration = 0
+	case "15m":
+		muteDuration = 15 * time.Minute
+	case "1h":
+		muteDuration = 1 * time.Hour
+	case "8h":
+		muteDuration = 8 * time.Hour
+	case "1w":
+		muteDuration = 7 * 24 * time.Hour
+	default:
+		return fmt.Errorf("invalid duration: %s (must be 'forever', '15m', '1h', '8h', or '1w')", duration)
+	}
+
+	patch := appstate.BuildMute(jid, true, muteDuration)
+	return c.Client.SendAppState(context.Background(), patch)
+}
+
+// UnmuteChat unmutes a chat.
+func (c *Client) UnmuteChat(chatJID string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	patch := appstate.BuildMute(jid, false, 0)
+	return c.Client.SendAppState(context.Background(), patch)
+}

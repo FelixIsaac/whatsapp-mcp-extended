@@ -421,3 +421,31 @@ def pin_chat(chat_jid: str, pin: bool = True) -> dict[str, Any]:
     except requests.RequestException as e:
         logger.error("Bridge API error in pin_chat: %s", e)
         raise BridgeError(f"Failed to pin chat: {e}") from e
+
+
+def mute_chat(chat_jid: str, mute: bool = True, duration: str = "forever") -> dict[str, Any]:
+    """Mute or unmute a chat.
+
+    Args:
+        chat_jid: Target chat JID.
+        mute: True to mute, False to unmute (default: True).
+        duration: Mute duration - "forever", "15m", "1h", "8h", "1w" (default: "forever", ignored if mute=False).
+
+    Returns:
+        Response with success status, chat_jid, mute, and duration.
+
+    Raises:
+        BridgeError: If API call fails.
+    """
+    try:
+        response = requests.post(
+            f"{WHATSAPP_API_BASE_URL}/mute",
+            json={"chat_jid": chat_jid, "mute": mute, "duration": duration},
+            headers=_get_headers(),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error("Bridge API error in mute_chat: %s", e)
+        raise BridgeError(f"Failed to mute chat: {e}") from e

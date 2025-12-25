@@ -104,4 +104,5 @@ func (s *Server) registerHandlers() {
 	http.HandleFunc("/api/disappearing", SecureMiddleware(s.handleSetDisappearingTimer))
 	http.HandleFunc("/api/privacy", SecureMiddleware(s.handleGetPrivacySettings))
 	http.HandleFunc("/api/pin", SecureMiddleware(s.handlePinChat))
+	http.HandleFunc("/api/mute", SecureMiddleware(s.handleMuteChat))
 }

@@ -1454,3 +1454,58 @@ func (s *Server) handlePinChat(w http.ResponseWriter, r *http.Request) {
 		"pin":      req.Pin,
 	})
 }
+
+// handleMuteChat handles POST /api/mute for muting/unmuting chats.
+//
+// Request body:
+//   - chat_jid: Target chat JID (required)
+//   - mute: true to mute, false to unmute (required)
+//   - duration: "forever", "15m", "1h", "8h", "1w" (required if mute=true)
+//
+// Response: { success: bool, chat_jid, mute: bool, duration?: string }
+func (s *Server) handleMuteChat(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.MuteChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" {
+		SendJSONError(w, "chat_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	var err error
+	if req.Mute {
+		if req.Duration == "" {
+			SendJSONError(w, "duration is required when muting", http.StatusBadRequest)
+			return
+		}
+		err = s.client.MuteChat(req.ChatJID, req.Duration)
+	} else {
+		err = s.client.UnmuteChat(req.ChatJID)
+	}
+
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to mute chat: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"success":  true,
+		"chat_jid": req.ChatJID,
+		"mute":     req.Mute,
+	}
+	if req.Mute {
+		response["duration"] = req.Duration
+	}
+
+	json.NewEncoder(w).Encode(response)
+}

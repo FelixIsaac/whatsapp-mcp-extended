@@ -2147,3 +2147,33 @@ def pin_chat(chat_jid: str, pin: bool = True) -> dict[str, Any]:
             return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
     except requests.RequestException as e:
         return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
+
+
+def mute_chat(chat_jid: str, mute: bool = True, duration: str = "forever") -> dict[str, Any]:
+    """Mute or unmute a WhatsApp chat.
+
+    Muted chats won't produce notifications. Mute durations apply relative to when you unmute.
+
+    Args:
+        chat_jid: The JID of the chat to mute/unmute
+        mute: True to mute the chat, False to unmute (default: True)
+        duration: Mute duration - "forever", "15m", "1h", "8h", "1w" (default: "forever", ignored if mute=False)
+
+    Returns:
+        Dict with success status, chat_jid, mute, and duration
+    """
+    try:
+        valid_durations = ("forever", "15m", "1h", "8h", "1w")
+        if mute and duration not in valid_durations:
+            return {"success": False, "error": f"duration must be one of: {', '.join(valid_durations)}"}
+
+        url = f"{WHATSAPP_API_BASE_URL}/mute"
+        payload = {"chat_jid": chat_jid, "mute": mute, "duration": duration}
+        response = requests.post(url, json=payload, timeout=30)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
