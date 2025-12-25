@@ -339,3 +339,27 @@ func (c *Client) SetDisappearingTimer(chatJID string, duration string) error {
 
 	return c.Client.SetDisappearingTimer(context.Background(), jid, timer, time.Now())
 }
+
+// GetPrivacySettings fetches the current privacy settings for the user.
+// Returns a map of privacy setting categories and their values.
+// Valid values: "all", "contacts", "contact_blacklist", "none", "known", "match_last_seen".
+func (c *Client) GetPrivacySettings() (map[string]string, error) {
+	settings, err := c.Client.TryFetchPrivacySettings(context.Background(), false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch privacy settings: %v", err)
+	}
+
+	if settings == nil {
+		return map[string]string{}, nil
+	}
+
+	return map[string]string{
+		"group_add":     string(settings.GroupAdd),
+		"last_seen":     string(settings.LastSeen),
+		"status":        string(settings.Status),
+		"profile":       string(settings.Profile),
+		"read_receipts": string(settings.ReadReceipts),
+		"call_add":      string(settings.CallAdd),
+		"online":        string(settings.Online),
+	}, nil
+}

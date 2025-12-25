@@ -1386,3 +1386,26 @@ func (s *Server) handleSetDisappearingTimer(w http.ResponseWriter, r *http.Reque
 		"duration": req.Duration,
 	})
 }
+
+// handleGetPrivacySettings handles GET /api/privacy for fetching privacy settings.
+//
+// Response: { success: bool, settings: { group_add, last_seen, status, profile, read_receipts, call_add, online } }
+func (s *Server) handleGetPrivacySettings(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	settings, err := s.client.GetPrivacySettings()
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to fetch privacy settings: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"settings": settings,
+	})
+}

@@ -365,3 +365,32 @@ def set_disappearing_timer(chat_jid: str, duration: str) -> dict[str, Any]:
     except requests.RequestException as e:
         logger.error("Bridge API error in set_disappearing_timer: %s", e)
         raise BridgeError(f"Failed to set disappearing timer: {e}") from e
+
+
+def get_privacy_settings() -> dict[str, Any]:
+    """Fetch the user's privacy settings.
+
+    Returns:
+        Response with success status and privacy settings dict containing:
+        - group_add: Who can add you to groups
+        - last_seen: Who can see your last seen
+        - status: Who can see your status
+        - profile: Who can see your profile picture
+        - read_receipts: Who can see read receipts
+        - call_add: Who can call you
+        - online: Who can see your online status
+
+    Raises:
+        BridgeError: If API call fails.
+    """
+    try:
+        response = requests.get(
+            f"{WHATSAPP_API_BASE_URL}/privacy",
+            headers=_get_headers(),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error("Bridge API error in get_privacy_settings: %s", e)
+        raise BridgeError(f"Failed to fetch privacy settings: {e}") from e

@@ -95,8 +95,9 @@
 | `send_typing` | ❌ | ✅ |
 | `set_about_text` | ❌ | ✅ |
 | `set_disappearing_timer` | ❌ | ✅ |
+| `get_privacy_settings` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 44 tools (extended)**
+**Total: 12 tools (whatsapp) → 45 tools (extended)**
 
 ---
 
@@ -351,7 +352,7 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 | **Disappearing Messages** | ~~`set_disappearing_timer`~~ ✅, `get_disappearing_timer` | `SetDisappearingTimer()`, `SetDefaultDisappearingTimer()` | 🟡 Medium |
 | **Chat Settings** | `pin_chat`, `unpin_chat`, `mute_chat`, `unmute_chat`, `archive_chat`, `unarchive_chat`, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🔴 High |
 | **Status/About** | ~~`set_about_text`~~ ✅, `post_status` | `SetStatusMessage()`, `SendMessage(StatusBroadcastJID)` | 🟡 Medium |
-| **Privacy Settings** | `get_privacy_settings`, `set_privacy_setting` | `TryFetchPrivacySettings()`, `SetPrivacySetting()` | 🔴 High |
+| **Privacy Settings** | ~~`get_privacy_settings`~~ ✅, `set_privacy_setting` | `TryFetchPrivacySettings()`, `SetPrivacySetting()` | 🟡 Medium |
 | **Typing Indicator** | ~~`send_typing`~~ ✅, `send_paused` | `SendChatPresence(Composing/Paused)` | ✅ Done |
 | **Reply/Quote** | `reply_message` | `ContextInfo.QuotedMessage` | 🔴 High |
 
@@ -383,7 +384,7 @@ Easiest to implement (single method calls):
 1. ~~**`send_typing`**~~ ✅ - `client.SendChatPresence(chat, types.ChatPresenceComposing)` **(Completed 2025-12-25)**
 2. ~~**`set_about_text`**~~ ✅ - `client.SetStatusMessage(msg)` **(Completed 2025-12-25)**
 3. ~~**`set_disappearing_timer`**~~ ✅ - `client.SetDisappearingTimer(chat, duration)` **(Completed 2025-12-25)**
-4. **`get_privacy_settings`** - `client.TryFetchPrivacySettings(ctx)`
+4. ~~**`get_privacy_settings`**~~ ✅ - `client.TryFetchPrivacySettings(ctx)` **(Completed 2025-12-25)**
 5. **`pin_chat`** - `client.SendAppState(appstate.BuildPin(chat, true))`
 
 Disappearing timer constants:

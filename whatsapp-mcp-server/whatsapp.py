@@ -2094,3 +2094,31 @@ def set_disappearing_timer(chat_jid: str, duration: str) -> dict[str, Any]:
             return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
     except requests.RequestException as e:
         return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
+
+
+def get_privacy_settings() -> dict[str, Any]:
+    """Fetch your WhatsApp privacy settings.
+
+    Returns the current settings for who can add you to groups, see your status,
+    last seen time, profile picture, read receipts, call you, and online status.
+
+    Returns:
+        Dict with success status and settings dict containing:
+        - group_add: "all", "contacts", "contact_blacklist", or "none"
+        - last_seen: "all", "contacts", "contact_blacklist", or "none"
+        - status: "all", "contacts", "contact_blacklist", or "none"
+        - profile: "all", "contacts", "contact_blacklist", or "none"
+        - read_receipts: "all" or "none"
+        - call_add: "all" or "known"
+        - online: "all" or "match_last_seen"
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/privacy"
+        response = requests.get(url, timeout=30)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
