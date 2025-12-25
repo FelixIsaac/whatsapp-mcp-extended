@@ -100,4 +100,5 @@ func (s *Server) registerHandlers() {
 
 	// Phase 6: Chat Features
 	http.HandleFunc("/api/typing", SecureMiddleware(s.handleSendTyping))
+	http.HandleFunc("/api/set-about", SecureMiddleware(s.handleSetAbout))
 }

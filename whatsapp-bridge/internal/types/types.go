@@ -321,3 +321,8 @@ type SendTypingRequest struct {
 	ChatJID string `json:"chat_jid"`
 	State   string `json:"state"` // "typing", "paused", or "recording"
 }
+
+// SetAboutRequest represents request to set profile about/status text
+type SetAboutRequest struct {
+	Text string `json:"text"`
+}

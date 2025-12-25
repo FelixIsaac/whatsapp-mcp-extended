@@ -1310,3 +1310,35 @@ func (s *Server) handleSendTyping(w http.ResponseWriter, r *http.Request) {
 		"state":    req.State,
 	})
 }
+
+// handleSetAbout handles POST /api/set-about for updating profile status text.
+//
+// Request body:
+//   - text: The new "About" text for the profile (required)
+//
+// Response: { success: bool, text: string }
+func (s *Server) handleSetAbout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.SetAboutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	err := s.client.SetAboutText(req.Text)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to set about text: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"text":    req.Text,
+	})
+}

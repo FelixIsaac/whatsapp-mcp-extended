@@ -312,3 +312,29 @@ def send_typing(chat_jid: str, state: str = "typing") -> dict[str, Any]:
     except requests.RequestException as e:
         logger.error("Bridge API error in send_typing: %s", e)
         raise BridgeError(f"Failed to send typing indicator: {e}") from e
+
+
+def set_about_text(text: str) -> dict[str, Any]:
+    """Set profile "About" status text.
+
+    Args:
+        text: The new about/status text for the profile.
+
+    Returns:
+        Response with success status and text.
+
+    Raises:
+        BridgeError: If API call fails.
+    """
+    try:
+        response = requests.post(
+            f"{WHATSAPP_API_BASE_URL}/set-about",
+            json={"text": text},
+            headers=_get_headers(),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error("Bridge API error in set_about_text: %s", e)
+        raise BridgeError(f"Failed to set about text: {e}") from e

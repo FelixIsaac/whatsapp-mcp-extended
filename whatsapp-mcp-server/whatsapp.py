@@ -2039,3 +2039,28 @@ def send_typing(chat_jid: str, state: str = "typing") -> dict[str, Any]:
             return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
     except requests.RequestException as e:
         return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
+
+
+def set_about_text(text: str) -> dict[str, Any]:
+    """Set your WhatsApp profile "About" status text.
+
+    This updates the text shown in your profile's "About" section,
+    visible to your contacts. This is NOT a disappearing status story.
+
+    Args:
+        text: The new about text to set (can be empty to clear)
+
+    Returns:
+        Dict with success status and the text that was set
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/set-about"
+        payload = {"text": text}
+        response = requests.post(url, json=payload, timeout=30)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "error": f"Request error: {str(e)}"}
