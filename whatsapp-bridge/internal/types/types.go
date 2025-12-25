@@ -313,3 +313,11 @@ type NewsletterInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
+
+// Phase 6: Chat Features
+
+// SendTypingRequest represents request to send typing indicator
+type SendTypingRequest struct {
+	ChatJID string `json:"chat_jid"`
+	State   string `json:"state"` // "typing", "paused", or "recording"
+}

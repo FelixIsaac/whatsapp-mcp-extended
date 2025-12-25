@@ -285,3 +285,30 @@ def create_poll(
     except requests.RequestException as e:
         logger.error("Bridge API error in create_poll: %s", e)
         raise BridgeError(f"Failed to create poll: {e}") from e
+
+
+def send_typing(chat_jid: str, state: str = "typing") -> dict[str, Any]:
+    """Send typing indicator to a chat.
+
+    Args:
+        chat_jid: Target chat JID.
+        state: "typing", "paused", or "recording" (default: "typing").
+
+    Returns:
+        Response with success status.
+
+    Raises:
+        BridgeError: If API call fails.
+    """
+    try:
+        response = requests.post(
+            f"{WHATSAPP_API_BASE_URL}/typing",
+            json={"chat_jid": chat_jid, "state": state},
+            headers=_get_headers(),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error("Bridge API error in send_typing: %s", e)
+        raise BridgeError(f"Failed to send typing indicator: {e}") from e

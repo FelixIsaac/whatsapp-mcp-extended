@@ -2007,3 +2007,35 @@ def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
             return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
     except requests.RequestException as e:
         return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+# Phase 6: Chat Features
+
+
+def send_typing(chat_jid: str, state: str = "typing") -> dict[str, Any]:
+    """Send typing indicator to a WhatsApp chat.
+
+    This shows "typing..." or "recording audio..." in the chat.
+    The indicator automatically clears after a few seconds of inactivity.
+
+    Args:
+        chat_jid: The JID of the chat to send typing indicator to
+        state: The typing state - "typing" (text), "paused" (stopped), or "recording" (audio)
+
+    Returns:
+        Dict with success, chat_jid, state
+    """
+    try:
+        if state not in ("typing", "paused", "recording"):
+            return {"success": False, "error": "state must be 'typing', 'paused', or 'recording'"}
+
+        url = f"{WHATSAPP_API_BASE_URL}/typing"
+        payload = {"chat_jid": chat_jid, "state": state}
+        response = requests.post(url, json=payload, timeout=30)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}

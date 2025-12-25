@@ -91,8 +91,10 @@
 | `follow_newsletter` | ❌ | ✅ |
 | `unfollow_newsletter` | ❌ | ✅ |
 | `create_newsletter` | ❌ | ✅ |
+| **Phase 6 Features** | | |
+| `send_typing` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 41 tools (extended)**
+**Total: 12 tools (whatsapp) → 42 tools (extended)**
 
 ---
 
@@ -348,7 +350,7 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 | **Chat Settings** | `pin_chat`, `unpin_chat`, `mute_chat`, `unmute_chat`, `archive_chat`, `unarchive_chat`, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🔴 High |
 | **Status/About** | `set_about_text`, `post_status` | `SetStatusMessage()`, `SendMessage(StatusBroadcastJID)` | 🔴 High |
 | **Privacy Settings** | `get_privacy_settings`, `set_privacy_setting` | `TryFetchPrivacySettings()`, `SetPrivacySetting()` | 🔴 High |
-| **Typing Indicator** | `send_typing`, `send_paused` | `SendChatPresence(Composing/Paused)` | 🔴 High |
+| **Typing Indicator** | ~~`send_typing`~~, `send_paused` | `SendChatPresence(Composing/Paused)` | ✅ Done |
 | **Reply/Quote** | `reply_message` | `ContextInfo.QuotedMessage` | 🔴 High |
 
 ### Phase 7: Should Have (v0.2.0)
@@ -376,7 +378,7 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 
 Easiest to implement (single method calls):
 
-1. **`send_typing`** - `client.SendChatPresence(chat, types.ChatPresenceComposing)`
+1. ~~**`send_typing`**~~ ✅ - `client.SendChatPresence(chat, types.ChatPresenceComposing)` **(Completed 2025-12-25)**
 2. **`set_about_text`** - `client.SetStatusMessage(msg)`
 3. **`set_disappearing_timer`** - `client.SetDisappearingTimer(chat, duration)`
 4. **`get_privacy_settings`** - `client.TryFetchPrivacySettings(ctx)`

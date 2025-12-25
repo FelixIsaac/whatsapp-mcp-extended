@@ -277,3 +277,33 @@ func (c *Client) CreateNewsletterChannel(name, description string) (*localTypes.
 		Description: meta.ThreadMeta.Description.Text,
 	}, nil
 }
+
+// Phase 6: Chat Features
+
+// SendTypingIndicator sends a typing/recording indicator to a chat.
+// State can be "typing" (composing), "paused" (stopped typing), or "recording" (voice message).
+func (c *Client) SendTypingIndicator(chatJID string, state string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	var chatState types.ChatPresence
+	var media types.ChatPresenceMedia
+
+	switch state {
+	case "typing":
+		chatState = types.ChatPresenceComposing
+		media = types.ChatPresenceMediaText
+	case "paused":
+		chatState = types.ChatPresencePaused
+		media = ""
+	case "recording":
+		chatState = types.ChatPresenceComposing
+		media = types.ChatPresenceMediaAudio
+	default:
+		return fmt.Errorf("invalid state: %s (must be 'typing', 'paused', or 'recording')", state)
+	}
+
+	return c.SendChatPresence(context.Background(), jid, chatState, media)
+}

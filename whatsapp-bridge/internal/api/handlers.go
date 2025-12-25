@@ -1264,3 +1264,49 @@ func (s *Server) handleCreateNewsletter(w http.ResponseWriter, r *http.Request) 
 		"description": info.Description,
 	})
 }
+
+// Phase 6: Chat Features
+
+// handleSendTyping handles POST /api/typing for sending typing indicators.
+//
+// Request body:
+//   - chat_jid: Target chat (required)
+//   - state: "typing", "paused", or "recording" (default: "typing")
+//
+// Response: { success: bool, chat_jid, state }
+func (s *Server) handleSendTyping(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.SendTypingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" {
+		SendJSONError(w, "chat_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	// Default to "typing" if not specified
+	if req.State == "" {
+		req.State = "typing"
+	}
+
+	err := s.client.SendTypingIndicator(req.ChatJID, req.State)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to send typing indicator: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"chat_jid": req.ChatJID,
+		"state":    req.State,
+	})
+}

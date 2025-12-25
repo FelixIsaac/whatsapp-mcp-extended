@@ -97,4 +97,7 @@ func (s *Server) registerHandlers() {
 	http.HandleFunc("/api/newsletter/follow", SecureMiddleware(s.handleFollowNewsletter))
 	http.HandleFunc("/api/newsletter/unfollow", SecureMiddleware(s.handleUnfollowNewsletter))
 	http.HandleFunc("/api/newsletter/create", SecureMiddleware(s.handleCreateNewsletter))
+
+	// Phase 6: Chat Features
+	http.HandleFunc("/api/typing", SecureMiddleware(s.handleSendTyping))
 }
