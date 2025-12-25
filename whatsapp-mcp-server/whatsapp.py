@@ -2096,6 +2096,21 @@ def set_disappearing_timer(chat_jid: str, duration: str) -> dict[str, Any]:
         return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
 
 
+def send_paused(chat_jid: str) -> dict[str, Any]:
+    """Send a "paused typing" indicator to a WhatsApp chat.
+
+    This clears the typing indicator, showing the user has stopped typing.
+    Usually called after sending a typing indicator to signal the end of typing.
+
+    Args:
+        chat_jid: The JID of the chat to send paused indicator to
+
+    Returns:
+        Dict with success status, chat_jid, and state
+    """
+    return send_typing(chat_jid, "paused")
+
+
 def get_privacy_settings() -> dict[str, Any]:
     """Fetch your WhatsApp privacy settings.
 

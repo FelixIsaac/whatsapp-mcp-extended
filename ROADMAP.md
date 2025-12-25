@@ -99,8 +99,9 @@
 | `pin_chat` | ❌ | ✅ |
 | `mute_chat` | ❌ | ✅ |
 | `archive_chat` | ❌ | ✅ |
+| `send_paused` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 48 tools (extended)**
+**Total: 12 tools (whatsapp) → 49 tools (extended)**
 
 ---
 
@@ -356,7 +357,7 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 | **Chat Settings** | ~~`pin_chat`~~ ✅, ~~`mute_chat`~~ ✅, ~~`archive_chat`~~ ✅, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🟡 Medium |
 | **Status/About** | ~~`set_about_text`~~ ✅, `post_status` | `SetStatusMessage()`, `SendMessage(StatusBroadcastJID)` | 🟡 Medium |
 | **Privacy Settings** | ~~`get_privacy_settings`~~ ✅, `set_privacy_setting` | `TryFetchPrivacySettings()`, `SetPrivacySetting()` | 🟡 Medium |
-| **Typing Indicator** | ~~`send_typing`~~ ✅, `send_paused` | `SendChatPresence(Composing/Paused)` | ✅ Done |
+| **Typing Indicator** | ~~`send_typing`~~ ✅, ~~`send_paused`~~ ✅ | `SendChatPresence(Composing/Paused)` | ✅ Done |
 | **Reply/Quote** | `reply_message` | `ContextInfo.QuotedMessage` | 🔴 High |
 
 ### Phase 7: Should Have (v0.2.0)
@@ -389,6 +390,9 @@ Easiest to implement (single method calls):
 3. ~~**`set_disappearing_timer`**~~ ✅ - `client.SetDisappearingTimer(chat, duration)` **(Completed 2025-12-25)**
 4. ~~**`get_privacy_settings`**~~ ✅ - `client.TryFetchPrivacySettings(ctx)` **(Completed 2025-12-25)**
 5. ~~**`pin_chat`**~~ ✅ - `client.SendAppState(appstate.BuildPin(chat, true))` **(Completed 2025-12-25)**
+6. ~~**`mute_chat`**~~ ✅ - `client.SendAppState(appstate.BuildMute(chat, duration))` **(Completed 2025-12-25)**
+7. ~~**`archive_chat`**~~ ✅ - `client.SendAppState(appstate.BuildArchive(chat, bool))` **(Completed 2025-12-25)**
+8. ~~**`send_paused`**~~ ✅ - Wrapper for `send_typing(chat, "paused")` **(Completed 2025-12-25)**
 
 Disappearing timer constants:
 ```go
