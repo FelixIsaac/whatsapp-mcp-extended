@@ -1409,3 +1409,48 @@ func (s *Server) handleGetPrivacySettings(w http.ResponseWriter, r *http.Request
 		"settings": settings,
 	})
 }
+
+// handlePinChat handles POST /api/pin for pinning/unpinning chats.
+//
+// Request body:
+//   - chat_jid: Target chat JID (required)
+//   - pin: true to pin, false to unpin (required)
+//
+// Response: { success: bool, chat_jid, pin: bool }
+func (s *Server) handlePinChat(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.PinChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" {
+		SendJSONError(w, "chat_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	var err error
+	if req.Pin {
+		err = s.client.PinChat(req.ChatJID)
+	} else {
+		err = s.client.UnpinChat(req.ChatJID)
+	}
+
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to pin chat: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"chat_jid": req.ChatJID,
+		"pin":      req.Pin,
+	})
+}

@@ -394,3 +394,30 @@ def get_privacy_settings() -> dict[str, Any]:
     except requests.RequestException as e:
         logger.error("Bridge API error in get_privacy_settings: %s", e)
         raise BridgeError(f"Failed to fetch privacy settings: {e}") from e
+
+
+def pin_chat(chat_jid: str, pin: bool = True) -> dict[str, Any]:
+    """Pin or unpin a chat.
+
+    Args:
+        chat_jid: Target chat JID.
+        pin: True to pin, False to unpin (default: True).
+
+    Returns:
+        Response with success status, chat_jid, and pin status.
+
+    Raises:
+        BridgeError: If API call fails.
+    """
+    try:
+        response = requests.post(
+            f"{WHATSAPP_API_BASE_URL}/pin",
+            json={"chat_jid": chat_jid, "pin": pin},
+            headers=_get_headers(),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error("Bridge API error in pin_chat: %s", e)
+        raise BridgeError(f"Failed to pin chat: {e}") from e

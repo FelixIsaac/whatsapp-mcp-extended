@@ -2122,3 +2122,28 @@ def get_privacy_settings() -> dict[str, Any]:
             return {"success": False, "error": f"HTTP {response.status_code} - {response.text}"}
     except requests.RequestException as e:
         return {"success": False, "error": f"Request error: {str(e)}"}
+
+
+def pin_chat(chat_jid: str, pin: bool = True) -> dict[str, Any]:
+    """Pin or unpin a WhatsApp chat.
+
+    Pinned chats appear at the top of your chat list. You can pin up to 3 chats.
+
+    Args:
+        chat_jid: The JID of the chat to pin/unpin
+        pin: True to pin the chat, False to unpin (default: True)
+
+    Returns:
+        Dict with success status, chat_jid, and pin status
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/pin"
+        payload = {"chat_jid": chat_jid, "pin": pin}
+        response = requests.post(url, json=payload, timeout=30)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}

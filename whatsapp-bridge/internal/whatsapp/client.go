@@ -11,6 +11,7 @@ import (
 
 	"github.com/mdp/qrterminal"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/appstate"
 	waProto "go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
@@ -362,4 +363,26 @@ func (c *Client) GetPrivacySettings() (map[string]string, error) {
 		"call_add":      string(settings.CallAdd),
 		"online":        string(settings.Online),
 	}, nil
+}
+
+// PinChat pins a chat to the top of the chat list.
+func (c *Client) PinChat(chatJID string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	patch := appstate.BuildPin(jid, true)
+	return c.Client.SendAppState(context.Background(), patch)
+}
+
+// UnpinChat unpins a chat from the top of the chat list.
+func (c *Client) UnpinChat(chatJID string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	patch := appstate.BuildPin(jid, false)
+	return c.Client.SendAppState(context.Background(), patch)
 }

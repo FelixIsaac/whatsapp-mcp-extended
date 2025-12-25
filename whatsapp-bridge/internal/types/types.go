@@ -332,3 +332,9 @@ type SetDisappearingTimerRequest struct {
 	ChatJID  string `json:"chat_jid"`
 	Duration string `json:"duration"` // "off", "24h", "7d", "90d"
 }
+
+// PinChatRequest represents request to pin or unpin a chat
+type PinChatRequest struct {
+	ChatJID string `json:"chat_jid"`
+	Pin     bool   `json:"pin"` // true to pin, false to unpin
+}

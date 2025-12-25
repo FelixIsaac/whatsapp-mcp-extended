@@ -96,8 +96,9 @@
 | `set_about_text` | ❌ | ✅ |
 | `set_disappearing_timer` | ❌ | ✅ |
 | `get_privacy_settings` | ❌ | ✅ |
+| `pin_chat` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 45 tools (extended)**
+**Total: 12 tools (whatsapp) → 46 tools (extended)**
 
 ---
 
@@ -350,7 +351,7 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 | Feature | Tools | whatsmeow Method | Priority |
 |---------|-------|------------------|----------|
 | **Disappearing Messages** | ~~`set_disappearing_timer`~~ ✅, `get_disappearing_timer` | `SetDisappearingTimer()`, `SetDefaultDisappearingTimer()` | 🟡 Medium |
-| **Chat Settings** | `pin_chat`, `unpin_chat`, `mute_chat`, `unmute_chat`, `archive_chat`, `unarchive_chat`, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🔴 High |
+| **Chat Settings** | ~~`pin_chat`~~ ✅, `mute_chat`, `unmute_chat`, `archive_chat`, `unarchive_chat`, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🟡 Medium |
 | **Status/About** | ~~`set_about_text`~~ ✅, `post_status` | `SetStatusMessage()`, `SendMessage(StatusBroadcastJID)` | 🟡 Medium |
 | **Privacy Settings** | ~~`get_privacy_settings`~~ ✅, `set_privacy_setting` | `TryFetchPrivacySettings()`, `SetPrivacySetting()` | 🟡 Medium |
 | **Typing Indicator** | ~~`send_typing`~~ ✅, `send_paused` | `SendChatPresence(Composing/Paused)` | ✅ Done |
@@ -385,7 +386,7 @@ Easiest to implement (single method calls):
 2. ~~**`set_about_text`**~~ ✅ - `client.SetStatusMessage(msg)` **(Completed 2025-12-25)**
 3. ~~**`set_disappearing_timer`**~~ ✅ - `client.SetDisappearingTimer(chat, duration)` **(Completed 2025-12-25)**
 4. ~~**`get_privacy_settings`**~~ ✅ - `client.TryFetchPrivacySettings(ctx)` **(Completed 2025-12-25)**
-5. **`pin_chat`** - `client.SendAppState(appstate.BuildPin(chat, true))`
+5. ~~**`pin_chat`**~~ ✅ - `client.SendAppState(appstate.BuildPin(chat, true))` **(Completed 2025-12-25)**
 
 Disappearing timer constants:
 ```go
