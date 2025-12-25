@@ -19,17 +19,17 @@ var privateIPBlocks []*net.IPNet
 func init() {
 	// Initialize private IP ranges
 	cidrs := []string{
-		"10.0.0.0/8",      // RFC 1918
-		"172.16.0.0/12",   // RFC 1918
-		"192.168.0.0/16",  // RFC 1918
-		"127.0.0.0/8",     // Loopback
-		"169.254.0.0/16",  // Link-local
-		"0.0.0.0/8",       // Current network
-		"224.0.0.0/4",     // Multicast
-		"240.0.0.0/4",     // Reserved
-		"::1/128",         // IPv6 loopback
-		"fc00::/7",        // IPv6 unique local
-		"fe80::/10",       // IPv6 link-local
+		"10.0.0.0/8",     // RFC 1918
+		"172.16.0.0/12",  // RFC 1918
+		"192.168.0.0/16", // RFC 1918
+		"127.0.0.0/8",    // Loopback
+		"169.254.0.0/16", // Link-local
+		"0.0.0.0/8",      // Current network
+		"224.0.0.0/4",    // Multicast
+		"240.0.0.0/4",    // Reserved
+		"::1/128",        // IPv6 loopback
+		"fc00::/7",       // IPv6 unique local
+		"fe80::/10",      // IPv6 link-local
 	}
 
 	for _, cidr := range cidrs {

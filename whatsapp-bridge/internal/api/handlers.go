@@ -924,8 +924,8 @@ func (s *Server) handleGetProfilePicture(w http.ResponseWriter, r *http.Request)
 
 	if info == nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"jid":     jid,
+			"success":     true,
+			"jid":         jid,
 			"has_picture": false,
 		})
 		return

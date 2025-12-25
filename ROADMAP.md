@@ -317,6 +317,25 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
   - [x] `unfollow_newsletter` - Unfollow a WhatsApp channel
   - [x] `create_newsletter` - Create a new WhatsApp channel
 
+### Security & Quality Hardening (Completed 2025-12-25)
+
+- [x] **P0 Security Fixes**:
+  - [x] API Key authentication middleware
+  - [x] SSRF protection for webhooks (private IP blocking)
+  - [x] CORS restriction (configurable allowed origins)
+  - [x] Secret token masking in API responses
+  - [x] Path traversal protection for media files
+- [x] **P1 Security Fixes**:
+  - [x] Rate limiting middleware
+  - [x] Non-root Docker containers
+  - [x] Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
+  - [x] Structured audit logging
+- [x] **Code Quality**:
+  - [x] Python code modularization (lib/models.py, lib/database.py, lib/bridge.py, lib/utils.py)
+  - [x] Removed debug print statements
+  - [x] CI/CD GitHub Actions workflows (Go tests, Python lint, Docker build)
+- [x] **Issue #144**: `sender_name` field added to message output for AI agent readability
+
 ---
 
 ## Future Phases (Pre-Release Roadmap)
