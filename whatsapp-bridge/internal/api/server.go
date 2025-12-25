@@ -105,4 +105,5 @@ func (s *Server) registerHandlers() {
 	http.HandleFunc("/api/privacy", SecureMiddleware(s.handleGetPrivacySettings))
 	http.HandleFunc("/api/pin", SecureMiddleware(s.handlePinChat))
 	http.HandleFunc("/api/mute", SecureMiddleware(s.handleMuteChat))
+	http.HandleFunc("/api/archive", SecureMiddleware(s.handleArchiveChat))
 }

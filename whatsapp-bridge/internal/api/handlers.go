@@ -1509,3 +1509,48 @@ func (s *Server) handleMuteChat(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(response)
 }
+
+// handleArchiveChat handles POST /api/archive for archiving/unarchiving chats.
+//
+// Request body:
+//   - chat_jid: Target chat JID (required)
+//   - archive: true to archive, false to unarchive (required)
+//
+// Response: { success: bool, chat_jid, archive: bool }
+func (s *Server) handleArchiveChat(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var req types.ArchiveChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChatJID == "" {
+		SendJSONError(w, "chat_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	var err error
+	if req.Archive {
+		err = s.client.ArchiveChat(req.ChatJID)
+	} else {
+		err = s.client.UnarchiveChat(req.ChatJID)
+	}
+
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to archive chat: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"chat_jid": req.ChatJID,
+		"archive":  req.Archive,
+	})
+}

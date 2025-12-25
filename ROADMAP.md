@@ -98,8 +98,9 @@
 | `get_privacy_settings` | ❌ | ✅ |
 | `pin_chat` | ❌ | ✅ |
 | `mute_chat` | ❌ | ✅ |
+| `archive_chat` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 47 tools (extended)**
+**Total: 12 tools (whatsapp) → 48 tools (extended)**
 
 ---
 
@@ -352,7 +353,7 @@ ALTER TABLE messages ADD COLUMN quoted_message_id TEXT;
 | Feature | Tools | whatsmeow Method | Priority |
 |---------|-------|------------------|----------|
 | **Disappearing Messages** | ~~`set_disappearing_timer`~~ ✅, `get_disappearing_timer` | `SetDisappearingTimer()`, `SetDefaultDisappearingTimer()` | 🟡 Medium |
-| **Chat Settings** | ~~`pin_chat`~~ ✅, ~~`mute_chat`~~ ✅, `archive_chat`, `unarchive_chat`, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🟡 Medium |
+| **Chat Settings** | ~~`pin_chat`~~ ✅, ~~`mute_chat`~~ ✅, ~~`archive_chat`~~ ✅, `get_chat_settings` | `appstate.BuildPin()`, `BuildMute()`, `BuildArchive()` | 🟡 Medium |
 | **Status/About** | ~~`set_about_text`~~ ✅, `post_status` | `SetStatusMessage()`, `SendMessage(StatusBroadcastJID)` | 🟡 Medium |
 | **Privacy Settings** | ~~`get_privacy_settings`~~ ✅, `set_privacy_setting` | `TryFetchPrivacySettings()`, `SetPrivacySetting()` | 🟡 Medium |
 | **Typing Indicator** | ~~`send_typing`~~ ✅, `send_paused` | `SendChatPresence(Composing/Paused)` | ✅ Done |

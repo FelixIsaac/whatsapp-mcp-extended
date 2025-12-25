@@ -449,3 +449,30 @@ def mute_chat(chat_jid: str, mute: bool = True, duration: str = "forever") -> di
     except requests.RequestException as e:
         logger.error("Bridge API error in mute_chat: %s", e)
         raise BridgeError(f"Failed to mute chat: {e}") from e
+
+
+def archive_chat(chat_jid: str, archive: bool = True) -> dict[str, Any]:
+    """Archive or unarchive a chat.
+
+    Args:
+        chat_jid: Target chat JID.
+        archive: True to archive, False to unarchive (default: True).
+
+    Returns:
+        Response with success status, chat_jid, and archive status.
+
+    Raises:
+        BridgeError: If API call fails.
+    """
+    try:
+        response = requests.post(
+            f"{WHATSAPP_API_BASE_URL}/archive",
+            json={"chat_jid": chat_jid, "archive": archive},
+            headers=_get_headers(),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        logger.error("Bridge API error in archive_chat: %s", e)
+        raise BridgeError(f"Failed to archive chat: {e}") from e

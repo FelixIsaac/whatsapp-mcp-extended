@@ -2177,3 +2177,29 @@ def mute_chat(chat_jid: str, mute: bool = True, duration: str = "forever") -> di
             return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
     except requests.RequestException as e:
         return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}
+
+
+def archive_chat(chat_jid: str, archive: bool = True) -> dict[str, Any]:
+    """Archive or unarchive a WhatsApp chat.
+
+    Archived chats don't appear in the chat list by default but can be restored.
+    Note: Archiving a chat also unpins it automatically.
+
+    Args:
+        chat_jid: The JID of the chat to archive/unarchive
+        archive: True to archive the chat, False to unarchive (default: True)
+
+    Returns:
+        Dict with success status, chat_jid, and archive status
+    """
+    try:
+        url = f"{WHATSAPP_API_BASE_URL}/archive"
+        payload = {"chat_jid": chat_jid, "archive": archive}
+        response = requests.post(url, json=payload, timeout=30)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"success": False, "chat_jid": chat_jid, "error": f"HTTP {response.status_code} - {response.text}"}
+    except requests.RequestException as e:
+        return {"success": False, "chat_jid": chat_jid, "error": f"Request error: {str(e)}"}

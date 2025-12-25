@@ -425,3 +425,25 @@ func (c *Client) UnmuteChat(chatJID string) error {
 	patch := appstate.BuildMute(jid, false, 0)
 	return c.Client.SendAppState(context.Background(), patch)
 }
+
+// ArchiveChat archives a chat.
+func (c *Client) ArchiveChat(chatJID string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	patch := appstate.BuildArchive(jid, true, time.Time{}, nil)
+	return c.Client.SendAppState(context.Background(), patch)
+}
+
+// UnarchiveChat unarchives a chat.
+func (c *Client) UnarchiveChat(chatJID string) error {
+	jid, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	patch := appstate.BuildArchive(jid, false, time.Time{}, nil)
+	return c.Client.SendAppState(context.Background(), patch)
+}

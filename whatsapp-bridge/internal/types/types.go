@@ -345,3 +345,9 @@ type MuteChatRequest struct {
 	Mute     bool   `json:"mute"`           // true to mute, false to unmute
 	Duration string `json:"duration"`      // "forever", "15m", "1h", "8h", "1w" (ignored if mute=false)
 }
+
+// ArchiveChatRequest represents request to archive or unarchive a chat
+type ArchiveChatRequest struct {
+	ChatJID string `json:"chat_jid"`
+	Archive bool   `json:"archive"` // true to archive, false to unarchive
+}
