@@ -47,35 +47,25 @@ services:
       - n8n_n8n_traefik_network
       - whatsapp_internal
 
-  webhook-ui:
+  # Legacy webhook-ui - deprecated, use web-ui instead
+  # webhook-ui:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.ui
+  #   ports:
+  #     - "127.0.0.1:8089:8080"
+
+  web-ui:
     build:
       context: .
-      dockerfile: Dockerfile.ui
+      dockerfile: Dockerfile.web-ui
     deploy:
       resources:
         limits:
-          memory: 500M
+          memory: 300M
           cpus: '0.5'
     ports:
-      - "127.0.0.1:8089:8080"  # Webhook UI (localhost only)
-    depends_on:
-      - whatsapp-bridge
-      - whatsapp-mcp
-    restart: unless-stopped
-    networks:
-      - whatsapp_internal
-
-  pairing-ui:
-    build:
-      context: .
-      dockerfile: Dockerfile.pairing
-    deploy:
-      resources:
-        limits:
-          memory: 200M
-          cpus: '0.25'
-    ports:
-      - "0.0.0.0:8090:8080"  # Pairing UI (localhost only)
+      - "0.0.0.0:8090:8080"  # Unified Web UI (pairing + webhooks)
     depends_on:
       - whatsapp-bridge
     restart: unless-stopped
