@@ -25,6 +25,7 @@ func getAllowedOrigins() map[string]bool {
 	origins := map[string]bool{
 		"http://localhost:8089": true, // Webhook UI
 		"http://localhost:8082": true, // Gradio UI
+		"http://localhost:8090": true, // Pairing UI
 	}
 
 	// Allow additional origins from env var (comma-separated)

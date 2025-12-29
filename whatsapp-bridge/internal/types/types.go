@@ -351,3 +351,48 @@ type ArchiveChatRequest struct {
 	ChatJID string `json:"chat_jid"`
 	Archive bool   `json:"archive"` // true to archive, false to unarchive
 }
+
+// Phase 7: Phone Number Pairing
+
+// PairPhoneRequest initiates phone number pairing
+type PairPhoneRequest struct {
+	PhoneNumber string `json:"phone_number"` // Format: country code + number, no leading zeros (e.g., "1234567890")
+}
+
+// PairPhoneResponse returns pairing code
+type PairPhoneResponse struct {
+	Success   bool   `json:"success"`
+	Code      string `json:"code,omitempty"`       // 8-digit pairing code
+	ExpiresIn int    `json:"expires_in,omitempty"` // Seconds until expiration (160)
+	Error     string `json:"error,omitempty"`
+}
+
+// PairingStatusResponse returns current pairing state
+type PairingStatusResponse struct {
+	Success    bool   `json:"success"`
+	InProgress bool   `json:"in_progress"`
+	Code       string `json:"code,omitempty"`
+	ExpiresIn  int    `json:"expires_in,omitempty"` // Remaining seconds
+	Complete   bool   `json:"complete"`
+	Error      string `json:"error,omitempty"`
+}
+
+// ConnectionStatusResponse returns WhatsApp connection state
+type ConnectionStatusResponse struct {
+	Success   bool   `json:"success"`
+	Connected bool   `json:"connected"`
+	Linked    bool   `json:"linked"`    // Device has valid session
+	JID       string `json:"jid,omitempty"` // WhatsApp ID if linked
+}
+
+// SyncStatusResponse returns current message sync state
+type SyncStatusResponse struct {
+	Success       bool   `json:"success"`
+	Syncing       bool   `json:"syncing"`
+	LastSync      string `json:"last_sync,omitempty"`
+	SyncProgress  int    `json:"sync_progress"`        // 0-100 percent
+	MessageCount  int    `json:"message_count"`
+	ConversationCount int `json:"conversation_count"`
+	Error         string `json:"error,omitempty"`
+	Recommendations []string `json:"recommendations,omitempty"`
+}

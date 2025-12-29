@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/mdp/qrterminal"
@@ -29,6 +30,14 @@ import (
 type Client struct {
 	*whatsmeow.Client
 	logger waLog.Logger
+
+	// Pairing state
+	pairingMutex      sync.Mutex
+	pairingInProgress bool
+	pairingCode       string
+	pairingExpiry     time.Time
+	pairingComplete   bool
+	pairingError      error
 }
 
 // NewClient creates a new WhatsApp client with default configuration.
@@ -446,4 +455,82 @@ func (c *Client) UnarchiveChat(chatJID string) error {
 
 	patch := appstate.BuildArchive(jid, false, time.Time{}, nil)
 	return c.Client.SendAppState(context.Background(), patch)
+}
+
+// Phase 7: Phone Number Pairing
+
+// PairWithPhone initiates phone number pairing and returns 8-digit code
+func (c *Client) PairWithPhone(phoneNumber string) (string, error) {
+	c.pairingMutex.Lock()
+	defer c.pairingMutex.Unlock()
+
+	if c.pairingInProgress {
+		return "", fmt.Errorf("pairing already in progress")
+	}
+
+	if c.Store.ID != nil {
+		return "", fmt.Errorf("device already linked")
+	}
+
+	// Reset state
+	c.pairingInProgress = true
+	c.pairingComplete = false
+	c.pairingError = nil
+
+	// Connect if not connected
+	if !c.IsConnected() {
+		if err := c.Client.Connect(); err != nil {
+			c.pairingInProgress = false
+			return "", fmt.Errorf("failed to connect: %v", err)
+		}
+	}
+
+	// Request pairing code
+	code, err := c.Client.PairPhone(context.Background(), phoneNumber, true, whatsmeow.PairClientChrome, "Chrome (Linux)")
+	if err != nil {
+		c.pairingInProgress = false
+		return "", fmt.Errorf("failed to request pairing code: %v", err)
+	}
+
+	c.pairingCode = code
+	c.pairingExpiry = time.Now().Add(160 * time.Second)
+
+	c.logger.Infof("Pairing code generated: %s (expires in 160s)", code)
+	return code, nil
+}
+
+// GetPairingStatus returns current pairing state
+func (c *Client) GetPairingStatus() (inProgress bool, code string, expiresIn int, complete bool, err error) {
+	c.pairingMutex.Lock()
+	defer c.pairingMutex.Unlock()
+
+	var expiresInSec int
+	if c.pairingInProgress && !c.pairingExpiry.IsZero() {
+		remaining := time.Until(c.pairingExpiry)
+		if remaining > 0 {
+			expiresInSec = int(remaining.Seconds())
+		}
+	}
+
+	return c.pairingInProgress, c.pairingCode, expiresInSec, c.pairingComplete, c.pairingError
+}
+
+// HandlePairingSuccess called when pairing succeeds
+func (c *Client) HandlePairingSuccess() {
+	c.pairingMutex.Lock()
+	defer c.pairingMutex.Unlock()
+
+	c.pairingComplete = true
+	c.pairingInProgress = false
+	c.logger.Infof("Pairing successful!")
+}
+
+// HandlePairingError called when pairing fails
+func (c *Client) HandlePairingError(err error) {
+	c.pairingMutex.Lock()
+	defer c.pairingMutex.Unlock()
+
+	c.pairingError = err
+	c.pairingInProgress = false
+	c.logger.Errorf("Pairing failed: %v", err)
 }

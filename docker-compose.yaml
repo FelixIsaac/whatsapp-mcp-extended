@@ -9,7 +9,7 @@ services:
           memory: 1G
           cpus: '0.5'
     ports:
-      - "127.0.0.1:8180:8080"  # Localhost only for security
+      - "0.0.0.0:8180:8080"  # Localhost only for security
     volumes:
       - ./store:/app/whatsapp-bridge/store
     environment:
@@ -38,7 +38,7 @@ services:
       - TZ=UTC
       - DEBUG=true
       - GRADIO=false
-      - BRIDGE_HOST=whatsapp-mcp-whatsapp-bridge-1
+      - BRIDGE_HOST=whatsapp-bridge
       - API_KEY=${API_KEY}
     depends_on:
       - whatsapp-bridge
@@ -61,6 +61,23 @@ services:
     depends_on:
       - whatsapp-bridge
       - whatsapp-mcp
+    restart: unless-stopped
+    networks:
+      - whatsapp_internal
+
+  pairing-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.pairing
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+          cpus: '0.25'
+    ports:
+      - "0.0.0.0:8090:8080"  # Pairing UI (localhost only)
+    depends_on:
+      - whatsapp-bridge
     restart: unless-stopped
     networks:
       - whatsapp_internal

@@ -1,0 +1,14 @@
+FROM nginx:alpine
+
+# Copy UI files
+COPY whatsapp-pairing-ui/index.html /usr/share/nginx/html/
+COPY whatsapp-pairing-ui/pairing.js /usr/share/nginx/html/
+COPY whatsapp-pairing-ui/dashboard.js /usr/share/nginx/html/
+COPY whatsapp-pairing-ui/styles.css /usr/share/nginx/html/
+
+# Copy nginx configuration
+COPY whatsapp-pairing-ui/nginx-pairing.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -67,34 +68,69 @@ func main() {
 			client.HandleMessage(messageStore, webhookManager, v)
 
 		case *events.HistorySync:
-			// Process history sync events
+			// Process history sync events with detailed logging
+			logger.Infof("[SYNC] Starting HistorySync (Type: %v, Conversations: %d)", v.Data.SyncType, len(v.Data.Conversations))
 			client.HandleHistorySync(messageStore, v)
+			logger.Infof("[SYNC] ✓ Completed (Type: %v, %d conversations)", v.Data.SyncType, len(v.Data.Conversations))
 
 		case *events.Connected:
-			logger.Infof("Connected to WhatsApp")
+			logger.Infof("✓ Connected to WhatsApp")
 
 		case *events.LoggedOut:
-			logger.Warnf("Device logged out, please scan QR code to log in again")
+			logger.Warnf("✗ Device logged out - please scan QR code to log in again")
+
+		case *events.PairSuccess:
+			logger.Infof("✓ Phone pairing successful!")
+			client.HandlePairingSuccess()
+
+		case *events.PairError:
+			logger.Errorf("✗ Phone pairing failed: %v", v.Error)
+			client.HandlePairingError(v.Error)
+
+		case *events.KeepAliveTimeout:
+			logger.Warnf("⚠ KeepAlive timeout - connection may be unstable (sync may fail)")
+
+		case *events.StreamError:
+			logger.Errorf("✗ Stream error: %v", v.Code)
+
+		case *events.Disconnected:
+			logger.Warnf("⚠ Disconnected from WhatsApp - attempting reconnect")
 		}
 	})
 
-	// Connect to WhatsApp
-	if err := client.Connect(); err != nil {
-		logger.Errorf("Failed to connect to WhatsApp: %v", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("\n✓ Connected to WhatsApp! Type 'help' for commands.")
-
-	// Start REST API server with webhook support
+	// Start REST API server with webhook support (BEFORE connecting to avoid blocking)
 	server := api.NewServer(client, messageStore, webhookManager, cfg.APIPort)
 	server.Start()
+	fmt.Println("✓ REST API server started on port " + fmt.Sprintf("%d", cfg.APIPort))
+
+	// Connect to WhatsApp in background (non-blocking so server can start)
+	go func() {
+		if err := client.Connect(); err != nil {
+			logger.Errorf("Failed to connect to WhatsApp: %v", err)
+		} else {
+			fmt.Println("\n✓ Connected to WhatsApp!")
+		}
+	}()
 
 	// Create a channel to keep the main goroutine alive
 	exitChan := make(chan os.Signal, 1)
 	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
 
 	fmt.Println("REST server is running. Press Ctrl+C to disconnect and exit.")
+	fmt.Println("=" + fmt.Sprintf("%150s", ""))
+	fmt.Println("Monitor sync progress:")
+	fmt.Println("  curl -H 'X-API-Key: " + apiKey + "' http://localhost:" + fmt.Sprintf("%d", cfg.APIPort) + "/api/sync-status")
+	fmt.Println("=" + fmt.Sprintf("%150s", ""))
+
+	// Periodically log sync stats
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for range ticker.C {
+			logger.Debugf("[STATS] Connected: %v, JID: %v", client.IsConnected(), client.Store.ID)
+		}
+	}()
 
 	// Wait for termination signal
 	<-exitChan

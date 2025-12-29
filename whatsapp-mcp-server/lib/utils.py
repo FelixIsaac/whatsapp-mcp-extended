@@ -2,6 +2,25 @@
 
 import logging
 import os
+from pathlib import Path
+
+# Load .env file from project root - check multiple locations
+try:
+    from dotenv import load_dotenv
+    
+    # Try multiple locations for .env
+    possible_paths = [
+        Path(__file__).parent.parent.parent / '.env',  # /app/.env (Docker)
+        Path(__file__).parent.parent.parent.parent / '.env',  # /whatsapp-mcp-extended/.env (local)
+        Path.cwd() / '.env',  # Current working directory
+    ]
+    
+    for env_path in possible_paths:
+        if env_path.exists():
+            load_dotenv(env_path)
+            break
+except ImportError:
+    pass  # python-dotenv not available, continue without it
 
 
 # Set up logging
@@ -45,6 +64,13 @@ if ':' not in _bridge_host:
 BRIDGE_HOST = _bridge_host
 WHATSAPP_API_BASE_URL = f"http://{BRIDGE_HOST}/api"
 
+
+# Bridge API configuration
+_bridge_host = os.getenv('BRIDGE_HOST', 'localhost:8080')
+if ':' not in _bridge_host:
+    _bridge_host = f"{_bridge_host}:8080"
+BRIDGE_HOST = _bridge_host
+WHATSAPP_API_BASE_URL = f"http://{BRIDGE_HOST}/api"
 
 def get_sender_name(sender_jid: str) -> str:
     """Get display name for a sender JID.

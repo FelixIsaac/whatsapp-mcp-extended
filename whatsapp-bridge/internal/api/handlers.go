@@ -1554,3 +1554,128 @@ func (s *Server) handleArchiveChat(w http.ResponseWriter, r *http.Request) {
 		"archive":  req.Archive,
 	})
 }
+
+// handlePairPhone initiates phone number pairing
+// POST /api/pair
+// Request: { phone_number: string }
+// Response: { success: bool, code: string, expires_in: int, error?: string }
+func (s *Server) handlePairPhone(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req types.PairPhoneRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.PhoneNumber == "" {
+		SendJSONError(w, "phone_number is required", http.StatusBadRequest)
+		return
+	}
+
+	code, err := s.client.PairWithPhone(req.PhoneNumber)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(types.PairPhoneResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(types.PairPhoneResponse{
+		Success:   true,
+		Code:      code,
+		ExpiresIn: 160,
+	})
+}
+
+// handlePairingStatus returns current pairing state
+// GET /api/pairing
+// Response: { success: bool, in_progress: bool, code?: string, expires_in?: int, complete: bool, error?: string }
+func (s *Server) handlePairingStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	inProgress, code, expiresIn, complete, err := s.client.GetPairingStatus()
+
+	resp := types.PairingStatusResponse{
+		Success:    true,
+		InProgress: inProgress,
+		Code:       code,
+		ExpiresIn:  expiresIn,
+		Complete:   complete,
+	}
+
+	if err != nil {
+		resp.Error = err.Error()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// handleConnectionStatus returns WhatsApp connection state
+// GET /api/connection
+// Response: { success: bool, connected: bool, linked: bool, jid?: string }
+func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	connected := s.client.IsConnected()
+	linked := s.client.Store.ID != nil
+
+	resp := types.ConnectionStatusResponse{
+		Success:   true,
+		Connected: connected,
+		Linked:    linked,
+	}
+
+	if linked {
+		resp.JID = s.client.Store.ID.String()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// handleSyncStatus returns current sync state and recommendations
+// GET /api/sync-status
+func (s *Server) handleSyncStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get message count from database
+	msgCount := 0 // TODO: implement in messageStore
+	
+	resp := types.SyncStatusResponse{
+		Success:       true,
+		Syncing:       false, // TODO: track from HistorySync events
+		SyncProgress:  100,
+		MessageCount:  msgCount,
+		ConversationCount: 0, // TODO: implement in messageStore
+	}
+
+	// Provide sync troubleshooting recommendations
+	resp.Recommendations = []string{
+		"If sync is still syncing, wait 2-3 minutes for completion",
+		"Ensure phone has stable internet throughout sync process",
+		"Do not switch WiFi/data networks during sync",
+		"If sync fails, clear WhatsApp cache and restart phone",
+		"Check linked device status in WhatsApp Settings > Linked devices",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
