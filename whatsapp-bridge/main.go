@@ -74,6 +74,12 @@ func main() {
 			logger.Infof("[SYNC] ✓ Completed (Type: %v, %d conversations)", v.Data.SyncType, len(v.Data.Conversations))
 
 		case *events.Connected:
+			// Send presence to keep session active and receive real-time messages
+			if err := client.SetPresence("available"); err != nil {
+				logger.Warnf("Failed to set presence: %v", err)
+			} else {
+				logger.Infof("✓ Presence set to available")
+			}
 			logger.Infof("✓ Connected to WhatsApp")
 
 		case *events.LoggedOut:

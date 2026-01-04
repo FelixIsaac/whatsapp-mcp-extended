@@ -8,6 +8,9 @@ services:
         limits:
           memory: 1G
           cpus: '0.5'
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     ports:
       - "0.0.0.0:8180:8080"  # Localhost only for security
     volumes:
