@@ -64,6 +64,11 @@ def search_contacts(query: str) -> list[dict[str, Any]]:
 
     Returns:
         List of contact dicts with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
+
+    Hints:
+        - Use returned jid with `list_messages` to filter messages by contact
+        - Use `get_contact_details` for more detailed contact info
+        - Use `get_last_interaction` to find most recent message with contact
     """
     return whatsapp_search_contacts(query)
 
@@ -85,6 +90,11 @@ def list_messages(
         query: Optional search term to filter messages by content
         limit: Maximum number of messages to return (default 20)
         page: Page number for pagination (default 0)
+
+    Hints:
+        - If expected messages are missing, use `request_history` to sync older messages from phone
+        - Use `get_message_context` to get surrounding messages for a specific message_id
+        - Use `search_contacts` first to find a contact's JID for filtering
     """
     messages = whatsapp_list_messages(
         after=after,
@@ -116,6 +126,11 @@ def list_chats(
         page: Page number for pagination (default 0)
         include_last_message: Whether to include the last message in each chat (default True)
         sort_by: Field to sort results by, either "last_active" or "name" (default "last_active")
+
+    Hints:
+        - Use returned jid with `list_messages` to get all messages in a specific chat
+        - Use `get_chat` for detailed metadata of a specific chat by JID
+        - For group chats (jid ends with @g.us), use `get_group_info` for participant list
     """
     chats = whatsapp_list_chats(
         query=query,
@@ -181,6 +196,11 @@ def get_message_context(
         message_id: The ID of the message to get context for
         before: Number of messages to include before the target message (default 5)
         after: Number of messages to include after the target message (default 5)
+
+    Hints:
+        - Get message_id from `list_messages` results first
+        - Use for understanding conversation flow around a specific message
+        - Useful after finding a message via search to see full context
     """
     context = whatsapp_get_message_context(message_id, before, after)
     return context
@@ -237,6 +257,11 @@ def download_media(message_id: str, chat_jid: str) -> dict[str, Any]:
 
     Returns:
         A dictionary containing success status, a status message, and the file path if successful
+
+    Hints:
+        - Use `list_messages` first to find messages with media_type set (image, video, audio, document)
+        - The message_id and chat_jid come from `list_messages` results
+        - Check message has media_type before attempting download
     """
     file_path = whatsapp_download_media(message_id, chat_jid)
 
@@ -543,6 +568,11 @@ def request_history(
 
     Returns:
         A dictionary containing success status and message
+
+    Hints:
+        - Use `list_messages` first to get the oldest_msg_id and oldest_msg_timestamp
+        - After requesting, wait a few seconds then use `list_messages` to see synced messages
+        - Use when `list_messages` returns fewer messages than expected
     """
     return whatsapp_request_chat_history(
         chat_jid, oldest_msg_id, oldest_msg_timestamp, oldest_msg_from_me, count
