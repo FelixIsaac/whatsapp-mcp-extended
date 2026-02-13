@@ -58,6 +58,9 @@ func (s *Server) Start() {
 // All endpoints are protected by SecureMiddleware which enforces:
 // API key authentication, rate limiting, CORS, and security headers.
 func (s *Server) registerHandlers() {
+	// Health check - no auth (for Docker healthcheck / load balancers)
+	http.HandleFunc("/api/health", CorsMiddleware(s.handleHealth))
+
 	// Message sending endpoint
 	http.HandleFunc("/api/send", SecureMiddleware(s.handleSendMessage))
 

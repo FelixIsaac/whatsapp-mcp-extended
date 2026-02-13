@@ -4,11 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, RefreshCw, Settings, Plus, MessageSquare, Clock, AlertTriangle, Loader2 } from "lucide-react";
-import { WhatsAppAPI, SyncStatusResponse } from "@/lib/api";
+import { CheckCircle, RefreshCw, Settings, Plus, MessageSquare, Clock, AlertTriangle, Loader2, XCircle, WifiOff } from "lucide-react";
+import { WhatsAppAPI, SyncStatusResponse, ConnectionStatusResponse } from "@/lib/api";
 import { useSettings, usePairing } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 interface DashboardProps {
   onOpenSettings: () => void;
@@ -18,41 +18,100 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
   const { apiKey } = useSettings();
   const { jid, reset } = usePairing();
   const [syncStatus, setSyncStatus] = useState<SyncStatusResponse | null>(null);
+  const [connStatus, setConnStatus] = useState<ConnectionStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchSyncStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const api = new WhatsAppAPI(apiKey);
-      const status = await api.getSyncStatus();
-      setSyncStatus(status);
+      const [sync, conn] = await Promise.all([
+        api.getSyncStatus(),
+        api.getConnectionStatus(),
+      ]);
+      setSyncStatus(sync);
+      setConnStatus(conn);
     } catch (error) {
-      console.error("Failed to fetch sync status:", error);
+      console.error("Failed to fetch status:", error);
     } finally {
       setLoading(false);
     }
   }, [apiKey]);
 
   useEffect(() => {
-    fetchSyncStatus();
-    const interval = setInterval(fetchSyncStatus, 3000);
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
-  }, [fetchSyncStatus]);
+  }, [fetchStatus]);
 
   const handleRefresh = () => {
     setLoading(true);
-    fetchSyncStatus();
+    fetchStatus();
   };
+
+  const isConnected = connStatus?.connected ?? true;
+  const isDisconnected = connStatus !== null && !connStatus.connected;
+  const hasReconnectErrors = (connStatus?.auto_reconnect_errors ?? 0) > 0;
 
   return (
     <Card className="w-full max-w-lg mx-auto">
       <CardHeader className="text-center">
         <CardTitle className="flex items-center justify-center gap-2">
-          <CheckCircle className="h-6 w-6 text-green-500" />
-          Connected
+          {isConnected ? (
+            <>
+              <CheckCircle className="h-6 w-6 text-green-500" />
+              Connected
+            </>
+          ) : hasReconnectErrors ? (
+            <>
+              <Loader2 className="h-6 w-6 text-yellow-500 animate-spin" />
+              Reconnecting...
+            </>
+          ) : (
+            <>
+              <XCircle className="h-6 w-6 text-red-500" />
+              Disconnected
+            </>
+          )}
         </CardTitle>
         <CardDescription className="font-mono text-xs break-all">{jid}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Connection details when disconnected */}
+        {isDisconnected && (
+          <Card className={cn(
+            "border-red-500/50 bg-red-500/10",
+            hasReconnectErrors && "border-yellow-500/50 bg-yellow-500/10"
+          )}>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <WifiOff className={cn("h-4 w-4", hasReconnectErrors ? "text-yellow-500" : "text-red-500")} />
+                <span className="text-sm font-medium">Connection Lost</span>
+              </div>
+              <div className="text-sm text-muted-foreground space-y-1">
+                {connStatus?.disconnected_for && (
+                  <p>Disconnected for: <span className="font-mono font-medium text-foreground">{connStatus.disconnected_for}</span></p>
+                )}
+                {connStatus?.last_connected && (
+                  <p>Last connected: <span className="font-mono text-foreground">{new Date(connStatus.last_connected).toLocaleString()}</span></p>
+                )}
+                {hasReconnectErrors && (
+                  <p>Reconnect attempts: <span className="font-mono text-foreground">{connStatus?.auto_reconnect_errors}</span></p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Uptime when connected */}
+        {isConnected && connStatus?.uptime && (
+          <div className="text-center text-sm text-muted-foreground">
+            Uptime: <span className="font-mono">{connStatus.uptime}</span>
+            {connStatus.last_connected && (
+              <> &middot; Connected since: <span className="font-mono">{new Date(connStatus.last_connected).toLocaleTimeString()}</span></>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <Card className="bg-muted/50">
             <CardContent className="pt-4">

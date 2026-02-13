@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"whatsapp-bridge/internal/types"
 )
@@ -1622,9 +1623,38 @@ func (s *Server) handlePairingStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// handleHealth returns 200 if connected, 503 if not. No auth required.
+// GET /api/health
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	connected := s.client.IsConnected()
+	startedAt, lastConn, discAt, reconnErrs := s.client.ConnectionState()
+
+	resp := map[string]interface{}{
+		"connected":      connected,
+		"uptime":         time.Since(startedAt).Round(time.Second).String(),
+		"reconnect_errs": reconnErrs,
+	}
+	if !lastConn.IsZero() {
+		resp["last_connected"] = lastConn.Format(time.RFC3339)
+	}
+	if !discAt.IsZero() {
+		resp["disconnected_for"] = time.Since(discAt).Round(time.Second).String()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if !connected {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
 // handleConnectionStatus returns WhatsApp connection state
 // GET /api/connection
-// Response: { success: bool, connected: bool, linked: bool, jid?: string }
 func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1633,15 +1663,24 @@ func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) 
 
 	connected := s.client.IsConnected()
 	linked := s.client.Store.ID != nil
+	startedAt, lastConn, discAt, reconnErrs := s.client.ConnectionState()
 
 	resp := types.ConnectionStatusResponse{
-		Success:   true,
-		Connected: connected,
-		Linked:    linked,
+		Success:             true,
+		Connected:           connected,
+		Linked:              linked,
+		Uptime:              time.Since(startedAt).Round(time.Second).String(),
+		AutoReconnectErrors: reconnErrs,
 	}
 
 	if linked {
 		resp.JID = s.client.Store.ID.String()
+	}
+	if !lastConn.IsZero() {
+		resp.LastConnected = lastConn.Format(time.RFC3339)
+	}
+	if !discAt.IsZero() {
+		resp.DisconnectedFor = time.Since(discAt).Round(time.Second).String()
 	}
 
 	w.Header().Set("Content-Type", "application/json")

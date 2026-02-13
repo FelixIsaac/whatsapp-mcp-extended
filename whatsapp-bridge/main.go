@@ -74,6 +74,7 @@ func main() {
 			logger.Infof("[SYNC] ✓ Completed (Type: %v, %d conversations)", v.Data.SyncType, len(v.Data.Conversations))
 
 		case *events.Connected:
+			client.MarkConnected()
 			// Send presence to keep session active and receive real-time messages
 			if err := client.SetPresence("available"); err != nil {
 				logger.Warnf("Failed to set presence: %v", err)
@@ -94,15 +95,54 @@ func main() {
 			client.HandlePairingError(v.Error)
 
 		case *events.KeepAliveTimeout:
-			logger.Warnf("⚠ KeepAlive timeout - connection may be unstable (sync may fail)")
+			logger.Warnf("⚠ KeepAlive timeout (errors: %d)", v.ErrorCount)
+			if v.ErrorCount >= 3 {
+				logger.Errorf("KeepAlive: %d consecutive failures, forcing disconnect+reconnect", v.ErrorCount)
+				client.Disconnect()
+				go func() {
+					time.Sleep(2 * time.Second)
+					if err := client.Client.Connect(); err != nil {
+						logger.Errorf("Reconnect after KeepAlive failure: %v", err)
+					}
+				}()
+			}
 
 		case *events.StreamError:
 			logger.Errorf("✗ Stream error: %v", v.Code)
 
 		case *events.Disconnected:
+			client.MarkDisconnected()
 			logger.Warnf("⚠ Disconnected from WhatsApp - attempting reconnect")
 		}
 	})
+
+	// Connection watchdog: exit process if disconnected >3 min (forces container restart)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			_, _, discAt, _ := client.ConnectionState()
+			if !discAt.IsZero() && time.Since(discAt) > 3*time.Minute {
+				logger.Errorf("WATCHDOG: disconnected for %v, exiting to force container restart", time.Since(discAt).Round(time.Second))
+				os.Exit(1)
+			}
+		}
+	}()
+
+	// Periodic presence ping every 3 min to keep WhatsApp session active
+	go func() {
+		ticker := time.NewTicker(3 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if client.IsConnected() {
+				if err := client.SetPresence("available"); err != nil {
+					logger.Debugf("Presence ping failed: %v", err)
+				} else {
+					logger.Debugf("Presence ping sent")
+				}
+			}
+		}
+	}()
 
 	// Start REST API server with webhook support (BEFORE connecting to avoid blocking)
 	server := api.NewServer(client, messageStore, webhookManager, cfg.APIPort)

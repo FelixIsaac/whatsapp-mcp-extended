@@ -25,6 +25,10 @@ export interface ConnectionStatusResponse {
   connected: boolean;
   linked: boolean;
   jid?: string;
+  uptime?: string;
+  last_connected?: string;
+  disconnected_for?: string;
+  auto_reconnect_errors?: number;
 }
 
 export interface SyncStatusResponse {

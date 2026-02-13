@@ -379,10 +379,14 @@ type PairingStatusResponse struct {
 
 // ConnectionStatusResponse returns WhatsApp connection state
 type ConnectionStatusResponse struct {
-	Success   bool   `json:"success"`
-	Connected bool   `json:"connected"`
-	Linked    bool   `json:"linked"`    // Device has valid session
-	JID       string `json:"jid,omitempty"` // WhatsApp ID if linked
+	Success             bool   `json:"success"`
+	Connected           bool   `json:"connected"`
+	Linked              bool   `json:"linked"`                         // Device has valid session
+	JID                 string `json:"jid,omitempty"`                  // WhatsApp ID if linked
+	Uptime              string `json:"uptime,omitempty"`               // Process uptime
+	LastConnected       string `json:"last_connected,omitempty"`       // ISO-8601 timestamp
+	DisconnectedFor     string `json:"disconnected_for,omitempty"`     // Duration string
+	AutoReconnectErrors int    `json:"auto_reconnect_errors,omitempty"`
 }
 
 // SyncStatusResponse returns current message sync state

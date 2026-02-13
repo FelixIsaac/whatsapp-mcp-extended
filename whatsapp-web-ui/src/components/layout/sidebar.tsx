@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Link2, MessageSquare, Settings, Webhook } from "lucide-react";
+import { WhatsAppAPI } from "@/lib/api";
+import { useSettings } from "@/lib/store";
 
 const navItems = [
   {
@@ -20,13 +23,45 @@ const navItems = [
   },
 ];
 
+type ConnectionDotStatus = "connected" | "disconnected" | "unknown";
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { apiKey } = useSettings();
+  const [connStatus, setConnStatus] = useState<ConnectionDotStatus>("unknown");
+
+  const pollConnection = useCallback(async () => {
+    try {
+      const api = new WhatsAppAPI(apiKey);
+      const status = await api.getConnectionStatus();
+      setConnStatus(status.connected ? "connected" : "disconnected");
+    } catch {
+      setConnStatus("unknown");
+    }
+  }, [apiKey]);
+
+  useEffect(() => {
+    pollConnection();
+    const interval = setInterval(pollConnection, 10000);
+    return () => clearInterval(interval);
+  }, [pollConnection]);
+
+  const dotColor = {
+    connected: "bg-green-500",
+    disconnected: "bg-red-500",
+    unknown: "bg-yellow-500",
+  }[connStatus];
 
   return (
     <aside className="w-64 bg-card border-r min-h-screen p-4 flex flex-col">
       <div className="flex items-center gap-2 px-2 mb-8">
-        <MessageSquare className="h-8 w-8 text-green-500" />
+        <div className="relative">
+          <MessageSquare className="h-8 w-8 text-green-500" />
+          <span
+            className={cn("absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card", dotColor)}
+            title={connStatus === "connected" ? "Connected" : connStatus === "disconnected" ? "Disconnected" : "Checking..."}
+          />
+        </div>
         <div>
           <h1 className="font-bold text-lg">WhatsApp MCP</h1>
           <p className="text-xs text-muted-foreground">Extended</p>

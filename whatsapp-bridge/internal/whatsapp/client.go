@@ -31,6 +31,13 @@ type Client struct {
 	*whatsmeow.Client
 	logger waLog.Logger
 
+	// Connection state tracking
+	connMu              sync.RWMutex
+	startedAt           time.Time
+	lastConnectedAt     time.Time
+	disconnectedAt      time.Time
+	autoReconnectErrors int
+
 	// Pairing state
 	pairingMutex      sync.Mutex
 	pairingInProgress bool
@@ -96,10 +103,28 @@ func NewClientWithConfig(logger waLog.Logger, cfg *config.Config) (*Client, erro
 		return nil, fmt.Errorf("failed to create WhatsApp client")
 	}
 
-	return &Client{
-		Client: client,
-		logger: logger,
-	}, nil
+	c := &Client{
+		Client:    client,
+		logger:    logger,
+		startedAt: time.Now(),
+	}
+
+	// Explicit auto-reconnect with failure circuit breaker
+	client.EnableAutoReconnect = true
+	client.AutoReconnectHook = func(failure error) bool {
+		c.connMu.Lock()
+		c.autoReconnectErrors++
+		count := c.autoReconnectErrors
+		c.connMu.Unlock()
+		if count >= 30 {
+			logger.Errorf("AutoReconnect: %d consecutive failures, giving up (watchdog will restart)", count)
+			return false
+		}
+		logger.Warnf("AutoReconnect: attempt %d (%v)", count, failure)
+		return true
+	}
+
+	return c, nil
 }
 
 // Connect establishes connection to WhatsApp servers.
@@ -455,6 +480,33 @@ func (c *Client) UnarchiveChat(chatJID string) error {
 
 	patch := appstate.BuildArchive(jid, false, time.Time{}, nil)
 	return c.Client.SendAppState(context.Background(), patch)
+}
+
+// Connection state tracking methods
+
+// MarkConnected records a successful connection event.
+func (c *Client) MarkConnected() {
+	c.connMu.Lock()
+	defer c.connMu.Unlock()
+	c.lastConnectedAt = time.Now()
+	c.disconnectedAt = time.Time{}
+	c.autoReconnectErrors = 0
+}
+
+// MarkDisconnected records a disconnection event.
+func (c *Client) MarkDisconnected() {
+	c.connMu.Lock()
+	defer c.connMu.Unlock()
+	if c.disconnectedAt.IsZero() {
+		c.disconnectedAt = time.Now()
+	}
+}
+
+// ConnectionState returns current connection timing info.
+func (c *Client) ConnectionState() (startedAt, lastConnected, disconnectedAt time.Time, reconnectErrors int) {
+	c.connMu.RLock()
+	defer c.connMu.RUnlock()
+	return c.startedAt, c.lastConnectedAt, c.disconnectedAt, c.autoReconnectErrors
 }
 
 // Phase 7: Phone Number Pairing

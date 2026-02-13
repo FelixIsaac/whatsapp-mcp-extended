@@ -22,6 +22,12 @@ services:
       - TZ=UTC
       - API_KEY=${API_KEY:?API_KEY is required - see .env.example}
       - DISABLE_AUTH_CHECK=${DISABLE_AUTH_CHECK:-false}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
     networks:
       - whatsapp_internal
