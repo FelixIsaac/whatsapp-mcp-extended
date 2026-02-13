@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -1723,10 +1724,22 @@ func (s *Server) handleSyncStatus(w http.ResponseWriter, r *http.Request) {
 	msgCount, _ := s.messageStore.GetMessageCount()
 	chatCount, _ := s.messageStore.GetChatCount()
 
+	// Get last synced message timestamp
+	var lastSync string
+	var lastSyncStr sql.NullString
+	err := s.messageStore.GetDB().QueryRow("SELECT MAX(timestamp) FROM messages").Scan(&lastSyncStr)
+	if err == nil && lastSyncStr.Valid {
+		// Parse the timestamp string and reformat as RFC3339
+		if t, parseErr := time.Parse("2006-01-02 15:04:05-07:00", lastSyncStr.String); parseErr == nil {
+			lastSync = t.Format(time.RFC3339)
+		}
+	}
+
 	resp := types.SyncStatusResponse{
 		Success:           true,
 		Syncing:           false,
 		SyncProgress:      100,
+		LastSync:          lastSync,
 		MessageCount:      msgCount,
 		ConversationCount: chatCount,
 	}

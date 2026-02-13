@@ -155,7 +155,9 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
                 <span className="text-sm font-medium">Last Sync</span>
               </div>
               <div className="text-lg font-medium">
-                {syncStatus?.last_sync || "In progress..."}
+                {syncStatus?.last_sync
+                  ? new Date(syncStatus.last_sync).toLocaleString()
+                  : "In progress..."}
               </div>
             </CardContent>
           </Card>
