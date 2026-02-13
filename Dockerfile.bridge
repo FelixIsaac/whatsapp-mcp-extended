@@ -17,10 +17,12 @@ RUN go mod download && go build -o whatsapp-bridge
 
 FROM debian:bullseye-slim AS runtime
 
-# Install runtime dependencies
+# Install runtime dependencies (gosu for privilege dropping after fixing bind-mount perms)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     ca-certificates \
+    gosu \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security (UID 1000 to match common host user)
@@ -34,14 +36,11 @@ WORKDIR /app
 RUN mkdir -p /app/whatsapp-bridge /app/store /app/media
 COPY --from=builder /app/whatsapp-bridge/whatsapp-bridge /app/whatsapp-bridge/whatsapp-bridge
 
-# Create entrypoint script and set permissions
+# Create entrypoint script that fixes bind-mount permissions then drops to appuser
 RUN chmod +x /app/whatsapp-bridge/whatsapp-bridge \
-    && printf '#!/bin/bash\ncd /app/whatsapp-bridge\n./whatsapp-bridge\n' > /app/entrypoint-bridge.sh \
+    && printf '#!/bin/bash\n# Fix bind-mount ownership (host UID may differ from container appuser)\nchown -R appuser:appuser /app/whatsapp-bridge/store 2>/dev/null || true\nchmod -R u+rw /app/whatsapp-bridge/store 2>/dev/null || true\ncd /app/whatsapp-bridge\nexec gosu appuser ./whatsapp-bridge\n' > /app/entrypoint-bridge.sh \
     && chmod +x /app/entrypoint-bridge.sh \
     && chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
 
 # Expose port for WhatsApp Bridge API
 EXPOSE 8080
