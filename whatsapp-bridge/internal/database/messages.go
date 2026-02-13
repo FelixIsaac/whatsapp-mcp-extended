@@ -70,6 +70,20 @@ func (store *MessageStore) GetMessages(chatJID string, limit int) ([]types.Messa
 	return messages, nil
 }
 
+// GetMessageCount returns total message count.
+func (store *MessageStore) GetMessageCount() (int, error) {
+	var count int
+	err := store.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&count)
+	return count, err
+}
+
+// GetChatCount returns total chat count.
+func (store *MessageStore) GetChatCount() (int, error) {
+	var count int
+	err := store.db.QueryRow("SELECT COUNT(*) FROM chats").Scan(&count)
+	return count, err
+}
+
 // GetChats gets all chats
 func (store *MessageStore) GetChats() (map[string]time.Time, error) {
 	rows, err := store.db.Query("SELECT jid, last_message_time FROM chats ORDER BY last_message_time DESC")

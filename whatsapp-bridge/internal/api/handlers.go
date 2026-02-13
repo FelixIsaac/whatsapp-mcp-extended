@@ -1695,15 +1695,16 @@ func (s *Server) handleSyncStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get message count from database
-	msgCount := 0 // TODO: implement in messageStore
-	
+	// Get counts from database
+	msgCount, _ := s.messageStore.GetMessageCount()
+	chatCount, _ := s.messageStore.GetChatCount()
+
 	resp := types.SyncStatusResponse{
-		Success:       true,
-		Syncing:       false, // TODO: track from HistorySync events
-		SyncProgress:  100,
-		MessageCount:  msgCount,
-		ConversationCount: 0, // TODO: implement in messageStore
+		Success:           true,
+		Syncing:           false,
+		SyncProgress:      100,
+		MessageCount:      msgCount,
+		ConversationCount: chatCount,
 	}
 
 	// Provide sync troubleshooting recommendations
