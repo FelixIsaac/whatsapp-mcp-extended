@@ -127,7 +127,7 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
                 {syncStatus?.syncing ? "Syncing" : "Synced"}
               </div>
               {syncStatus && (
-                <Progress value={syncStatus.syncProgress} className="mt-2 h-2" />
+                <Progress value={syncStatus.sync_progress} className="mt-2 h-2" />
               )}
             </CardContent>
           </Card>
@@ -139,7 +139,7 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
                 <span className="text-sm font-medium">Last Sync</span>
               </div>
               <div className="text-lg font-medium">
-                {syncStatus?.lastSync || "In progress..."}
+                {syncStatus?.last_sync || "In progress..."}
               </div>
             </CardContent>
           </Card>
@@ -153,7 +153,7 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
                 <span className="text-sm font-medium">Messages</span>
               </div>
               <div className="text-2xl font-bold">
-                {syncStatus?.messageCount?.toLocaleString() || "0"}
+                {syncStatus?.message_count?.toLocaleString() || "0"}
               </div>
             </CardContent>
           </Card>
@@ -165,7 +165,7 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
                 <span className="text-sm font-medium">Chats</span>
               </div>
               <div className="text-2xl font-bold">
-                {syncStatus?.conversationCount?.toLocaleString() || "0"}
+                {syncStatus?.conversation_count?.toLocaleString() || "0"}
               </div>
             </CardContent>
           </Card>

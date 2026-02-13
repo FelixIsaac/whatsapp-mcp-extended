@@ -34,10 +34,10 @@ export interface ConnectionStatusResponse {
 export interface SyncStatusResponse {
   success: boolean;
   syncing: boolean;
-  lastSync?: string;
-  syncProgress: number;
-  messageCount: number;
-  conversationCount: number;
+  last_sync?: string;
+  sync_progress: number;
+  message_count: number;
+  conversation_count: number;
   error?: string;
   recommendations?: string[];
 }
