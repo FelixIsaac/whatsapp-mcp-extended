@@ -12,8 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create non-root user for security (UID 1000 to match common host user)
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g ${GID} appuser && useradd -u ${UID} -g appuser appuser
 
 # Set up Python environment and install dependencies
 RUN python3 -m pip install --upgrade pip uv

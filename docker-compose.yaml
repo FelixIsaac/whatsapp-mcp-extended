@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.bridge
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     deploy:
       resources:
         limits:
@@ -27,6 +30,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.mcp
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     deploy:
       resources:
         limits:
