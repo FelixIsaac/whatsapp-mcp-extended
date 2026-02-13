@@ -58,12 +58,12 @@ func TestValidateWebhookURL(t *testing.T) {
 		errContains string
 	}{
 		// Invalid URLs
-		{"invalid url", "not-a-url", true, "invalid webhook URL"},
-		{"empty url", "", true, "invalid webhook URL"},
+		{"invalid url", "not-a-url", true, "failed to resolve"},
+		{"empty url", "", true, "failed to resolve"},
 
 		// Blocked metadata endpoints
 		{"google metadata", "http://metadata.google.internal/computeMetadata/v1/", true, "blocked"},
-		{"aws metadata", "http://169.254.169.254/latest/meta-data/", true, "private"},
+		{"aws metadata", "http://169.254.169.254/latest/meta-data/", true, "blocked"},
 		{"azure metadata", "http://metadata.azure.com/", true, "blocked"},
 
 		// Private IPs

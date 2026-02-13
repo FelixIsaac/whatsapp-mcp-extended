@@ -142,6 +142,10 @@ export class WhatsAppAPI {
     return this.request<SyncStatusResponse>("/sync-status");
   }
 
+  async reconnect(): Promise<void> {
+    await this.request("/reconnect", { method: "POST" });
+  }
+
   // Webhook methods
   async getWebhooks(): Promise<Webhook[]> {
     const response = await this.request<WebhooksResponse>("/webhooks");

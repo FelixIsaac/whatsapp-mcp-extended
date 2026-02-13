@@ -8,11 +8,11 @@ import (
 	"math/rand"
 	"time"
 
-	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 )
 
 // ExtractTextContent extracts text content from a WhatsApp message
-func ExtractTextContent(msg *waProto.Message) string {
+func ExtractTextContent(msg *waE2E.Message) string {
 	if msg == nil {
 		return ""
 	}
@@ -29,7 +29,7 @@ func ExtractTextContent(msg *waProto.Message) string {
 }
 
 // ExtractMediaInfo extracts media information from a WhatsApp message
-func ExtractMediaInfo(msg *waProto.Message) (mediaType string, filename string, url string, mediaKey []byte, fileSHA256 []byte, fileEncSHA256 []byte, fileLength uint64) {
+func ExtractMediaInfo(msg *waE2E.Message) (mediaType string, filename string, url string, mediaKey []byte, fileSHA256 []byte, fileEncSHA256 []byte, fileLength uint64) {
 	if msg == nil {
 		return "", "", "", nil, nil, nil, 0
 	}
@@ -177,7 +177,7 @@ func placeholderWaveform(duration uint32) []byte {
 	waveform := make([]byte, waveformLength)
 
 	// Seed the random number generator for consistent results with the same duration
-	rand.Seed(int64(duration))
+	rng := rand.New(rand.NewSource(int64(duration))) //nolint:gosec
 
 	// Create a more natural looking waveform with some patterns and variability
 	// rather than completely random values
@@ -196,7 +196,7 @@ func placeholderWaveform(duration uint32) []byte {
 		val += (baseAmplitude / 2) * math.Sin(pos*math.Pi*frequencyFactor*16)
 
 		// Add some randomness to make it look more natural
-		val += (rand.Float64() - 0.5) * 15
+		val += (rng.Float64() - 0.5) * 15
 
 		// Add some fade-in and fade-out effects
 		fadeInOut := math.Sin(pos * math.Pi)

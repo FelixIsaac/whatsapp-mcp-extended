@@ -115,6 +115,9 @@ func (s *Server) registerHandlers() {
 	http.HandleFunc("/api/pairing", SecureMiddleware(s.handlePairingStatus))
 	http.HandleFunc("/api/connection", SecureMiddleware(s.handleConnectionStatus))
 
+	// Connection management
+	http.HandleFunc("/api/reconnect", SecureMiddleware(s.handleReconnect))
+
 	// Sync status monitoring
 	http.HandleFunc("/api/sync-status", SecureMiddleware(s.handleSyncStatus))
 }

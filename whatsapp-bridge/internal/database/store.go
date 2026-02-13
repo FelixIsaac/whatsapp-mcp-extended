@@ -46,11 +46,9 @@ func NewMessageStore() (*MessageStore, error) {
 func runMigrations(db *sql.DB) error {
 	// Add sender_name column if it doesn't exist (for existing databases)
 	_, err := db.Exec(`ALTER TABLE messages ADD COLUMN sender_name TEXT`)
-	if err != nil {
-		// Ignore error if column already exists (SQLite returns error for duplicate column)
-		if err.Error() != "duplicate column name: sender_name" {
-			// Log but don't fail - column might already exist
-		}
+	if err != nil && err.Error() != "duplicate column name: sender_name" {
+		// Unexpected migration error - log but don't fail
+		fmt.Printf("Warning: migration error (sender_name column): %v\n", err)
 	}
 	return nil
 }

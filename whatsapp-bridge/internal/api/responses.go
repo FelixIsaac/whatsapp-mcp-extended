@@ -17,7 +17,7 @@ type Response struct {
 func SendJSONError(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(Response{
+	_ = json.NewEncoder(w).Encode(Response{
 		Success: false,
 		Error:   message,
 	})
@@ -35,5 +35,5 @@ func SendJSONSuccess(w http.ResponseWriter, data interface{}, message string) {
 	if message != "" {
 		response.Message = message
 	}
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }

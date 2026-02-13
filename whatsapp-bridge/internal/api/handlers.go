@@ -60,7 +60,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send response with message_id, timestamp, recipient
-	json.NewEncoder(w).Encode(types.SendMessageResponse{
+	_ = json.NewEncoder(w).Encode(types.SendMessageResponse{
 		Success:   result.Success,
 		Message:   result.Error,
 		MessageID: result.MessageID,
@@ -93,7 +93,7 @@ func (s *Server) handleWebhooks(w http.ResponseWriter, r *http.Request) {
 		for i := range configs {
 			responses[i] = configs[i].ToResponse()
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"data":    responses,
 		})
@@ -119,9 +119,9 @@ func (s *Server) handleWebhooks(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload configurations
-		s.webhookManager.LoadWebhookConfigs()
+		_ = s.webhookManager.LoadWebhookConfigs()
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"data":    config,
 		})
@@ -169,7 +169,7 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"data":    config.ToResponse(),
 			})
@@ -197,9 +197,9 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Reload configurations
-			s.webhookManager.LoadWebhookConfigs()
+			_ = s.webhookManager.LoadWebhookConfigs()
 
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"data":    config.ToResponse(),
 			})
@@ -212,9 +212,9 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Reload configurations
-			s.webhookManager.LoadWebhookConfigs()
+			_ = s.webhookManager.LoadWebhookConfigs()
 
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"message": "Webhook deleted successfully",
 			})
@@ -242,7 +242,7 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": "Webhook test successful",
 		})
@@ -260,7 +260,7 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"data":    logs,
 		})
@@ -295,9 +295,9 @@ func (s *Server) handleWebhookByID(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload configurations
-		s.webhookManager.LoadWebhookConfigs()
+		_ = s.webhookManager.LoadWebhookConfigs()
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": fmt.Sprintf("Webhook %s successfully", map[bool]string{true: "enabled", false: "disabled"}[req.Enabled]),
 			"data":    config,
@@ -327,7 +327,7 @@ func (s *Server) handleWebhookLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"data":    logs,
 	})
@@ -365,7 +365,7 @@ func (s *Server) handleReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Reaction sent",
 	})
@@ -403,7 +403,7 @@ func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Message edited",
 	})
@@ -441,7 +441,7 @@ func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Message deleted",
 	})
@@ -487,7 +487,7 @@ func (s *Server) handleGetGroupInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"data": map[string]interface{}{
 			"jid":               groupInfo.JID.String(),
@@ -533,7 +533,7 @@ func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Messages marked as read",
 	})
@@ -573,7 +573,7 @@ func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"group_jid": groupInfo.JID.String(),
 		"name":      groupInfo.Name,
@@ -621,7 +621,7 @@ func (s *Server) handleAddGroupMembers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":      true,
 		"participants": added,
 	})
@@ -667,7 +667,7 @@ func (s *Server) handleRemoveGroupMembers(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":      true,
 		"participants": removed,
 	})
@@ -705,7 +705,7 @@ func (s *Server) handlePromoteAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":     true,
 		"group_jid":   req.GroupJID,
 		"participant": req.Participant,
@@ -745,7 +745,7 @@ func (s *Server) handleDemoteAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":     true,
 		"group_jid":   req.GroupJID,
 		"participant": req.Participant,
@@ -784,7 +784,7 @@ func (s *Server) handleLeaveGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"group_jid": req.GroupJID,
 		"action":    "left",
@@ -842,7 +842,7 @@ func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"group_jid": req.GroupJID,
 	})
@@ -889,7 +889,7 @@ func (s *Server) handleCreatePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":    result.Success,
 		"message_id": result.MessageID,
 		"timestamp":  result.Timestamp,
@@ -940,7 +940,7 @@ func (s *Server) handleRequestHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"message":  "History request sent. Messages will arrive via HistorySync event.",
 		"chat_jid": req.ChatJID,
@@ -981,7 +981,7 @@ func (s *Server) handleSetPresence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"presence": req.Presence,
 	})
@@ -1018,7 +1018,7 @@ func (s *Server) handleSubscribePresence(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"jid":     req.JID,
 		"message": "Subscribed to presence updates. Use event handler to receive updates.",
@@ -1068,7 +1068,7 @@ func (s *Server) handleGetProfilePicture(w http.ResponseWriter, r *http.Request)
 	}
 
 	if info == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":     true,
 			"jid":         jid,
 			"has_picture": false,
@@ -1076,7 +1076,7 @@ func (s *Server) handleGetProfilePicture(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":     true,
 		"jid":         jid,
 		"has_picture": true,
@@ -1104,7 +1104,7 @@ func (s *Server) handleGetBlocklist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"users":   users,
 		"count":   len(users),
@@ -1143,7 +1143,7 @@ func (s *Server) handleUpdateBlocklist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"jid":     req.JID,
 		"action":  req.Action,
@@ -1181,7 +1181,7 @@ func (s *Server) handleFollowNewsletter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"jid":     req.JID,
 		"message": "Successfully followed newsletter",
@@ -1219,7 +1219,7 @@ func (s *Server) handleUnfollowNewsletter(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"jid":     req.JID,
 		"message": "Successfully unfollowed newsletter",
@@ -1258,7 +1258,7 @@ func (s *Server) handleCreateNewsletter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":     true,
 		"jid":         info.JID,
 		"name":        info.Name,
@@ -1305,7 +1305,7 @@ func (s *Server) handleSendTyping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"chat_jid": req.ChatJID,
 		"state":    req.State,
@@ -1338,7 +1338,7 @@ func (s *Server) handleSetAbout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"text":    req.Text,
 	})
@@ -1381,7 +1381,7 @@ func (s *Server) handleSetDisappearingTimer(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"chat_jid": req.ChatJID,
 		"duration": req.Duration,
@@ -1405,7 +1405,7 @@ func (s *Server) handleGetPrivacySettings(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"settings": settings,
 	})
@@ -1449,7 +1449,7 @@ func (s *Server) handlePinChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"chat_jid": req.ChatJID,
 		"pin":      req.Pin,
@@ -1508,7 +1508,7 @@ func (s *Server) handleMuteChat(w http.ResponseWriter, r *http.Request) {
 		response["duration"] = req.Duration
 	}
 
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // handleArchiveChat handles POST /api/archive for archiving/unarchiving chats.
@@ -1549,7 +1549,7 @@ func (s *Server) handleArchiveChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"chat_jid": req.ChatJID,
 		"archive":  req.Archive,
@@ -1581,7 +1581,7 @@ func (s *Server) handlePairPhone(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(types.PairPhoneResponse{
+		_ = json.NewEncoder(w).Encode(types.PairPhoneResponse{
 			Success: false,
 			Error:   err.Error(),
 		})
@@ -1589,7 +1589,7 @@ func (s *Server) handlePairPhone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(types.PairPhoneResponse{
+	_ = json.NewEncoder(w).Encode(types.PairPhoneResponse{
 		Success:   true,
 		Code:      code,
 		ExpiresIn: 160,
@@ -1620,7 +1620,7 @@ func (s *Server) handlePairingStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // handleHealth returns 200 if connected, 503 if not. No auth required.
@@ -1650,7 +1650,31 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if !connected {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// handleReconnect forces a disconnect and reconnect of the WhatsApp client.
+// POST /api/reconnect
+func (s *Server) handleReconnect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.client.Disconnect()
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		if err := s.client.Client.Connect(); err != nil {
+			fmt.Printf("Reconnect failed: %v\n", err)
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Reconnecting...",
+	})
 }
 
 // handleConnectionStatus returns WhatsApp connection state
@@ -1684,7 +1708,7 @@ func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // handleSyncStatus returns current sync state and recommendations
@@ -1717,5 +1741,5 @@ func (s *Server) handleSyncStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }

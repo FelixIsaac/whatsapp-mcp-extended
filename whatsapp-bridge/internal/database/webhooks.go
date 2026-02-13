@@ -96,7 +96,7 @@ func (store *MessageStore) UpdateWebhookConfig(config *types.WebhookConfig) erro
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %v", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Update the main webhook configuration
 	result, err := tx.Exec(

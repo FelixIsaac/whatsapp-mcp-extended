@@ -38,8 +38,7 @@ func (ds *DeliveryService) DeliverWebhook(config *types.WebhookConfig, payload *
 	maxRetries := 5
 	backoffIntervals := []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second}
 
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
+	if _, err := json.Marshal(payload); err != nil {
 		ds.logger.Errorf("Failed to marshal webhook payload: %v", err)
 		return
 	}
@@ -48,7 +47,7 @@ func (ds *DeliveryService) DeliverWebhook(config *types.WebhookConfig, payload *
 		payload.Metadata.DeliveryAttempt = attempt
 
 		// Update payload with current attempt
-		payloadBytes, _ = json.Marshal(payload)
+		payloadBytes, _ := json.Marshal(payload)
 
 		success, statusCode, responseBody := ds.sendHTTPRequest(config, payloadBytes)
 

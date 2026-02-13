@@ -12,7 +12,6 @@ import (
 	bridgeTypes "whatsapp-bridge/internal/types"
 
 	"go.mau.fi/whatsmeow"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
@@ -89,7 +88,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		}
 	}
 
-	msg := &waProto.Message{}
+	msg := &waE2E.Message{}
 
 	// Check if we have media to send
 	if mediaPath != "" {
@@ -156,7 +155,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		// Create the appropriate message type based on media type
 		switch mediaType {
 		case whatsmeow.MediaImage:
-			msg.ImageMessage = &waProto.ImageMessage{
+			msg.ImageMessage = &waE2E.ImageMessage{
 				Caption:       proto.String(message),
 				Mimetype:      proto.String(mimeType),
 				URL:           &resp.URL,
@@ -182,7 +181,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				}
 			}
 
-			msg.AudioMessage = &waProto.AudioMessage{
+			msg.AudioMessage = &waE2E.AudioMessage{
 				Mimetype:      proto.String(mimeType),
 				URL:           &resp.URL,
 				DirectPath:    &resp.DirectPath,
@@ -195,7 +194,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				Waveform:      waveform,
 			}
 		case whatsmeow.MediaVideo:
-			msg.VideoMessage = &waProto.VideoMessage{
+			msg.VideoMessage = &waE2E.VideoMessage{
 				Caption:       proto.String(message),
 				Mimetype:      proto.String(mimeType),
 				URL:           &resp.URL,
@@ -206,7 +205,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				FileLength:    &resp.FileLength,
 			}
 		case whatsmeow.MediaDocument:
-			msg.DocumentMessage = &waProto.DocumentMessage{
+			msg.DocumentMessage = &waE2E.DocumentMessage{
 				Title:         proto.String(mediaPath[strings.LastIndex(mediaPath, "/")+1:]),
 				Caption:       proto.String(message),
 				Mimetype:      proto.String(mimeType),
@@ -228,7 +227,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error sending message: %v", err)}
 	}
 
-	err = messageStore.StoreMessage(
+	_ = messageStore.StoreMessage(
 		sendResp.ID, // Use the ID from SendResponse
 		recipientJID.String(),
 		c.Store.ID.User,       // Use the client's user ID as sender

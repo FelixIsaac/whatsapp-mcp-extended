@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, RefreshCw, Settings, Plus, MessageSquare, Clock, AlertTriangle, Loader2, XCircle, WifiOff } from "lucide-react";
+import { CheckCircle, RefreshCw, Settings, Plus, MessageSquare, Clock, AlertTriangle, Loader2, XCircle, WifiOff, Zap } from "lucide-react";
 import { WhatsAppAPI, SyncStatusResponse, ConnectionStatusResponse } from "@/lib/api";
 import { useSettings, usePairing } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatusResponse | null>(null);
   const [connStatus, setConnStatus] = useState<ConnectionStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reconnecting, setReconnecting] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -46,6 +47,21 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
   const handleRefresh = () => {
     setLoading(true);
     fetchStatus();
+  };
+
+  const handleReconnect = async () => {
+    setReconnecting(true);
+    try {
+      const api = new WhatsAppAPI(apiKey);
+      await api.reconnect();
+    } catch (error) {
+      console.error("Failed to reconnect:", error);
+    } finally {
+      setTimeout(() => {
+        setReconnecting(false);
+        fetchStatus();
+      }, 3000);
+    }
   };
 
   const isConnected = connStatus?.connected ?? true;
@@ -204,7 +220,13 @@ export function Dashboard({ onOpenSettings }: DashboardProps) {
 
         <Separator />
 
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-2 justify-center flex-wrap">
+          {isDisconnected && (
+            <Button variant="destructive" size="sm" onClick={handleReconnect} disabled={reconnecting}>
+              <Zap className={"h-4 w-4 mr-2 " + (reconnecting ? "animate-pulse" : "")} />
+              {reconnecting ? "Reconnecting..." : "Force Reconnect"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
             <RefreshCw className={"h-4 w-4 mr-2 " + (loading ? "animate-spin" : "")} />
             Refresh

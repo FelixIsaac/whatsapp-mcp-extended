@@ -1,5 +1,6 @@
 """Bridge API client for WhatsApp Go bridge."""
 from pathlib import Path
+
 try:
     from dotenv import load_dotenv
     possible_paths = [Path(__file__).parent.parent.parent / ".env", Path(__file__).parent.parent.parent.parent / ".env", Path.cwd() / ".env"]

@@ -147,8 +147,6 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 
 	if err != nil {
 		c.logger.Warnf("Failed to store message: %v", err)
-	} else {
-		// Log message reception
 	}
 
 	// Process webhooks if manager is available
@@ -195,14 +193,15 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 			}
 
 			// Get timestamp from message info
-			timestamp := time.Time{}
-			if ts := latestMsg.Message.GetMessageTimestamp(); ts != 0 {
-				timestamp = time.Unix(int64(ts), 0)
-			} else {
+			ts := latestMsg.Message.GetMessageTimestamp()
+			if ts == 0 {
 				continue
 			}
+			timestamp := time.Unix(int64(ts), 0)
 
-			messageStore.StoreChat(chatJID, name, timestamp)
+			if err := messageStore.StoreChat(chatJID, name, timestamp); err != nil {
+				c.logger.Warnf("Failed to store chat: %v", err)
+			}
 
 			// Store messages
 			for _, msg := range messages {
@@ -262,12 +261,11 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 				}
 
 				// Get message timestamp
-				timestamp := time.Time{}
-				if ts := msg.Message.GetMessageTimestamp(); ts != 0 {
-					timestamp = time.Unix(int64(ts), 0)
-				} else {
+				ts2 := msg.Message.GetMessageTimestamp()
+				if ts2 == 0 {
 					continue
 				}
+				timestamp := time.Unix(int64(ts2), 0)
 
 				// For history sync, use sender as senderName fallback (PushName not directly available)
 				senderName := sender
