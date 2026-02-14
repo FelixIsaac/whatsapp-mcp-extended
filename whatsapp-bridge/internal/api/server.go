@@ -61,8 +61,10 @@ func (s *Server) registerHandlers() {
 	// Health check - no auth (for Docker healthcheck / load balancers)
 	http.HandleFunc("/api/health", CorsMiddleware(s.handleHealth))
 
-	// Message sending endpoint
+	// Message operations endpoints
 	http.HandleFunc("/api/send", SecureMiddleware(s.handleSendMessage))
+	http.HandleFunc("/api/messages", SecureMiddleware(s.handleGetMessages))
+	http.HandleFunc("/api/chats", SecureMiddleware(s.handleGetChats))
 
 	// Webhook management endpoints
 	http.HandleFunc("/api/webhooks", SecureMiddleware(s.handleWebhooks))

@@ -2,6 +2,8 @@ package database
 
 import (
 	"database/sql"
+	"regexp"
+	"strings"
 	"time"
 
 	"whatsapp-bridge/internal/types"
@@ -104,4 +106,66 @@ func (store *MessageStore) GetChats() (map[string]time.Time, error) {
 	}
 
 	return chats, nil
+}
+
+// GetCharacterCount returns character count of message content.
+// Counts all characters including spaces and punctuation.
+func GetCharacterCount(content string) int {
+	return len([]rune(content))
+}
+
+// GetWordCount returns approximate word count using whitespace splitting.
+// Words are sequences of characters separated by whitespace.
+func GetWordCount(content string) int {
+	if content == "" {
+		return 0
+	}
+	words := strings.Fields(content)
+	return len(words)
+}
+
+// ExtractURLs extracts all URLs from content using regex.
+// Matches http://, https://, and common domain patterns.
+func ExtractURLs(content string) []string {
+	if content == "" {
+		return []string{}
+	}
+
+	// Pattern matches http(s)://, ftp://, and www. URLs
+	urlPattern := regexp.MustCompile(`(?:https?|ftp)://[^\s]+|www\.[^\s]+`)
+	matches := urlPattern.FindAllString(content, -1)
+
+	if matches == nil {
+		return []string{}
+	}
+	return matches
+}
+
+// ExtractMentions extracts @mentions from content.
+// Looks for @JID patterns or common @username patterns.
+func ExtractMentions(content string) []string {
+	if content == "" {
+		return []string{}
+	}
+
+	// Pattern matches @-prefixed text (JIDs or usernames)
+	mentionPattern := regexp.MustCompile(`@[a-zA-Z0-9._-]+(?:@[a-z.]+)?`)
+	matches := mentionPattern.FindAllString(content, -1)
+
+	if matches == nil {
+		return []string{}
+	}
+	return matches
+}
+
+// GetMessageCountForPeriod returns message count for chat in a time period.
+// Period is specified in days (e.g., 1 for today, 7 for last 7 days).
+func (store *MessageStore) GetMessageCountForPeriod(chatJID string, days int) (int, error) {
+	query := `
+	SELECT COUNT(*) FROM messages
+	WHERE chat_jid = ? AND datetime(timestamp) >= datetime('now', '-' || ? || ' days')
+	`
+	var count int
+	err := store.db.QueryRow(query, chatJID, days).Scan(&count)
+	return count, err
 }

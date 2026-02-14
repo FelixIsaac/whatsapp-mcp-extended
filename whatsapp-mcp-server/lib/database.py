@@ -1,7 +1,8 @@
 """Database operations for WhatsApp MCP server."""
 
+import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from .models import Chat, Contact, Message, MessageContext
@@ -11,6 +12,86 @@ from .utils import MESSAGES_DB_PATH, WHATSAPP_DB_PATH, get_sender_name, logger
 class DatabaseError(Exception):
     """Custom exception for database operations."""
     pass
+
+
+def get_message_character_count(content: str) -> int:
+    """Get character count in message content.
+
+    Args:
+        content: Message content string.
+
+    Returns:
+        Number of characters.
+    """
+    return len(content) if content else 0
+
+
+def get_message_word_count(content: str) -> int:
+    """Get word count in message content.
+
+    Args:
+        content: Message content string.
+
+    Returns:
+        Number of words.
+    """
+    if not content:
+        return 0
+    # Split on whitespace, filter empty strings
+    words = [w for w in content.split() if w]
+    return len(words)
+
+
+def extract_urls(content: str) -> list[str]:
+    """Extract URLs from message content.
+
+    Args:
+        content: Message content string.
+
+    Returns:
+        List of URLs found.
+    """
+    if not content:
+        return []
+    # Simple URL pattern matching
+    url_pattern = r'https?://[^\s]+'
+    return re.findall(url_pattern, content)
+
+
+def get_chat_statistics(chat_jid: str, conn: sqlite3.Connection) -> tuple[int, int, int]:
+    """Get message statistics for a chat.
+
+    Args:
+        chat_jid: Chat JID.
+        conn: Database connection.
+
+    Returns:
+        Tuple of (total_messages, messages_today, messages_last_7_days).
+    """
+    cursor = conn.cursor()
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    seven_days_ago = now - timedelta(days=7)
+
+    # Total messages
+    cursor.execute("SELECT COUNT(*) FROM messages WHERE chat_jid = ?", (chat_jid,))
+    total = cursor.fetchone()[0] or 0
+
+    # Messages today
+    cursor.execute(
+        "SELECT COUNT(*) FROM messages WHERE chat_jid = ? AND timestamp >= ?",
+        (chat_jid, today_start.isoformat())
+    )
+    today = cursor.fetchone()[0] or 0
+
+    # Messages last 7 days
+    cursor.execute(
+        "SELECT COUNT(*) FROM messages WHERE chat_jid = ? AND timestamp >= ?",
+        (chat_jid, seven_days_ago.isoformat())
+    )
+    week = cursor.fetchone()[0] or 0
+
+    return total, today, week
 
 
 def list_messages(
@@ -102,6 +183,13 @@ def list_messages(
         for msg in messages:
             # Use stored sender_name if available, otherwise fallback to lookup
             sender_name = msg[10] if msg[10] else get_sender_name(msg[1])
+
+            # Compute metadata fields
+            char_count = get_message_character_count(msg[3])
+            word_count = get_message_word_count(msg[3])
+            urls = extract_urls(msg[3])
+            is_group = msg[5].endswith("@g.us")
+
             message = Message(
                 timestamp=datetime.fromisoformat(msg[0]),
                 sender=msg[1],
@@ -113,7 +201,11 @@ def list_messages(
                 media_type=msg[7],
                 filename=msg[8],
                 file_length=msg[9],
-                sender_name=sender_name
+                sender_name=sender_name,
+                character_count=char_count,
+                word_count=word_count,
+                url_list=urls,
+                is_group=is_group
             )
             result.append(message)
 
@@ -180,6 +272,13 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
 
         # Use stored sender_name if available, otherwise fallback to lookup
         sender_name = msg_data[11] if msg_data[11] else get_sender_name(msg_data[1])
+
+        # Compute metadata fields
+        char_count = get_message_character_count(msg_data[3])
+        word_count = get_message_word_count(msg_data[3])
+        urls = extract_urls(msg_data[3])
+        is_group = msg_data[5].endswith("@g.us")
+
         target_message = Message(
             timestamp=datetime.fromisoformat(msg_data[0]),
             sender=msg_data[1],
@@ -191,7 +290,11 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
             media_type=msg_data[8],
             filename=msg_data[9],
             file_length=msg_data[10],
-            sender_name=sender_name
+            sender_name=sender_name,
+            character_count=char_count,
+            word_count=word_count,
+            url_list=urls,
+            is_group=is_group
         )
 
         # Get messages before
@@ -206,16 +309,25 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
             LIMIT ?
         """, (msg_data[7], msg_data[0], before))
 
-        before_messages = [
-            Message(
+        before_messages = []
+        for msg in cursor.fetchall():
+            sender_name = msg[10] if msg[10] else get_sender_name(msg[1])
+            char_count = get_message_character_count(msg[3])
+            word_count = get_message_word_count(msg[3])
+            urls = extract_urls(msg[3])
+            is_group = msg[5].endswith("@g.us")
+
+            before_messages.append(Message(
                 timestamp=datetime.fromisoformat(msg[0]),
                 sender=msg[1], chat_name=msg[2], content=msg[3],
                 is_from_me=msg[4], chat_jid=msg[5], id=msg[6],
                 media_type=msg[7], filename=msg[8], file_length=msg[9],
-                sender_name=msg[10] if msg[10] else get_sender_name(msg[1])
-            )
-            for msg in cursor.fetchall()
-        ]
+                sender_name=sender_name,
+                character_count=char_count,
+                word_count=word_count,
+                url_list=urls,
+                is_group=is_group
+            ))
 
         # Get messages after
         cursor.execute("""
@@ -229,16 +341,25 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> Mes
             LIMIT ?
         """, (msg_data[7], msg_data[0], after))
 
-        after_messages = [
-            Message(
+        after_messages = []
+        for msg in cursor.fetchall():
+            sender_name = msg[10] if msg[10] else get_sender_name(msg[1])
+            char_count = get_message_character_count(msg[3])
+            word_count = get_message_word_count(msg[3])
+            urls = extract_urls(msg[3])
+            is_group = msg[5].endswith("@g.us")
+
+            after_messages.append(Message(
                 timestamp=datetime.fromisoformat(msg[0]),
                 sender=msg[1], chat_name=msg[2], content=msg[3],
                 is_from_me=msg[4], chat_jid=msg[5], id=msg[6],
                 media_type=msg[7], filename=msg[8], file_length=msg[9],
-                sender_name=msg[10] if msg[10] else get_sender_name(msg[1])
-            )
-            for msg in cursor.fetchall()
-        ]
+                sender_name=sender_name,
+                character_count=char_count,
+                word_count=word_count,
+                url_list=urls,
+                is_group=is_group
+            ))
 
         return MessageContext(
             message=target_message,
@@ -319,6 +440,13 @@ def list_chats(
             last_sender_name = None
             if chat[5]:  # if there's a last_sender
                 last_sender_name = chat[7] if chat[7] else get_sender_name(chat[5])
+
+            # Get chat statistics
+            total_msgs, msgs_today, msgs_week = get_chat_statistics(chat[0], conn)
+
+            # Determine chat type
+            chat_type = "group" if chat[0].endswith("@g.us") else "individual"
+
             chat_obj = Chat(
                 jid=chat[0],
                 name=chat[1],
@@ -327,7 +455,11 @@ def list_chats(
                 last_message_id=chat[4],
                 last_sender=chat[5],
                 last_sender_name=last_sender_name,
-                last_is_from_me=bool(chat[6]) if chat[6] is not None else None
+                last_is_from_me=bool(chat[6]) if chat[6] is not None else None,
+                total_message_count=total_msgs,
+                message_count_today=msgs_today,
+                message_count_last_7_days=msgs_week,
+                chat_type=chat_type
             )
             result.append(chat_obj.to_dict())
 
@@ -455,6 +587,8 @@ def set_contact_nickname(jid: str, nickname: str) -> dict[str, Any]:
 def search_contacts(query: str) -> list[dict[str, Any]]:
     """Search contacts by name or phone number.
 
+    Optimized to avoid N+1 queries by JOINing contact_nicknames table.
+
     Args:
         query: Search term.
 
@@ -462,10 +596,11 @@ def search_contacts(query: str) -> list[dict[str, Any]]:
         List of matching contact dictionaries.
     """
     try:
-        conn = sqlite3.connect(WHATSAPP_DB_PATH)
-        cursor = conn.cursor()
+        whatsapp_conn = sqlite3.connect(WHATSAPP_DB_PATH)
+        whatsapp_cursor = whatsapp_conn.cursor()
 
-        cursor.execute("""
+        # Query WhatsApp contacts
+        whatsapp_cursor.execute("""
             SELECT their_jid, first_name, full_name, push_name, business_name
             FROM whatsmeow_contacts
             WHERE LOWER(first_name) LIKE LOWER(?)
@@ -475,11 +610,35 @@ def search_contacts(query: str) -> list[dict[str, Any]]:
             LIMIT 50
         """, (f"%{query}%", f"%{query}%", f"%{query}%", f"%{query}%"))
 
+        contacts = whatsapp_cursor.fetchall()
+        whatsapp_conn.close()
+
+        # Now fetch nicknames with a single query (JOIN, not N+1)
+        if not contacts:
+            return []
+
+        jids = [row[0] for row in contacts]
+
+        # Use messages DB for nicknames (single query with IN clause)
+        messages_conn = sqlite3.connect(MESSAGES_DB_PATH)
+        messages_cursor = messages_conn.cursor()
+
+        # Use parameter placeholders to avoid SQL injection
+        placeholders = ",".join("?" * len(jids))
+        messages_cursor.execute(f"""
+            SELECT jid, nickname FROM contact_nicknames
+            WHERE jid IN ({placeholders})
+        """, jids)
+
+        nickname_map = {row[0]: row[1] for row in messages_cursor.fetchall()}
+        messages_conn.close()
+
+        # Build results
         results = []
-        for row in cursor.fetchall():
+        for row in contacts:
             jid = row[0]
             phone = jid.split("@")[0] if "@" in jid else jid
-            nickname = get_contact_nickname(jid)
+            nickname = nickname_map.get(jid)
 
             contact = Contact(
                 jid=jid,
@@ -499,5 +658,7 @@ def search_contacts(query: str) -> list[dict[str, Any]]:
         logger.error("Database error in search_contacts: %s", e)
         raise DatabaseError(f"Failed to search contacts: {e}") from e
     finally:
-        if 'conn' in locals():
-            conn.close()
+        if 'whatsapp_conn' in locals():
+            whatsapp_conn.close()
+        if 'messages_conn' in locals():
+            messages_conn.close()
