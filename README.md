@@ -134,6 +134,17 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
 | `unfollow_newsletter` | Unfollow channel |
 | `create_newsletter` | Create new channel |
 
+## API Design Philosophy
+
+Response data prioritizes **complete context with minimal interpretation**. See [METADATA_PHILOSOPHY.md](./docs/METADATA_PHILOSOPHY.md) for:
+
+- Why we include raw data instead of pre-computed signals
+- How we reduce token waste for consuming LLMs
+- Response structure examples (Messages, Chats, Contacts)
+- Design rules: raw facts, countable metrics, exclude nulls
+
+**TL;DR:** Get all contact info in one response instead of repeated queries. LLM infers tone, urgency, relationships from raw data + metrics.
+
 ## Webhook System
 
 Real-time HTTP webhooks for incoming messages with:

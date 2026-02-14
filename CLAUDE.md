@@ -80,6 +80,48 @@ go get -u go.mau.fi/whatsmeow@latest
 go mod tidy
 ```
 
+### Database Migrations (for schema/structure changes)
+
+**IMPORTANT:** When changes affect database schema (new columns, indexes, tables), we provide migration scripts for existing users. Don't rebuild containers from scratch - run migrations on existing databases.
+
+**For existing database (`store/messages.db`):**
+
+```bash
+# Find latest migration in whatsapp-bridge/migrations/
+ls -la whatsapp-bridge/migrations/
+
+# Run migration (safe - non-destructive, adds only)
+sqlite3 whatsapp-bridge/store/messages.db < whatsapp-bridge/migrations/001_add_metadata_fields.sql
+
+# Verify migration
+sqlite3 whatsapp-bridge/store/messages.db "SELECT name FROM sqlite_master WHERE type='index' ORDER BY name;"
+```
+
+**For Docker deployment:**
+
+```bash
+# Enter container, run migration
+docker exec whatsapp-bridge sqlite3 /app/whatsapp-bridge/store/messages.db < whatsapp-bridge/migrations/001_add_metadata_fields.sql
+
+# Or: copy migration into container and run
+docker cp whatsapp-bridge/migrations/001_add_metadata_fields.sql whatsapp-bridge:/tmp/
+docker exec whatsapp-bridge sqlite3 /app/whatsapp-bridge/store/messages.db < /tmp/001_add_metadata_fields.sql
+```
+
+**Migration Safety:**
+- ✅ All migrations are **append-only** (add columns, indexes, tables)
+- ✅ **Backward compatible** (old code still works)
+- ✅ **Idempotent** (use `IF NOT EXISTS`, safe to run multiple times)
+- ✅ **Rollback** (backup `store/messages.db` before running)
+
+**When creating new migrations:**
+- Place in `whatsapp-bridge/migrations/`
+- Use sequential naming: `001_feature.sql`, `002_feature.sql`
+- Include comments explaining each change
+- Ensure all statements use `IF NOT EXISTS` guards
+- Don't use `DROP TABLE` or destructive commands
+- Verify with existing schema before merging
+
 ## Key Patterns
 
 ### Go Bridge Structure

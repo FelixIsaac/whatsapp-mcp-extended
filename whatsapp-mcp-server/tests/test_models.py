@@ -27,7 +27,9 @@ class TestMessage:
         assert result["sender"] == "123456789@s.whatsapp.net"
         assert result["is_from_me"] is False
         assert result["timestamp"] == "2024-01-15T10:30:00"
-        assert "media_type" in result
+        assert result["chat_name"] == "Test User"
+        # Empty/null optional fields should not be present
+        assert "media_type" not in result
 
     def test_message_with_media(self):
         """Test Message.to_dict() includes media fields when present."""
