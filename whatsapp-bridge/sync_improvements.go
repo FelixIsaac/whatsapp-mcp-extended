@@ -7,10 +7,10 @@ import (
 
 // SyncConfig holds timeout and retry settings
 type SyncConfig struct {
-	MaxTimeout      time.Duration
-	RateLimitWait   time.Duration
-	MaxRetries      int
-	RetryBackoff    time.Duration
+	MaxTimeout    time.Duration
+	RateLimitWait time.Duration
+	MaxRetries    int
+	RetryBackoff  time.Duration
 }
 
 // DefaultSyncConfig returns safe defaults for sync operations

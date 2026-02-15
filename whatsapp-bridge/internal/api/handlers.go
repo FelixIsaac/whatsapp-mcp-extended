@@ -1716,7 +1716,7 @@ func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) 
 
 // enrichMessageWithMetadata populates metadata fields for a message.
 // Calculates character/word counts, extracts URLs and mentions, and queries database for rich metadata.
-func enrichMessageWithMetadata(msg *types.Message, store *database.MessageStore) {
+func enrichMessageWithMetadata(msg *types.Message, store *database.MessageStore, chatJID string) {
 	if msg == nil {
 		return
 	}
@@ -1737,16 +1737,16 @@ func enrichMessageWithMetadata(msg *types.Message, store *database.MessageStore)
 	}
 
 	// Populate reaction summary (Tier 1)
-	if msg.ID != "" && msg.ChatJID != "" && store != nil {
-		if reactions, err := store.GetMessageReactionSummary(msg.ChatJID, msg.ID); err == nil {
+	if msg.ID != "" && chatJID != "" && store != nil {
+		if reactions, err := store.GetMessageReactionSummary(chatJID, msg.ID); err == nil {
 			msg.ReactionSummary = reactions
 			msg.HasReactions = len(reactions) > 0
 		}
 	}
 
 	// Compute response time to previous message (Tier 2)
-	if !msg.Time.IsZero() && msg.ChatJID != "" && store != nil {
-		if prevTime, err := store.GetPreviousMessageTime(msg.ChatJID, msg.Time); err == nil && !prevTime.IsZero() {
+	if !msg.Time.IsZero() && chatJID != "" && store != nil {
+		if prevTime, err := store.GetPreviousMessageTime(chatJID, msg.Time); err == nil && !prevTime.IsZero() {
 			msg.ResponseTimeSeconds = msg.Time.Sub(prevTime).Seconds()
 		}
 	}
@@ -1942,7 +1942,7 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	// Enrich messages with metadata
 	enrichedMessages := make([]interface{}, len(messages))
 	for i := range messages {
-		enrichMessageWithMetadata(&messages[i], s.messageStore)
+		enrichMessageWithMetadata(&messages[i], s.messageStore, chatJID)
 		enrichedMessages[i] = messages[i]
 	}
 
