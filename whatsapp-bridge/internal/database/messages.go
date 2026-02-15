@@ -172,7 +172,7 @@ func (store *MessageStore) GetMessageCountForPeriod(chatJID string, days int) (i
 
 // GetContactInfo retrieves contact information by JID from whatsmeow_contacts and contact_nicknames.
 func (store *MessageStore) GetContactInfo(jid string) (*types.ContactInfo, error) {
-	var phoneNum, firstName, nickname sql.NullString
+	var nickname sql.NullString
 
 	// Query contact_nicknames for custom nickname
 	nicknameQuery := `SELECT nickname FROM contact_nicknames WHERE jid = ? LIMIT 1`
