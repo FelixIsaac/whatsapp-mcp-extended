@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"whatsapp-bridge/internal/database"
 	"whatsapp-bridge/internal/types"
 )
 
@@ -1714,9 +1715,8 @@ func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) 
 }
 
 // enrichMessageWithMetadata populates metadata fields for a message.
-// Calculates character/word counts, extracts URLs and mentions.
-// For complex fields (most_active_member, reaction_summary), returns empty/zero for Phase 2.
-func enrichMessageWithMetadata(msg *types.Message) {
+// Calculates character/word counts, extracts URLs and mentions, and queries database for rich metadata.
+func enrichMessageWithMetadata(msg *types.Message, store *database.MessageStore) {
 	if msg == nil {
 		return
 	}
@@ -1727,6 +1727,28 @@ func enrichMessageWithMetadata(msg *types.Message) {
 		msg.WordCount = len(strings.Fields(msg.Content))
 		msg.URLList = extractURLsFromContent(msg.Content)
 		msg.Mentions = extractMentionsFromContent(msg.Content)
+	}
+
+	// Populate sender contact info (Tier 1)
+	if msg.Sender != "" && store != nil {
+		if contactInfo, err := store.GetContactInfo(msg.Sender); err == nil && contactInfo != nil {
+			msg.SenderContactInfo = contactInfo
+		}
+	}
+
+	// Populate reaction summary (Tier 1)
+	if msg.ID != "" && msg.ChatJID != "" && store != nil {
+		if reactions, err := store.GetMessageReactionSummary(msg.ChatJID, msg.ID); err == nil {
+			msg.ReactionSummary = reactions
+			msg.HasReactions = len(reactions) > 0
+		}
+	}
+
+	// Compute response time to previous message (Tier 2)
+	if !msg.Time.IsZero() && msg.ChatJID != "" && store != nil {
+		if prevTime, err := store.GetPreviousMessageTime(msg.ChatJID, msg.Time); err == nil && !prevTime.IsZero() {
+			msg.ResponseTimeSeconds = msg.Time.Sub(prevTime).Seconds()
+		}
 	}
 
 	// Initialize empty collections instead of nil
@@ -1742,8 +1764,8 @@ func enrichMessageWithMetadata(msg *types.Message) {
 }
 
 // enrichChatWithMetadata populates metadata fields for a chat.
-// Initializes collections and prepares structure for Phase 2 calculations.
-func enrichChatWithMetadata(chat *types.Chat) {
+// Queries database for rich metadata about chat activity and participants.
+func enrichChatWithMetadata(chat *types.Chat, store *database.MessageStore) {
 	if chat == nil {
 		return
 	}
@@ -1768,13 +1790,71 @@ func enrichChatWithMetadata(chat *types.Chat) {
 		chat.MessageVelocityLast7Days = &types.MessageVelocity{}
 	}
 
-	// TODO: Phase 2 - populate these fields with database queries:
-	// - most_active_member_name, most_active_member_message_count
-	// - media_count_by_type (count messages by media type)
-	// - recent_media (list of recent file IDs/names)
-	// - admin_list (group admins from GetGroupInfo)
-	// - participant_list (from GetGroupInfo)
-	// - message_velocity_last_7_days (calculated from message counts)
+	if store == nil {
+		return
+	}
+
+	// Populate last_sender_contact_info (Tier 1)
+	if chat.LastSender != "" {
+		if contactInfo, err := store.GetContactInfo(chat.LastSender); err == nil && contactInfo != nil {
+			chat.LastSenderContactInfo = contactInfo
+		}
+	}
+
+	// Populate most_active_member (Tier 2)
+	if chat.IsGroup {
+		if name, count, err := store.GetMostActiveGroupMember(chat.JID); err == nil && name != "" {
+			chat.MostActiveMemberName = name
+			chat.MostActiveMemberMsgCount = count
+		}
+	}
+
+	// Populate media stats (Tier 2)
+	if mediaCountByType, err := store.GetMediaCountByType(chat.JID); err == nil {
+		chat.MediaCountByType = mediaCountByType
+		chat.HasMedia = len(mediaCountByType) > 0
+	}
+
+	// Populate recent media (Tier 2)
+	if recentMedia, err := store.GetRecentMedia(chat.JID, 5); err == nil {
+		chat.RecentMedia = recentMedia
+	}
+
+	// Populate message velocity (Tier 2)
+	if chat.MessageCountLast7Days > 0 {
+		chat.MessageVelocityLast7Days.MessagesPerDay = float64(chat.MessageCountLast7Days) / 7.0
+		// Determine trend direction based on today vs 7-day average
+		if chat.MessageCountToday > 0 {
+			avgPerDay := float64(chat.MessageCountLast7Days) / 7.0
+			if float64(chat.MessageCountToday) > avgPerDay*1.2 {
+				chat.MessageVelocityLast7Days.TrendDirection = "increasing"
+			} else if float64(chat.MessageCountToday) < avgPerDay*0.8 {
+				chat.MessageVelocityLast7Days.TrendDirection = "decreasing"
+			} else {
+				chat.MessageVelocityLast7Days.TrendDirection = "stable"
+			}
+		}
+	}
+
+	// Set recently_active flag (Tier 2)
+	now := time.Now()
+	if !chat.LastMessageTime.IsZero() {
+		chat.IsRecentlyActive = now.Sub(chat.LastMessageTime) < 24*time.Hour
+		chat.SilentDurationSeconds = int(now.Sub(chat.LastMessageTime).Seconds())
+	}
+
+	// Set chat_type based on JID format (already set in getChatsWithMetadata)
+	if chat.IsGroup {
+		chat.ChatType = "group"
+	} else {
+		chat.ChatType = "individual"
+	}
+
+	// TODO: Phase 2 - populate these fields when group_members table is added:
+	// - participant_list (from group_members query)
+	// - admin_list (from group_members WHERE is_admin=true)
+	// - participant_count (from len(participant_list))
+	// - participant_names (from participant_list names)
 }
 
 // enrichContactWithMetadata populates metadata fields for a contact.
@@ -1862,7 +1942,7 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	// Enrich messages with metadata
 	enrichedMessages := make([]interface{}, len(messages))
 	for i := range messages {
-		enrichMessageWithMetadata(&messages[i])
+		enrichMessageWithMetadata(&messages[i], s.messageStore)
 		enrichedMessages[i] = messages[i]
 	}
 
@@ -1897,7 +1977,7 @@ func (s *Server) handleGetChats(w http.ResponseWriter, r *http.Request) {
 			LastMessageTime: lastTime,
 			IsGroup:         strings.HasSuffix(jid, "@g.us"),
 		}
-		enrichChatWithMetadata(chat)
+		enrichChatWithMetadata(chat, s.messageStore)
 		chats = append(chats, chat)
 	}
 

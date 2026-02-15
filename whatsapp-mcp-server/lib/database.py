@@ -58,6 +58,136 @@ def extract_urls(content: str) -> list[str]:
     return re.findall(url_pattern, content)
 
 
+def get_contact_info(jid: str) -> dict[str, Any] | None:
+    """Get contact information by JID.
+
+    Args:
+        jid: Contact JID.
+
+    Returns:
+        Dictionary with contact info or None if not found.
+    """
+    if not jid:
+        return None
+
+    try:
+        conn = sqlite3.connect(MESSAGES_DB_PATH)
+        cursor = conn.cursor()
+
+        # Try to get nickname first
+        cursor.execute("SELECT nickname FROM contact_nicknames WHERE jid = ? LIMIT 1", (jid,))
+        nickname_row = cursor.fetchone()
+        nickname = nickname_row[0] if nickname_row else None
+
+        # Extract phone from JID if it's a regular contact
+        phone_num = ""
+        if not jid.endswith("@g.us"):
+            parts = jid.split("@")
+            if parts:
+                phone_num = parts[0]
+
+        conn.close()
+
+        contact_info = {"jid": jid}
+        if phone_num:
+            contact_info["phone_number"] = phone_num
+        if nickname:
+            contact_info["name"] = nickname
+            contact_info["nickname"] = nickname
+
+        return contact_info if contact_info else None
+    except sqlite3.Error as e:
+        logger.error("Database error in get_contact_info: %s", e)
+        return None
+
+
+def get_reaction_summary(message_id: str, chat_jid: str) -> dict[str, int]:
+    """Get reaction summary for a message.
+
+    Args:
+        message_id: Message ID.
+        chat_jid: Chat JID.
+
+    Returns:
+        Dictionary mapping emoji to count.
+    """
+    # Phase 1: reactions aren't stored in the database yet
+    # This will be populated in Phase 2 when reaction tracking is added
+    return {}
+
+
+def get_most_active_member(chat_jid: str, conn: sqlite3.Connection) -> tuple[str | None, int]:
+    """Get the most active member in a chat.
+
+    Args:
+        chat_jid: Chat JID.
+        conn: Database connection.
+
+    Returns:
+        Tuple of (member_name, message_count).
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT sender_name, COUNT(*) as count
+               FROM messages
+               WHERE chat_jid = ? AND sender_name != '' AND sender_name IS NOT NULL
+               GROUP BY sender
+               ORDER BY count DESC
+               LIMIT 1""",
+            (chat_jid,)
+        )
+        row = cursor.fetchone()
+        return (row[0], row[1]) if row else (None, 0)
+    except sqlite3.Error as e:
+        logger.error("Database error in get_most_active_member: %s", e)
+        return (None, 0)
+
+
+def get_media_stats(chat_jid: str, conn: sqlite3.Connection) -> tuple[dict[str, int], list[str]]:
+    """Get media statistics for a chat.
+
+    Args:
+        chat_jid: Chat JID.
+        conn: Database connection.
+
+    Returns:
+        Tuple of (media_count_by_type, recent_media_list).
+    """
+    try:
+        cursor = conn.cursor()
+
+        # Get media count by type
+        cursor.execute(
+            """SELECT media_type, COUNT(*) as count
+               FROM messages
+               WHERE chat_jid = ? AND media_type != '' AND media_type IS NOT NULL
+               GROUP BY media_type""",
+            (chat_jid,)
+        )
+        media_count = {}
+        for row in cursor.fetchall():
+            if row[0]:
+                media_count[row[0]] = row[1]
+
+        # Get recent media files
+        cursor.execute(
+            """SELECT filename
+               FROM messages
+               WHERE chat_jid = ? AND media_type != '' AND media_type IS NOT NULL
+               AND filename != '' AND filename IS NOT NULL
+               ORDER BY timestamp DESC
+               LIMIT 5""",
+            (chat_jid,)
+        )
+        recent_media = [row[0] for row in cursor.fetchall() if row[0]]
+
+        return (media_count, recent_media)
+    except sqlite3.Error as e:
+        logger.error("Database error in get_media_stats: %s", e)
+        return ({}, [])
+
+
 def get_chat_statistics(chat_jid: str, conn: sqlite3.Connection) -> tuple[int, int, int]:
     """Get message statistics for a chat.
 
@@ -134,7 +264,11 @@ def list_messages(
             "SELECT messages.timestamp, messages.sender, chats.name, "
             "messages.content, messages.is_from_me, chats.jid, messages.id, "
             "messages.media_type, messages.filename, messages.file_length, "
-            "messages.sender_name FROM messages"
+            "messages.sender_name, messages.quoted_message_id, "
+            "messages.quoted_sender_name, messages.reply_to_message_id, "
+            "messages.edit_count, messages.is_edited, messages.is_forwarded, "
+            "messages.forwarded_from, messages.is_system_message, "
+            "messages.system_message_type FROM messages"
         ]
         query_parts.append("JOIN chats ON messages.chat_jid = chats.jid")
         where_clauses = []
@@ -181,31 +315,72 @@ def list_messages(
 
         result = []
         for msg in messages:
+            # Unpack message tuple - indices match the SELECT statement
+            timestamp_str = msg[0]
+            sender = msg[1]
+            chat_name = msg[2]
+            content = msg[3]
+            is_from_me = msg[4]
+            chat_jid = msg[5]
+            msg_id = msg[6]
+            media_type = msg[7]
+            filename = msg[8]
+            file_length = msg[9]
+            sender_name = msg[10]
+            quoted_message_id = msg[11]
+            quoted_sender_name = msg[12]
+            reply_to_message_id = msg[13]
+            edit_count = msg[14]
+            is_edited = msg[15]
+            is_forwarded = msg[16]
+            forwarded_from = msg[17]
+            is_system_message = msg[18]
+            system_message_type = msg[19]
+
             # Use stored sender_name if available, otherwise fallback to lookup
-            sender_name = msg[10] if msg[10] else get_sender_name(msg[1])
+            if not sender_name:
+                sender_name = get_sender_name(sender)
 
             # Compute metadata fields
-            char_count = get_message_character_count(msg[3])
-            word_count = get_message_word_count(msg[3])
-            urls = extract_urls(msg[3])
-            is_group = msg[5].endswith("@g.us")
+            char_count = get_message_character_count(content)
+            word_count = get_message_word_count(content)
+            urls = extract_urls(content)
+            is_group = chat_jid.endswith("@g.us")
+
+            # Get sender contact info
+            sender_contact_info = get_contact_info(sender) if sender else None
+
+            # Get reaction summary
+            reaction_summary = get_reaction_summary(msg_id, chat_jid)
 
             message = Message(
-                timestamp=datetime.fromisoformat(msg[0]),
-                sender=msg[1],
-                chat_name=msg[2],
-                content=msg[3],
-                is_from_me=msg[4],
-                chat_jid=msg[5],
-                id=msg[6],
-                media_type=msg[7],
-                filename=msg[8],
-                file_length=msg[9],
+                timestamp=datetime.fromisoformat(timestamp_str),
+                sender=sender,
+                chat_name=chat_name,
+                content=content,
+                is_from_me=is_from_me,
+                chat_jid=chat_jid,
+                id=msg_id,
+                media_type=media_type,
+                filename=filename,
+                file_length=file_length,
                 sender_name=sender_name,
                 character_count=char_count,
                 word_count=word_count,
                 url_list=urls,
-                is_group=is_group
+                is_group=is_group,
+                sender_contact_info=sender_contact_info,
+                reaction_summary=reaction_summary,
+                quoted_message_id=quoted_message_id,
+                quoted_sender_name=quoted_sender_name,
+                reply_to_message_id=reply_to_message_id,
+                edit_count=edit_count,
+                is_edited=bool(is_edited),
+                is_forwarded=bool(is_forwarded),
+                forwarded_from=forwarded_from,
+                is_system_message=bool(is_system_message),
+                system_message_type=system_message_type,
+                has_reactions=len(reaction_summary) > 0
             )
             result.append(message)
 
@@ -444,13 +619,48 @@ def list_chats(
             # Get chat statistics
             total_msgs, msgs_today, msgs_week = get_chat_statistics(chat[0], conn)
 
-            # Determine chat type
-            chat_type = "group" if chat[0].endswith("@g.us") else "individual"
+            # Determine chat type and is_group
+            is_group_chat = chat[0].endswith("@g.us")
+            chat_type = "group" if is_group_chat else "individual"
+
+            # Get most active member (Tier 2)
+            most_active_name, most_active_count = get_most_active_member(chat[0], conn)
+
+            # Get media stats (Tier 2)
+            media_count_by_type, recent_media = get_media_stats(chat[0], conn)
+
+            # Get last sender contact info (Tier 1)
+            last_sender_contact_info = None
+            if chat[5]:
+                last_sender_contact_info = get_contact_info(chat[5])
+
+            # Calculate message velocity (Tier 2)
+            message_velocity = {}
+            if msgs_week > 0:
+                message_velocity["messages_per_day"] = round(msgs_week / 7, 2)
+                # Determine trend direction
+                avg_per_day = msgs_week / 7
+                if msgs_today > avg_per_day * 1.2:
+                    message_velocity["trend_direction"] = "increasing"
+                elif msgs_today < avg_per_day * 0.8:
+                    message_velocity["trend_direction"] = "decreasing"
+                else:
+                    message_velocity["trend_direction"] = "stable"
+
+            # Calculate time metrics (Tier 2)
+            last_msg_time = datetime.fromisoformat(chat[2]) if chat[2] else None
+            silent_duration = None
+            is_recently_active = False
+            if last_msg_time:
+                now = datetime.now(last_msg_time.tzinfo) if last_msg_time.tzinfo else datetime.now()
+                delta = now - last_msg_time
+                silent_duration = int(delta.total_seconds())
+                is_recently_active = delta.total_seconds() < 24 * 3600
 
             chat_obj = Chat(
                 jid=chat[0],
                 name=chat[1],
-                last_message_time=datetime.fromisoformat(chat[2]) if chat[2] else None,
+                last_message_time=last_msg_time,
                 last_message=chat[3],
                 last_message_id=chat[4],
                 last_sender=chat[5],
@@ -459,7 +669,16 @@ def list_chats(
                 total_message_count=total_msgs,
                 message_count_today=msgs_today,
                 message_count_last_7_days=msgs_week,
-                chat_type=chat_type
+                chat_type=chat_type,
+                last_sender_contact_info=last_sender_contact_info,
+                most_active_member_name=most_active_name,
+                most_active_member_message_count=most_active_count if most_active_count else None,
+                media_count_by_type=media_count_by_type,
+                recent_media=recent_media,
+                has_media=len(media_count_by_type) > 0,
+                message_velocity_last_7_days=message_velocity,
+                silent_duration_seconds=silent_duration,
+                is_recently_active=is_recently_active
             )
             result.append(chat_obj.to_dict())
 

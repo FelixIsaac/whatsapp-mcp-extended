@@ -169,3 +169,143 @@ func (store *MessageStore) GetMessageCountForPeriod(chatJID string, days int) (i
 	err := store.db.QueryRow(query, chatJID, days).Scan(&count)
 	return count, err
 }
+
+// GetContactInfo retrieves contact information by JID from whatsmeow_contacts and contact_nicknames.
+func (store *MessageStore) GetContactInfo(jid string) (*types.ContactInfo, error) {
+	var phoneNum, firstName, nickname sql.NullString
+
+	// Query contact_nicknames for custom nickname
+	nicknameQuery := `SELECT nickname FROM contact_nicknames WHERE jid = ? LIMIT 1`
+	_ = store.db.QueryRow(nicknameQuery, jid).Scan(&nickname)
+
+	// Contact info will be populated with just JID if not found in contacts DB
+	contact := &types.ContactInfo{
+		JID: jid,
+	}
+
+	// Try to extract phone number from JID if it's a regular contact
+	if !strings.HasSuffix(jid, "@g.us") {
+		// Extract phone number from JID format: {phone}@s.whatsapp.net
+		parts := strings.Split(jid, "@")
+		if len(parts) > 0 {
+			contact.PhoneNum = parts[0]
+		}
+	}
+
+	// Use nickname if found
+	if nickname.Valid {
+		contact.Nickname = nickname.String
+		contact.Name = nickname.String
+	}
+
+	return contact, nil
+}
+
+// GetMessageReactionSummary returns a map of emoji -> count for message reactions.
+func (store *MessageStore) GetMessageReactionSummary(chatJID, msgID string) (map[string]int, error) {
+	// This is a placeholder - reactions storage depends on whatsmeow implementation
+	// For now, return empty map as reactions aren't stored in Phase 1
+	return make(map[string]int), nil
+}
+
+// GetGroupParticipants retrieves all participants in a group with their details.
+func (store *MessageStore) GetGroupParticipants(groupJID string) ([]*types.ContactInfo, error) {
+	// This requires group_members table which will be added in Phase 2
+	// For now, return empty slice
+	return []*types.ContactInfo{}, nil
+}
+
+// GetGroupAdmins retrieves list of admin JIDs for a group.
+func (store *MessageStore) GetGroupAdmins(groupJID string) ([]string, error) {
+	// This requires group_members table which will be added in Phase 2
+	// For now, return empty slice
+	return []string{}, nil
+}
+
+// GetMostActiveGroupMember returns the name and message count of the most active group member.
+func (store *MessageStore) GetMostActiveGroupMember(groupJID string) (string, int, error) {
+	query := `
+	SELECT sender_name, COUNT(*) as count
+	FROM messages
+	WHERE chat_jid = ? AND sender_name != ''
+	GROUP BY sender
+	ORDER BY count DESC
+	LIMIT 1
+	`
+	var name string
+	var count int
+	err := store.db.QueryRow(query, groupJID).Scan(&name, &count)
+	if err == sql.ErrNoRows {
+		return "", 0, nil
+	}
+	return name, count, err
+}
+
+// GetMediaCountByType returns count of media messages by type (image, video, audio, document).
+func (store *MessageStore) GetMediaCountByType(chatJID string) (map[string]int, error) {
+	query := `
+	SELECT media_type, COUNT(*) as count
+	FROM messages
+	WHERE chat_jid = ? AND media_type != '' AND media_type IS NOT NULL
+	GROUP BY media_type
+	`
+	rows, err := store.db.Query(query, chatJID)
+	if err != nil {
+		return make(map[string]int), err
+	}
+	defer rows.Close()
+
+	result := make(map[string]int)
+	for rows.Next() {
+		var mediaType string
+		var count int
+		if err := rows.Scan(&mediaType, &count); err != nil {
+			return make(map[string]int), err
+		}
+		result[mediaType] = count
+	}
+	return result, rows.Err()
+}
+
+// GetRecentMedia returns filenames of recent media messages in a chat.
+func (store *MessageStore) GetRecentMedia(chatJID string, limit int) ([]string, error) {
+	query := `
+	SELECT filename
+	FROM messages
+	WHERE chat_jid = ? AND media_type != '' AND media_type IS NOT NULL AND filename != '' AND filename IS NOT NULL
+	ORDER BY timestamp DESC
+	LIMIT ?
+	`
+	rows, err := store.db.Query(query, chatJID, limit)
+	if err != nil {
+		return []string{}, err
+	}
+	defer rows.Close()
+
+	var result []string
+	for rows.Next() {
+		var filename string
+		if err := rows.Scan(&filename); err != nil {
+			return []string{}, err
+		}
+		result = append(result, filename)
+	}
+	return result, rows.Err()
+}
+
+// GetPreviousMessageTime returns the timestamp of the message sent immediately before the given time in same chat.
+func (store *MessageStore) GetPreviousMessageTime(chatJID string, currentTime time.Time) (time.Time, error) {
+	query := `
+	SELECT timestamp
+	FROM messages
+	WHERE chat_jid = ? AND timestamp < ?
+	ORDER BY timestamp DESC
+	LIMIT 1
+	`
+	var prevTime time.Time
+	err := store.db.QueryRow(query, chatJID, currentTime).Scan(&prevTime)
+	if err == sql.ErrNoRows {
+		return time.Time{}, nil
+	}
+	return prevTime, err
+}
