@@ -95,14 +95,37 @@ func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID,
 	return name
 }
 
+// ResolveLIDToPhone converts a LID JID to a phone-number-based JID using the local store.
+// If the JID is not a LID or the mapping is not found, returns the original JID unchanged.
+func (c *Client) ResolveLIDToPhone(jid types.JID) types.JID {
+	if jid.Server != types.HiddenUserServer {
+		return jid
+	}
+
+	if c.Store.LIDs == nil {
+		c.logger.Warnf("LID store not available, cannot resolve %s", jid.String())
+		return jid
+	}
+
+	phoneJID, err := c.Store.LIDs.GetPNForLID(context.Background(), jid)
+	if err != nil || phoneJID.IsEmpty() {
+		c.logger.Warnf("Could not resolve LID %s to phone number: %v", jid.String(), err)
+		return jid
+	}
+
+	c.logger.Infof("Resolved LID %s -> %s", jid.String(), phoneJID.String())
+	return phoneJID
+}
+
 // HandleMessage processes regular incoming messages with media support and webhook processing
 func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManager interface{}, msg *events.Message) {
-	// Save message to database
-	chatJID := msg.Info.Chat.String()
+	// Resolve LID JIDs to phone-number JIDs so messages are stored under the correct chat
+	resolvedChat := c.ResolveLIDToPhone(msg.Info.Chat)
+	chatJID := resolvedChat.String()
 	sender := msg.Info.Sender.User
 
 	// Get appropriate chat name (pass nil for conversation since we don't have one for regular messages)
-	name := c.GetChatName(messageStore, msg.Info.Chat, chatJID, nil, sender)
+	name := c.GetChatName(messageStore, resolvedChat, chatJID, nil, sender)
 
 	// Update chat in database with the message timestamp (keeps last message time updated)
 	err := messageStore.StoreChat(chatJID, name, msg.Info.Timestamp)
@@ -173,14 +196,18 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 			continue
 		}
 
-		chatJID := *conversation.ID
+		rawJID := *conversation.ID
 
 		// Try to parse the JID
-		jid, err := types.ParseJID(chatJID)
+		jid, err := types.ParseJID(rawJID)
 		if err != nil {
-			c.logger.Warnf("Failed to parse JID %s: %v", chatJID, err)
+			c.logger.Warnf("Failed to parse JID %s: %v", rawJID, err)
 			continue
 		}
+
+		// Resolve LID JIDs to phone-number JIDs
+		jid = c.ResolveLIDToPhone(jid)
+		chatJID := jid.String()
 
 		// Get appropriate chat name by passing the history sync conversation directly
 		name := c.GetChatName(messageStore, jid, chatJID, conversation, "")
