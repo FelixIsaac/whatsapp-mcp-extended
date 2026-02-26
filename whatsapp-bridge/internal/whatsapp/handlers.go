@@ -86,7 +86,7 @@ func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID,
 		// Try all available name fields from the contact store
 		// Priority: FullName > PushName > FirstName > BusinessName
 		contact, err := c.Store.Contacts.GetContact(context.Background(), jid)
-		if err == nil {
+		if err == nil && contact.Found {
 			switch {
 			case contact.FullName != "":
 				name = contact.FullName
