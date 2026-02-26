@@ -66,6 +66,7 @@ func main() {
 	// Track active calls for duration calculation and missed/answered status
 	type activeCall struct {
 		ChatJID   string
+		Sender    string
 		Name      string
 		Timestamp time.Time
 	}
@@ -73,6 +74,22 @@ func main() {
 		activeCalls   = make(map[string]*activeCall) // CallID -> activeCall
 		activeCallsMu sync.Mutex
 	)
+
+	// Cleanup stale calls that never received a terminate/reject event (e.g. network drop)
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			activeCallsMu.Lock()
+			for id, call := range activeCalls {
+				if time.Since(call.Timestamp) > 5*time.Minute {
+					delete(activeCalls, id)
+					logger.Debugf("[CALL] Cleaned up stale call %s", id)
+				}
+			}
+			activeCallsMu.Unlock()
+		}
+	}()
 
 	// resolveCallJID resolves a LID JID to a regular phone number JID for call events
 	resolveCallJID := func(jid types.JID) types.JID {
@@ -146,13 +163,14 @@ func main() {
 			resolvedJID := resolveCallJID(v.From)
 			callFrom := resolvedJID.User
 			chatJID := resolvedJID.String()
-			logger.Infof("[CALL] CallOffer from %s (CallID: %s)", callFrom, v.CallID)
+			isFromMe := client.Store.ID != nil && resolvedJID.User == client.Store.ID.User
+			logger.Infof("[CALL] CallOffer from %s (CallID: %s, isFromMe: %v)", callFrom, v.CallID, isFromMe)
 			name := client.GetChatName(messageStore, resolvedJID, chatJID, nil, callFrom)
 			content := fmt.Sprintf("📞 Incoming call from %s", name)
 
 			// Track call for duration/status updates
 			activeCallsMu.Lock()
-			activeCalls[v.CallID] = &activeCall{ChatJID: chatJID, Name: name, Timestamp: v.Timestamp}
+			activeCalls[v.CallID] = &activeCall{ChatJID: chatJID, Sender: callFrom, Name: name, Timestamp: v.Timestamp}
 			activeCallsMu.Unlock()
 
 			if err := messageStore.StoreChat(chatJID, name, v.Timestamp); err != nil {
@@ -160,14 +178,15 @@ func main() {
 			}
 			if err := messageStore.StoreMessage(
 				"call-"+v.CallID, chatJID, callFrom, name,
-				content, v.Timestamp, false,
+				content, v.Timestamp, isFromMe,
 				"call", "", "", nil, nil, nil, 0,
 			); err != nil {
 				logger.Warnf("Failed to store call message: %v", err)
 			}
 
 		case *events.CallTerminate:
-			logger.Infof("[CALL] CallTerminate from %s (CallID: %s, Reason: %s)", v.From.User, v.CallID, v.Reason)
+			resolvedJID := resolveCallJID(v.From)
+			logger.Infof("[CALL] CallTerminate from %s (CallID: %s, Reason: %s)", resolvedJID.User, v.CallID, v.Reason)
 
 			// Update stored call message with duration and status
 			activeCallsMu.Lock()
@@ -188,11 +207,33 @@ func main() {
 				}
 				// Update the stored message with final status
 				if err := messageStore.StoreMessage(
-					"call-"+v.CallID, call.ChatJID, v.From.User, call.Name,
+					"call-"+v.CallID, call.ChatJID, call.Sender, call.Name,
 					content, call.Timestamp, false,
 					"call", "", "", nil, nil, nil, 0,
 				); err != nil {
 					logger.Warnf("Failed to update call message: %v", err)
+				}
+			}
+
+		case *events.CallReject:
+			resolvedJID := resolveCallJID(v.From)
+			logger.Infof("[CALL] CallReject from %s (CallID: %s)", resolvedJID.User, v.CallID)
+
+			activeCallsMu.Lock()
+			call, exists := activeCalls[v.CallID]
+			if exists {
+				delete(activeCalls, v.CallID)
+			}
+			activeCallsMu.Unlock()
+
+			if exists {
+				content := fmt.Sprintf("📞 Missed call from %s", call.Name)
+				if err := messageStore.StoreMessage(
+					"call-"+v.CallID, call.ChatJID, call.Sender, call.Name,
+					content, call.Timestamp, false,
+					"call", "", "", nil, nil, nil, 0,
+				); err != nil {
+					logger.Warnf("Failed to update rejected call message: %v", err)
 				}
 			}
 
@@ -203,13 +244,25 @@ func main() {
 			// Group call notice — has Media field ("audio" or "video")
 			resolvedJID := resolveCallJID(v.From)
 			callFrom := resolvedJID.User
-			chatJID := resolvedJID.String()
-			logger.Infof("[CALL] CallOfferNotice from %s (CallID: %s, Media: %s)", callFrom, v.CallID, v.Media)
-			name := client.GetChatName(messageStore, resolvedJID, chatJID, nil, callFrom)
-			content := fmt.Sprintf("📞 Incoming group %s call from %s", v.Media, name)
+			isFromMe := client.Store.ID != nil && resolvedJID.User == client.Store.ID.User
+
+			// Use GroupJID as chat for group calls, otherwise use caller's JID
+			var chatJID string
+			var chatResolvedJID types.JID
+			if !v.GroupJID.IsEmpty() {
+				chatJID = v.GroupJID.String()
+				chatResolvedJID = v.GroupJID
+			} else {
+				chatJID = resolvedJID.String()
+				chatResolvedJID = resolvedJID
+			}
+
+			logger.Infof("[CALL] CallOfferNotice from %s (CallID: %s, Media: %s, Group: %s)", callFrom, v.CallID, v.Media, chatJID)
+			name := client.GetChatName(messageStore, chatResolvedJID, chatJID, nil, callFrom)
+			content := fmt.Sprintf("📞 Incoming %s call from %s", v.Media, name)
 
 			activeCallsMu.Lock()
-			activeCalls[v.CallID] = &activeCall{ChatJID: chatJID, Name: name, Timestamp: v.Timestamp}
+			activeCalls[v.CallID] = &activeCall{ChatJID: chatJID, Sender: callFrom, Name: name, Timestamp: v.Timestamp}
 			activeCallsMu.Unlock()
 
 			if err := messageStore.StoreChat(chatJID, name, v.Timestamp); err != nil {
@@ -217,7 +270,7 @@ func main() {
 			}
 			if err := messageStore.StoreMessage(
 				"call-"+v.CallID, chatJID, callFrom, name,
-				content, v.Timestamp, false,
+				content, v.Timestamp, isFromMe,
 				"call", "", "", nil, nil, nil, 0,
 			); err != nil {
 				logger.Warnf("Failed to store group call message: %v", err)
