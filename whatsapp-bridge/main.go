@@ -113,6 +113,43 @@ func main() {
 		case *events.Disconnected:
 			client.MarkDisconnected()
 			logger.Warnf("⚠ Disconnected from WhatsApp - attempting reconnect")
+
+		case *events.CallOffer:
+			// Incoming call — store as a message so it shows up in list_messages
+			callFrom := v.From.User
+			chatJID := v.From.String()
+			callType := "voice call"
+			content := fmt.Sprintf("📞 Incoming %s from %s", callType, callFrom)
+			logger.Infof("[CALL] CallOffer from %s (CallID: %s)", callFrom, v.CallID)
+			name := client.GetChatName(messageStore, v.From, chatJID, nil, callFrom)
+			_ = messageStore.StoreChat(chatJID, name, v.Timestamp)
+			_ = messageStore.StoreMessage(
+				"call-"+v.CallID, chatJID, callFrom, callFrom,
+				content, v.Timestamp, false,
+				"call", "", "", nil, nil, nil, 0,
+			)
+
+		case *events.CallTerminate:
+			callFrom := v.From.User
+			logger.Infof("[CALL] CallTerminate from %s (CallID: %s, Reason: %s)", callFrom, v.CallID, v.Reason)
+
+		case *events.CallAccept:
+			callFrom := v.From.User
+			logger.Infof("[CALL] CallAccept from %s (CallID: %s)", callFrom, v.CallID)
+
+		case *events.CallOfferNotice:
+			// Group call notice
+			callFrom := v.From.User
+			chatJID := v.From.String()
+			content := fmt.Sprintf("📞 Group %s call from %s", v.Media, callFrom)
+			logger.Infof("[CALL] CallOfferNotice from %s (CallID: %s, Media: %s)", callFrom, v.CallID, v.Media)
+			name := client.GetChatName(messageStore, v.From, chatJID, nil, callFrom)
+			_ = messageStore.StoreChat(chatJID, name, v.Timestamp)
+			_ = messageStore.StoreMessage(
+				"call-"+v.CallID, chatJID, callFrom, callFrom,
+				content, v.Timestamp, false,
+				"call", "", "", nil, nil, nil, 0,
+			)
 		}
 	})
 
