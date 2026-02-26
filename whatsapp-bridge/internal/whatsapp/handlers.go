@@ -13,10 +13,12 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 )
 
-// isPhoneNumber checks if a string looks like a phone number (digits only, 7-15 chars)
-var isPhoneNumber = regexp.MustCompile(`^\d{7,15}$`).MatchString
+// isPhoneNumber checks if a string looks like a phone number (optional + prefix, 5-15 digits).
+// Used to detect cached chat names that are just phone numbers, so we can try to resolve a real name.
+var isPhoneNumber = regexp.MustCompile(`^\+?\d{5,15}$`).MatchString
 
-// GetChatName determines the appropriate name for a chat based on JID and other info
+// GetChatName determines the appropriate name for a chat based on JID and other info.
+// Note: callers are responsible for persisting the returned name via StoreChat.
 func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID, chatJID string, conversation interface{}, sender string) string {
 	// First, check if chat already exists in database with a name
 	var existingName string
@@ -82,6 +84,7 @@ func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID,
 		c.logger.Infof("Getting name for contact: %s", chatJID)
 
 		// Try all available name fields from the contact store
+		// Priority: FullName > PushName > FirstName > BusinessName
 		contact, err := c.Store.Contacts.GetContact(context.Background(), jid)
 		if err == nil {
 			switch {
