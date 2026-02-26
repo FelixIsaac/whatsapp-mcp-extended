@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 	"time"
 
 	"whatsapp-bridge/internal/database"
@@ -12,13 +13,16 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 )
 
+// isPhoneNumber checks if a string looks like a phone number (digits only, 7-15 chars)
+var isPhoneNumber = regexp.MustCompile(`^\d{7,15}$`).MatchString
+
 // GetChatName determines the appropriate name for a chat based on JID and other info
 func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID, chatJID string, conversation interface{}, sender string) string {
 	// First, check if chat already exists in database with a name
 	var existingName string
 	err := messageStore.GetDB().QueryRow("SELECT name FROM chats WHERE jid = ?", chatJID).Scan(&existingName)
-	if err == nil && existingName != "" {
-		// Chat exists with a name, use that
+	if err == nil && existingName != "" && !isPhoneNumber(existingName) {
+		// Chat exists with a real name (not just a phone number), use that
 		c.logger.Infof("Using existing chat name for %s: %s", chatJID, existingName)
 		return existingName
 	}
@@ -77,16 +81,26 @@ func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID,
 		// This is an individual contact
 		c.logger.Infof("Getting name for contact: %s", chatJID)
 
-		// Just use contact info (full name)
+		// Try all available name fields from the contact store
 		contact, err := c.Store.Contacts.GetContact(context.Background(), jid)
-		if err == nil && contact.FullName != "" {
-			name = contact.FullName
-		} else if sender != "" {
-			// Fallback to sender
-			name = sender
-		} else {
-			// Last fallback to JID
-			name = jid.User
+		if err == nil {
+			switch {
+			case contact.FullName != "":
+				name = contact.FullName
+			case contact.PushName != "":
+				name = contact.PushName
+			case contact.FirstName != "":
+				name = contact.FirstName
+			case contact.BusinessName != "":
+				name = contact.BusinessName
+			}
+		}
+		if name == "" {
+			if sender != "" {
+				name = sender
+			} else {
+				name = jid.User
+			}
 		}
 
 		c.logger.Infof("Using contact name: %s", name)
