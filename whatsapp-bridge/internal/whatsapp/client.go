@@ -147,10 +147,6 @@ func (c *Client) Connect() error {
 			if evt.Event == "code" {
 				fmt.Println("\nScan this QR code with your WhatsApp app:")
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
-				// Write QR code string and HTML to /tmp for browser scanning
-				os.WriteFile("/tmp/whatsapp-qr.txt", []byte(evt.Code), 0644)
-				htmlQR := fmt.Sprintf(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>WhatsApp QR</title><script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#111"><div style="text-align:center"><h1 style="color:white;font-family:sans-serif">Scan met WhatsApp</h1><canvas id="qr"></canvas><p style="color:#aaa;font-family:sans-serif">Instellingen → Gekoppelde apparaten → Koppel een apparaat</p></div><script>QRCode.toCanvas(document.getElementById('qr'),"%s",{width:400,margin:2},function(e){if(e)console.error(e)})</script></body></html>`, evt.Code)
-				os.WriteFile("/tmp/whatsapp-qr.html", []byte(htmlQR), 0644)
 			} else if evt.Event == "success" {
 				connected <- true
 				break

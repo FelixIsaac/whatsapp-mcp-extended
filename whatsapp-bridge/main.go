@@ -118,38 +118,43 @@ func main() {
 			// Incoming call — store as a message so it shows up in list_messages
 			callFrom := v.From.User
 			chatJID := v.From.String()
-			callType := "voice call"
-			content := fmt.Sprintf("📞 Incoming %s from %s", callType, callFrom)
 			logger.Infof("[CALL] CallOffer from %s (CallID: %s)", callFrom, v.CallID)
 			name := client.GetChatName(messageStore, v.From, chatJID, nil, callFrom)
-			_ = messageStore.StoreChat(chatJID, name, v.Timestamp)
-			_ = messageStore.StoreMessage(
-				"call-"+v.CallID, chatJID, callFrom, callFrom,
+			content := fmt.Sprintf("📞 Incoming call from %s", name)
+			if err := messageStore.StoreChat(chatJID, name, v.Timestamp); err != nil {
+				logger.Warnf("Failed to store chat for call: %v", err)
+			}
+			if err := messageStore.StoreMessage(
+				"call-"+v.CallID, chatJID, callFrom, name,
 				content, v.Timestamp, false,
 				"call", "", "", nil, nil, nil, 0,
-			)
+			); err != nil {
+				logger.Warnf("Failed to store call message: %v", err)
+			}
 
 		case *events.CallTerminate:
-			callFrom := v.From.User
-			logger.Infof("[CALL] CallTerminate from %s (CallID: %s, Reason: %s)", callFrom, v.CallID, v.Reason)
+			logger.Infof("[CALL] CallTerminate from %s (CallID: %s, Reason: %s)", v.From.User, v.CallID, v.Reason)
 
 		case *events.CallAccept:
-			callFrom := v.From.User
-			logger.Infof("[CALL] CallAccept from %s (CallID: %s)", callFrom, v.CallID)
+			logger.Infof("[CALL] CallAccept from %s (CallID: %s)", v.From.User, v.CallID)
 
 		case *events.CallOfferNotice:
-			// Group call notice
+			// Group call notice — has Media field ("audio" or "video")
 			callFrom := v.From.User
 			chatJID := v.From.String()
-			content := fmt.Sprintf("📞 Group %s call from %s", v.Media, callFrom)
 			logger.Infof("[CALL] CallOfferNotice from %s (CallID: %s, Media: %s)", callFrom, v.CallID, v.Media)
 			name := client.GetChatName(messageStore, v.From, chatJID, nil, callFrom)
-			_ = messageStore.StoreChat(chatJID, name, v.Timestamp)
-			_ = messageStore.StoreMessage(
-				"call-"+v.CallID, chatJID, callFrom, callFrom,
+			content := fmt.Sprintf("📞 Incoming group %s call from %s", v.Media, name)
+			if err := messageStore.StoreChat(chatJID, name, v.Timestamp); err != nil {
+				logger.Warnf("Failed to store chat for group call: %v", err)
+			}
+			if err := messageStore.StoreMessage(
+				"call-"+v.CallID, chatJID, callFrom, name,
 				content, v.Timestamp, false,
 				"call", "", "", nil, nil, nil, 0,
-			)
+			); err != nil {
+				logger.Warnf("Failed to store group call message: %v", err)
+			}
 		}
 	})
 
