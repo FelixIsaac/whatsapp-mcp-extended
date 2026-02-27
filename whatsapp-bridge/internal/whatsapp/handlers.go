@@ -212,11 +212,7 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 				// Extract text content
 				var content string
 				if msg.Message.Message != nil {
-					if conv := msg.Message.Message.GetConversation(); conv != "" {
-						content = conv
-					} else if ext := msg.Message.Message.GetExtendedTextMessage(); ext != nil {
-						content = ext.GetText()
-					}
+					content = ExtractTextContent(msg.Message.Message)
 				}
 
 				// Extract media info

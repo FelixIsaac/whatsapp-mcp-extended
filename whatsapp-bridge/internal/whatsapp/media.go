@@ -17,14 +17,72 @@ func ExtractTextContent(msg *waE2E.Message) string {
 		return ""
 	}
 
-	// Try to get text content
+	// Plain text
 	if text := msg.GetConversation(); text != "" {
 		return text
-	} else if extendedText := msg.GetExtendedTextMessage(); extendedText != nil {
-		return extendedText.GetText()
 	}
 
-	// For now, we're ignoring non-text messages
+	// Rich text / links
+	if ext := msg.GetExtendedTextMessage(); ext != nil {
+		if text := ext.GetText(); text != "" {
+			return text
+		}
+	}
+
+	// Media captions
+	if img := msg.GetImageMessage(); img != nil {
+		if caption := img.GetCaption(); caption != "" {
+			return caption
+		}
+	}
+	if vid := msg.GetVideoMessage(); vid != nil {
+		if caption := vid.GetCaption(); caption != "" {
+			return caption
+		}
+	}
+	if doc := msg.GetDocumentMessage(); doc != nil {
+		if caption := doc.GetCaption(); caption != "" {
+			return caption
+		}
+		if title := doc.GetTitle(); title != "" {
+			return title
+		}
+	}
+
+	// Location
+	if loc := msg.GetLocationMessage(); loc != nil {
+		if name := loc.GetName(); name != "" {
+			return fmt.Sprintf("[Location: %s]", name)
+		}
+		return fmt.Sprintf("[Location: %.5f, %.5f]", loc.GetDegreesLatitude(), loc.GetDegreesLongitude())
+	}
+
+	// Contact card
+	if contact := msg.GetContactMessage(); contact != nil {
+		if name := contact.GetDisplayName(); name != "" {
+			return fmt.Sprintf("[Contact: %s]", name)
+		}
+	}
+
+	// Sticker
+	if msg.GetStickerMessage() != nil {
+		return "[Sticker]"
+	}
+
+	// Poll
+	if poll := msg.GetPollCreationMessage(); poll != nil {
+		if q := poll.GetName(); q != "" {
+			return fmt.Sprintf("[Poll: %s]", q)
+		}
+	}
+
+	// Reaction (stores emoji + referenced message)
+	if reaction := msg.GetReactionMessage(); reaction != nil {
+		if emoji := reaction.GetText(); emoji != "" {
+			return fmt.Sprintf("[Reaction: %s]", emoji)
+		}
+	}
+
 	return ""
 }
 

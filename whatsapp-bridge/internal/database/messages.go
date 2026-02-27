@@ -43,7 +43,7 @@ func (store *MessageStore) StoreMessage(id, chatJID, sender, senderName, content
 // GetMessages gets messages from a chat
 func (store *MessageStore) GetMessages(chatJID string, limit int) ([]types.Message, error) {
 	rows, err := store.db.Query(
-		"SELECT sender, sender_name, content, timestamp, is_from_me, media_type, filename FROM messages WHERE chat_jid = ? ORDER BY timestamp DESC LIMIT ?",
+		"SELECT id, sender, sender_name, content, timestamp, is_from_me, media_type, filename FROM messages WHERE chat_jid = ? ORDER BY timestamp DESC LIMIT ?",
 		chatJID, limit,
 	)
 	if err != nil {
@@ -56,7 +56,7 @@ func (store *MessageStore) GetMessages(chatJID string, limit int) ([]types.Messa
 		var msg types.Message
 		var timestamp time.Time
 		var senderName sql.NullString
-		err := rows.Scan(&msg.Sender, &senderName, &msg.Content, &timestamp, &msg.IsFromMe, &msg.MediaType, &msg.Filename)
+		err := rows.Scan(&msg.ID, &msg.Sender, &senderName, &msg.Content, &timestamp, &msg.IsFromMe, &msg.MediaType, &msg.Filename)
 		if err != nil {
 			return nil, err
 		}

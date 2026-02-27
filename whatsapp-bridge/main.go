@@ -74,6 +74,7 @@ func main() {
 			logger.Infof("[SYNC] ✓ Completed (Type: %v, %d conversations)", v.Data.SyncType, len(v.Data.Conversations))
 
 		case *events.Connected:
+			_, _, discAt, _ := client.ConnectionState()
 			client.MarkConnected()
 			// Send presence to keep session active and receive real-time messages
 			if err := client.SetPresence("available"); err != nil {
@@ -82,6 +83,44 @@ func main() {
 				logger.Infof("✓ Presence set to available")
 			}
 			logger.Infof("✓ Connected to WhatsApp")
+
+			// If we were disconnected for >30s, attempt best-effort history backfill
+			// for recently active chats to recover any messages missed during the gap.
+			if !discAt.IsZero() {
+				gap := time.Since(discAt)
+				if gap > 30*time.Second {
+					logger.Warnf("[RECONNECT] Gap detected: offline for %v — attempting history backfill", gap.Round(time.Second))
+					go func() {
+						time.Sleep(5 * time.Second) // let WA session stabilise first
+						chats, err := messageStore.GetChats()
+						if err != nil {
+							logger.Warnf("[RECONNECT] Failed to get chats for backfill: %v", err)
+							return
+						}
+						cutoff := time.Now().Add(-24 * time.Hour)
+						requested := 0
+						for chatJID, lastMsgTime := range chats {
+							if lastMsgTime.Before(cutoff) {
+								continue // skip inactive chats
+							}
+							msgs, err := messageStore.GetMessages(chatJID, 1)
+							if err != nil || len(msgs) == 0 {
+								continue
+							}
+							newest := msgs[0]
+							err = client.RequestChatHistory(chatJID, newest.ID, newest.IsFromMe, newest.Time.UnixMilli(), 50)
+							if err != nil {
+								logger.Warnf("[RECONNECT] History request failed for %s: %v", chatJID, err)
+							} else {
+								logger.Infof("[RECONNECT] History requested for %s (last active: %v)", chatJID, lastMsgTime.Format("15:04:05"))
+								requested++
+							}
+							time.Sleep(500 * time.Millisecond) // avoid rate limiting
+						}
+						logger.Infof("[RECONNECT] Backfill requested for %d active chats", requested)
+					}()
+				}
+			}
 
 		case *events.LoggedOut:
 			logger.Warnf("✗ Device logged out - please scan QR code to log in again")
