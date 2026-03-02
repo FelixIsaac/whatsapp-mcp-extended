@@ -44,7 +44,7 @@ An extended Model Context Protocol (MCP) server for WhatsApp with **41 tools** -
 ### Docker (Recommended)
 
 ```bash
-git clone https://github.com/felixisaac/whatsapp-mcp-extended
+git clone https://github.com/kasperpeulen/whatsapp-mcp-extended
 cd whatsapp-mcp-extended
 
 docker network create n8n_n8n_traefik_network
@@ -63,11 +63,17 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
   "mcpServers": {
     "whatsapp": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/whatsapp-mcp-extended/whatsapp-mcp-server", "python", "main.py"]
+      "args": ["run", "--directory", "/path/to/whatsapp-mcp-extended/whatsapp-mcp-server", "python", "main.py"],
+      "env": {
+        "API_KEY": "your-bridge-api-key",
+        "BRIDGE_HOST": "localhost:8080"
+      }
     }
   }
 }
 ```
+
+Set `BRIDGE_HOST` to `hostname:port` matching your bridge configuration.
 
 ## MCP Tools (41 Total)
 
