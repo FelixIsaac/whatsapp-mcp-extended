@@ -20,6 +20,8 @@ An extended Model Context Protocol (MCP) server for WhatsApp with **41 tools** -
 | Newsletters | - | ✅ |
 | Webhooks | - | ✅ |
 | Custom Nicknames | - | ✅ |
+| Call Event Tracking | - | ✅ |
+| Contact Name Resolution | - | ✅ |
 
 ## Architecture
 
@@ -134,6 +136,12 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
 | `unfollow_newsletter` | Unfollow channel |
 | `create_newsletter` | Create new channel |
 
+### Call Events
+Incoming and outgoing WhatsApp calls are automatically stored as messages, including:
+- Call type (voice/video), duration, and missed/answered status
+- LID-to-phone JID resolution for accurate caller identification
+- `isFromMe` detection for distinguishing incoming vs outgoing calls
+
 ## Webhook System
 
 Real-time HTTP webhooks for incoming messages with:
@@ -211,7 +219,8 @@ docker-compose logs -f whatsapp-bridge
 **Fork chain:**
 - [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) - Original MCP server (12 tools)
 - [AdamRussak/whatsapp-mcp](https://github.com/AdamRussak/whatsapp-mcp) - Added webhooks, container split, webhook UI
-- This repo - Added reactions, edit/delete, groups, polls, presence, newsletters (41 tools)
+- [FelixIsaac/whatsapp-mcp-extended](https://github.com/FelixIsaac/whatsapp-mcp-extended) - Added reactions, edit/delete, groups, polls, presence, newsletters (41 tools)
+- This repo - Added call event tracking, improved contact name resolution
 
 **Libraries:**
 - [whatsmeow](https://github.com/tulir/whatsmeow) - Go WhatsApp Web API
