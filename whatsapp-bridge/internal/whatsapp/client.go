@@ -71,7 +71,7 @@ func NewClientWithConfig(logger waLog.Logger, cfg *config.Config) (*Client, erro
 		FullSyncSizeMbLimit:            proto.Uint32(cfg.HistorySyncSizeMB),
 		StorageQuotaMb:                 proto.Uint32(cfg.StorageQuotaMB),
 		InlineInitialPayloadInE2EeMsg:  proto.Bool(true),
-		SupportCallLogHistory:          proto.Bool(false),
+		SupportCallLogHistory:          proto.Bool(true),
 		SupportBotUserAgentChatHistory: proto.Bool(true),
 		SupportCagReactionsAndPolls:    proto.Bool(true),
 		SupportGroupHistory:            proto.Bool(true), // Enable group history
