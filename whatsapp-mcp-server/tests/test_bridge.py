@@ -6,12 +6,35 @@ import pytest
 
 from lib.bridge import (
     BridgeError,
+    _get_headers,
     delete_message,
     edit_message,
     get_group_info,
     send_message,
     send_reaction,
 )
+
+
+class TestGetHeaders:
+    """Tests for API key header selection."""
+
+    def test_prefers_api_key(self, monkeypatch):
+        """API_KEY should take precedence when both names are set."""
+        monkeypatch.setenv("API_KEY", "primary-secret")
+        monkeypatch.setenv("WHATSAPP_API_KEY", "fallback-secret")
+
+        headers = _get_headers()
+
+        assert headers["X-API-Key"] == "primary-secret"
+
+    def test_falls_back_to_whatsapp_api_key(self, monkeypatch):
+        """WHATSAPP_API_KEY should be accepted when API_KEY is absent."""
+        monkeypatch.delenv("API_KEY", raising=False)
+        monkeypatch.setenv("WHATSAPP_API_KEY", "fallback-secret")
+
+        headers = _get_headers()
+
+        assert headers["X-API-Key"] == "fallback-secret"
 
 
 class TestSendMessage:

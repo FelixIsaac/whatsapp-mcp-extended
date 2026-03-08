@@ -65,13 +65,15 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
       "command": "uv",
       "args": ["run", "--directory", "/path/to/whatsapp-mcp-extended/whatsapp-mcp-server", "python", "main.py"],
       "env": {
-        "API_KEY": "your-bridge-api-key",
+        "WHATSAPP_API_KEY": "your-bridge-api-key",
         "BRIDGE_HOST": "localhost:8080"
       }
     }
   }
 }
 ```
+
+`API_KEY` is also supported for compatibility with the bridge and older configs.
 
 Set `BRIDGE_HOST` to `hostname:port` matching your bridge configuration.
 

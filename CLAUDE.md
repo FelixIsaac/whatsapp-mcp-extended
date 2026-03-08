@@ -112,6 +112,7 @@ Delivery: async with exponential backoff, HMAC-SHA256 signatures
 
 ## Environment Variables
 - `BRIDGE_HOST`: Go bridge hostname (default: localhost, set to container name in docker)
+- `API_KEY` or `WHATSAPP_API_KEY`: Bridge API secret for the Python MCP server
 - `GRADIO`: Enable/disable Gradio UI (true/false)
 - `DEBUG`: Enable debug logging
 
