@@ -140,6 +140,17 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 			mediaType = whatsmeow.MediaVideo
 			mimeType = "video/quicktime"
 
+		// Document types
+		case "epub":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/epub+zip"
+		case "pdf":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/pdf"
+		case "cbz":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/x-cbz"
+
 		// Document types (for any other file type)
 		default:
 			mediaType = whatsmeow.MediaDocument
@@ -205,8 +216,10 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				FileLength:    &resp.FileLength,
 			}
 		case whatsmeow.MediaDocument:
+			fileName := mediaPath[strings.LastIndex(mediaPath, "/")+1:]
 			msg.DocumentMessage = &waE2E.DocumentMessage{
-				Title:         proto.String(mediaPath[strings.LastIndex(mediaPath, "/")+1:]),
+				Title:         proto.String(fileName),
+				FileName:      proto.String(fileName),
 				Caption:       proto.String(message),
 				Mimetype:      proto.String(mimeType),
 				URL:           &resp.URL,
