@@ -21,6 +21,7 @@ import (
 var allowedMediaDirs = []string{
 	"/app/media",
 	"/app/store",
+	"/app/whatsapp-bridge/store",
 	"/tmp",
 }
 

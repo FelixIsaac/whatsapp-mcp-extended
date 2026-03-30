@@ -397,3 +397,34 @@ After the fix:
 2. Triggers are properly updated and persisted
 3. The webhook manager reloads the updated configuration
 4. New triggers are applied immediately to incoming messages
+
+### Media Download
+
+#### Download Media from Stored Message
+```bash
+POST /api/download
+Content-Type: application/json
+
+{
+  "message_id": "ABC123DEF456...",
+  "chat_jid": "1234567890@s.whatsapp.net"
+}
+```
+
+Downloads and decrypts media from a previously received message. The media encryption metadata is looked up from the message store, and whatsmeow handles the download and decryption.
+
+**Response:**
+```json
+{
+  "success": true,
+  "path": "/app/whatsapp-bridge/store/media/wa-media-ABC123DEF456.ogg",
+  "size": 7035
+}
+```
+
+The file is saved to the store media directory. The extension is determined by the media type (`.ogg` for audio, `.jpg` for images, `.mp4` for video, `.bin` for other).
+
+**Error responses:**
+- `404` - Message not found in store
+- `400` - Message has no downloadable media, or missing required fields
+- `500` - Failed to download or save the media

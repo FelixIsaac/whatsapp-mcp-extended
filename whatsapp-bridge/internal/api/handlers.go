@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"whatsapp-bridge/internal/types"
+	"go.mau.fi/whatsmeow"
 )
 
 // handleSendMessage handles POST /api/send for sending WhatsApp messages.
@@ -1755,4 +1758,96 @@ func (s *Server) handleSyncStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+
+// handleDownloadMedia handles POST /api/download for downloading media from a stored message.
+func (s *Server) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		MessageID string `json:"message_id"`
+		ChatJID   string `json:"chat_jid"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		SendJSONError(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	if req.MessageID == "" || req.ChatJID == "" {
+		SendJSONError(w, "message_id and chat_jid are required", http.StatusBadRequest)
+		return
+	}
+
+	var mediaURL string
+	var mediaKey, fileSHA256, fileEncSHA256 []byte
+	var fileLength uint64
+	var mediaType string
+
+	err := s.messageStore.GetDB().QueryRow(
+		"SELECT url, media_key, file_sha256, file_enc_sha256, file_length, media_type FROM messages WHERE id = ? AND chat_jid = ?",
+		req.MessageID, req.ChatJID,
+	).Scan(&mediaURL, &mediaKey, &fileSHA256, &fileEncSHA256, &fileLength, &mediaType)
+
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Message not found: %v", err), http.StatusNotFound)
+		return
+	}
+
+	if mediaURL == "" || mediaKey == nil {
+		SendJSONError(w, "Message has no downloadable media", http.StatusBadRequest)
+		return
+	}
+
+	var wmMediaType whatsmeow.MediaType
+	switch mediaType {
+	case "image":
+		wmMediaType = whatsmeow.MediaImage
+	case "video":
+		wmMediaType = whatsmeow.MediaVideo
+	case "audio":
+		wmMediaType = whatsmeow.MediaAudio
+	case "document":
+		wmMediaType = whatsmeow.MediaDocument
+	default:
+		wmMediaType = whatsmeow.MediaDocument
+	}
+
+	directPath := mediaURL
+	if parsed, parseErr := url.Parse(mediaURL); parseErr == nil && parsed.Host != "" {
+		directPath = parsed.RequestURI()
+	}
+
+	data, err := s.client.DownloadMediaWithPath(r.Context(), directPath, fileEncSHA256, fileSHA256, mediaKey, int(fileLength), wmMediaType, "")
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to download media: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	ext := ".bin"
+	switch mediaType {
+	case "audio":
+		ext = ".ogg"
+	case "image":
+		ext = ".jpg"
+	case "video":
+		ext = ".mp4"
+	}
+
+	os.MkdirAll("/app/whatsapp-bridge/store/media", 0755)
+	tmpFile := fmt.Sprintf("/app/whatsapp-bridge/store/media/wa-media-%s%s", req.MessageID, ext)
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to save: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"path":    tmpFile,
+		"size":    len(data),
+	})
 }
