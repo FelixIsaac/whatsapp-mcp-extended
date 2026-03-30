@@ -251,8 +251,10 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 	}
 }
 
-// SendReaction sends an emoji reaction to a message
-func (c *Client) SendReaction(chatJID, messageID, emoji string) error {
+// SendReaction sends an emoji reaction to a message.
+// It looks up the original message sender from the store so that
+// BuildReaction constructs the correct MessageKey (FromMe flag).
+func (c *Client) SendReaction(messageStore *database.MessageStore, chatJID, messageID, emoji string) error {
 	if !c.IsConnected() {
 		return fmt.Errorf("not connected to WhatsApp")
 	}
@@ -263,7 +265,18 @@ func (c *Client) SendReaction(chatJID, messageID, emoji string) error {
 	}
 
 	msgID := types.MessageID(messageID)
-	senderJID := c.Store.ID.ToNonAD()
+
+	// Look up the actual sender of the message being reacted to.
+	// BuildReaction needs the original message sender to set FromMe correctly.
+	senderJID := c.Store.ID.ToNonAD() // default: assume own message
+	if messageStore != nil {
+		senderStr, isFromMe, lookupErr := messageStore.GetMessageSender(messageID, chatJID)
+		if lookupErr == nil && !isFromMe {
+			if parsed, parseErr := types.ParseJID(senderStr); parseErr == nil {
+				senderJID = parsed.ToNonAD()
+			}
+		}
+	}
 
 	msg := c.Client.BuildReaction(chat, senderJID, msgID, emoji)
 	_, err = c.Client.SendMessage(context.Background(), chat, msg)

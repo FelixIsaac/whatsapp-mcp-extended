@@ -105,3 +105,14 @@ func (store *MessageStore) GetChats() (map[string]time.Time, error) {
 
 	return chats, nil
 }
+
+
+// GetMessageSender returns the sender JID and is_from_me flag for a message.
+// Used by SendReaction to build the correct message key.
+func (store *MessageStore) GetMessageSender(messageID, chatJID string) (sender string, isFromMe bool, err error) {
+	err = store.db.QueryRow(
+		"SELECT sender, is_from_me FROM messages WHERE id = ? AND chat_jid = ?",
+		messageID, chatJID,
+	).Scan(&sender, &isFromMe)
+	return
+}

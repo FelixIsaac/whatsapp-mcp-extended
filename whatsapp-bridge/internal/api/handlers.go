@@ -361,7 +361,7 @@ func (s *Server) handleReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.client.SendReaction(req.ChatJID, req.MessageID, req.Emoji); err != nil {
+	if err := s.client.SendReaction(s.messageStore, req.ChatJID, req.MessageID, req.Emoji); err != nil {
 		SendJSONError(w, fmt.Sprintf("Failed to send reaction: %v", err), http.StatusInternalServerError)
 		return
 	}
