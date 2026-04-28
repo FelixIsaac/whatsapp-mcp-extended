@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/felixisaac-whatsapp-mcp-extended-badge.png)](https://mseep.ai/app/felixisaac-whatsapp-mcp-extended)
+
 # WhatsApp MCP Extended
 
 An extended Model Context Protocol (MCP) server for WhatsApp with **41 tools** - advanced messaging, group management, webhooks, presence, and more.
