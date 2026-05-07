@@ -11,11 +11,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"golang.org/x/crypto/hkdf"
 )
+
+// maxMediaBytes caps the encrypted payload accepted from the WhatsApp CDN to
+// bound memory use per request. WhatsApp's largest documented media (documents)
+// is 64 MiB; 100 MiB leaves headroom for the trailing MAC and future limits.
+const maxMediaBytes = 100 << 20
 
 // hkdfInfo maps WhatsApp media types to the HKDF info string used for key derivation.
 var hkdfInfo = map[string][]byte{
@@ -80,9 +84,13 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch encrypted media from WhatsApp CDN.
+	// Fetch encrypted media from WhatsApp CDN, bounded by request context and total timeout.
 	httpClient := &http.Client{Timeout: 60 * time.Second}
-	greq, _ := http.NewRequest(http.MethodGet, url, nil)
+	greq, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, nil)
+	if err != nil {
+		SendJSONError(w, "bad CDN URL: "+err.Error(), http.StatusBadGateway)
+		return
+	}
 	greq.Header.Set("User-Agent", "WhatsApp/2.24.0")
 	resp, err := httpClient.Do(greq)
 	if err != nil {
@@ -94,9 +102,13 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		SendJSONError(w, fmt.Sprintf("CDN returned HTTP %d", resp.StatusCode), http.StatusBadGateway)
 		return
 	}
-	enc, err := io.ReadAll(resp.Body)
+	enc, err := io.ReadAll(io.LimitReader(resp.Body, maxMediaBytes+1))
 	if err != nil {
 		SendJSONError(w, "read failed: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	if int64(len(enc)) > maxMediaBytes {
+		SendJSONError(w, "media exceeds size limit", http.StatusRequestEntityTooLarge)
 		return
 	}
 	if len(enc) < 26 {
@@ -128,20 +140,23 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		SendJSONError(w, "cipher init: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if len(body)%aes.BlockSize != 0 {
+	if len(body) == 0 || len(body)%aes.BlockSize != 0 {
 		SendJSONError(w, "ciphertext not block-aligned", http.StatusBadRequest)
 		return
 	}
 	plain := make([]byte, len(body))
 	cipher.NewCBCDecrypter(block, iv).CryptBlocks(plain, body)
-	if len(plain) == 0 {
-		SendJSONError(w, "empty plaintext", http.StatusInternalServerError)
-		return
-	}
+	// Strict PKCS#7 unpad: validate every padding byte equals the pad length.
 	pad := int(plain[len(plain)-1])
 	if pad <= 0 || pad > aes.BlockSize || pad > len(plain) {
 		SendJSONError(w, "bad PKCS7 padding", http.StatusInternalServerError)
 		return
+	}
+	for i := len(plain) - pad; i < len(plain); i++ {
+		if int(plain[i]) != pad {
+			SendJSONError(w, "bad PKCS7 padding", http.StatusInternalServerError)
+			return
+		}
 	}
 	plain = plain[:len(plain)-pad]
 
@@ -158,8 +173,17 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	outPath := filepath.Join(storeDir, sanitizePath(req.MessageID)+ext)
-	if err := os.WriteFile(outPath, plain, 0o644); err != nil {
+	// Atomic write: write to a sibling tmp file, then rename into place so partial
+	// writes never become visible and concurrent requests for the same message
+	// can't tear each other's output.
+	tmpPath := outPath + ".tmp"
+	if err := os.WriteFile(tmpPath, plain, 0o644); err != nil {
 		SendJSONError(w, "write failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := os.Rename(tmpPath, outPath); err != nil {
+		_ = os.Remove(tmpPath)
+		SendJSONError(w, "rename failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -171,10 +195,28 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// sanitizePath strips slashes and dotdot so untrusted IDs can't escape the store dir.
+// sanitizePath replaces every byte outside a strict allowlist with '_', so untrusted
+// IDs can't escape the store dir, hide files via leading dots, or smuggle control bytes.
+// WhatsApp message IDs and JIDs are constrained to a subset of these characters.
 func sanitizePath(s string) string {
-	s = strings.ReplaceAll(s, "/", "_")
-	s = strings.ReplaceAll(s, "\\", "_")
-	s = strings.ReplaceAll(s, "..", "_")
-	return s
+	if s == "" {
+		return "_"
+	}
+	b := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c >= 'A' && c <= 'Z',
+			c >= 'a' && c <= 'z',
+			c >= '0' && c <= '9',
+			c == '_', c == '-', c == '@':
+			b[i] = c
+		default:
+			b[i] = '_'
+		}
+	}
+	if b[0] == '.' || b[0] == '-' {
+		b[0] = '_'
+	}
+	return string(b)
 }
