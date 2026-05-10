@@ -5,8 +5,6 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.utilities.types import Image
 
-_INLINE_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-
 # Phase 2: Group Management
 from whatsapp import add_group_members as whatsapp_add_group_members
 from whatsapp import create_group as whatsapp_create_group
@@ -55,6 +53,8 @@ from whatsapp import subscribe_presence as whatsapp_subscribe_presence
 from whatsapp import unfollow_newsletter as whatsapp_unfollow_newsletter
 from whatsapp import update_blocklist as whatsapp_update_blocklist
 from whatsapp import update_group as whatsapp_update_group
+
+_INLINE_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
