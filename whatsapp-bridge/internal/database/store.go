@@ -92,6 +92,10 @@ func runMigrations(db *sql.DB) error {
 			name: "system_message_type",
 			sql:  `ALTER TABLE messages ADD COLUMN system_message_type TEXT`,
 		},
+		{
+			name: "direct_path",
+			sql:  `ALTER TABLE messages ADD COLUMN direct_path TEXT`,
+		},
 	}
 
 	for _, m := range migrations {
@@ -128,6 +132,7 @@ func createTables(db *sql.DB) error {
 			file_sha256 BLOB,
 			file_enc_sha256 BLOB,
 			file_length INTEGER,
+			direct_path TEXT,
 			quoted_message_id TEXT,
 			quoted_sender_name TEXT,
 			quoted_text_preview TEXT,

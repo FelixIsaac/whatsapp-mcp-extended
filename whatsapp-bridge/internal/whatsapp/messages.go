@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -17,10 +18,32 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// mentionPattern matches @phone_number patterns in message text (7-15 digits)
+var mentionPattern = regexp.MustCompile(`@(\d{7,15})`)
+
+// extractMentionsFromText detects @number mentions in text and returns WhatsApp JIDs
+func extractMentionsFromText(text string) []string {
+	matches := mentionPattern.FindAllStringSubmatch(text, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool)
+	var jids []string
+	for _, m := range matches {
+		jid := m[1] + "@s.whatsapp.net"
+		if !seen[jid] {
+			seen[jid] = true
+			jids = append(jids, jid)
+		}
+	}
+	return jids
+}
+
 // allowedMediaDirs contains directories allowed for media access
 var allowedMediaDirs = []string{
 	"/app/media",
 	"/app/store",
+	"/app/whatsapp-bridge/store",
 	"/tmp",
 }
 
@@ -61,8 +84,8 @@ func validateMediaPath(mediaPath string) error {
 	return fmt.Errorf("media path outside allowed directories")
 }
 
-// SendMessage sends a WhatsApp message with optional media
-func (c *Client) SendMessage(messageStore *database.MessageStore, recipient string, message string, mediaPath string) bridgeTypes.SendResult {
+// SendMessage sends a WhatsApp message with optional media and mentions
+func (c *Client) SendMessage(messageStore *database.MessageStore, recipient string, message string, mediaPath string, mentionedJIDs ...[]string) bridgeTypes.SendResult {
 	if !c.IsConnected() {
 		return bridgeTypes.SendResult{Success: false, Error: "Not connected to WhatsApp"}
 	}
@@ -128,6 +151,12 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		case "ogg":
 			mediaType = whatsmeow.MediaAudio
 			mimeType = "audio/ogg; codecs=opus"
+		case "mp3":
+			mediaType = whatsmeow.MediaAudio
+			mimeType = "audio/mpeg"
+		case "m4a", "aac":
+			mediaType = whatsmeow.MediaAudio
+			mimeType = "audio/mp4"
 
 		// Video types
 		case "mp4":
@@ -140,7 +169,16 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 			mediaType = whatsmeow.MediaVideo
 			mimeType = "video/quicktime"
 
-		// Document types (for any other file type)
+		// Document types
+		case "epub":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/epub+zip"
+		case "pdf":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/pdf"
+		case "cbz":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/x-cbz"
 		default:
 			mediaType = whatsmeow.MediaDocument
 			mimeType = "application/octet-stream"
@@ -205,8 +243,10 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				FileLength:    &resp.FileLength,
 			}
 		case whatsmeow.MediaDocument:
+			fileName := mediaPath[strings.LastIndex(mediaPath, "/")+1:]
 			msg.DocumentMessage = &waE2E.DocumentMessage{
-				Title:         proto.String(mediaPath[strings.LastIndex(mediaPath, "/")+1:]),
+				Title:         proto.String(fileName),
+				FileName:      proto.String(fileName),
 				Caption:       proto.String(message),
 				Mimetype:      proto.String(mimeType),
 				URL:           &resp.URL,
@@ -218,7 +258,23 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 			}
 		}
 	} else {
-		msg.Conversation = proto.String(message)
+		// Collect mentions: explicit + auto-detected from @number patterns
+		var mentions []string
+		if len(mentionedJIDs) > 0 {
+			mentions = append(mentions, mentionedJIDs[0]...)
+		}
+		mentions = append(mentions, extractMentionsFromText(message)...)
+
+		if len(mentions) > 0 {
+			msg.ExtendedTextMessage = &waE2E.ExtendedTextMessage{
+				Text: proto.String(message),
+				ContextInfo: &waE2E.ContextInfo{
+					MentionedJID: mentions,
+				},
+			}
+		} else {
+			msg.Conversation = proto.String(message)
+		}
 	}
 
 	// Send message
@@ -238,6 +294,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		"",
 		"",
 		"",
+		"",  // directPath
 		nil, // Replace "" with nil for []byte arguments
 		nil, // Replace "" with nil for []byte arguments
 		nil, // Replace "" with nil for []byte arguments
@@ -251,8 +308,10 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 	}
 }
 
-// SendReaction sends an emoji reaction to a message
-func (c *Client) SendReaction(chatJID, messageID, emoji string) error {
+// SendReaction sends an emoji reaction to a message.
+// It looks up the original message sender from the store so that
+// BuildReaction constructs the correct MessageKey (FromMe flag).
+func (c *Client) SendReaction(messageStore *database.MessageStore, chatJID, messageID, emoji string) error {
 	if !c.IsConnected() {
 		return fmt.Errorf("not connected to WhatsApp")
 	}
@@ -263,7 +322,18 @@ func (c *Client) SendReaction(chatJID, messageID, emoji string) error {
 	}
 
 	msgID := types.MessageID(messageID)
-	senderJID := c.Store.ID.ToNonAD()
+
+	// Look up the actual sender of the message being reacted to.
+	// BuildReaction needs the original message sender to set FromMe correctly.
+	senderJID := c.Store.ID.ToNonAD() // default: assume own message
+	if messageStore != nil {
+		senderStr, isFromMe, lookupErr := messageStore.GetMessageSender(messageID, chatJID)
+		if lookupErr == nil && !isFromMe {
+			if parsed, parseErr := types.ParseJID(senderStr); parseErr == nil {
+				senderJID = parsed.ToNonAD()
+			}
+		}
+	}
 
 	msg := c.Client.BuildReaction(chat, senderJID, msgID, emoji)
 	_, err = c.Client.SendMessage(context.Background(), chat, msg)
@@ -564,7 +634,7 @@ func (c *Client) CreatePoll(chatJID string, question string, options []string, m
 // RequestChatHistory requests older messages for a specific chat.
 // The response will come asynchronously via the HistorySync event handler.
 // This requires knowing the oldest message in the chat to request messages before it.
-func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMsgFromMe bool, oldestMsgTimestamp int64, count int) error {
+func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMsgFromMe bool, oldestMsgSender string, oldestMsgTimestamp int64, count int) error {
 	if !c.IsConnected() {
 		return fmt.Errorf("not connected to WhatsApp")
 	}
@@ -573,6 +643,8 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 	if err != nil {
 		return fmt.Errorf("invalid chat JID: %v", err)
 	}
+
+	ownJID := c.Store.ID.ToNonAD()
 
 	// Create MessageInfo for the oldest known message
 	msgInfo := &types.MessageInfo{
@@ -584,13 +656,18 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 		Timestamp: time.UnixMilli(oldestMsgTimestamp),
 	}
 
-	// If this is a group chat, we need the sender
-	if chat.Server == "g.us" && !oldestMsgFromMe {
-		// For group chats, we'd need the sender JID
-		// This is a limitation - we might need to store sender info
-		msgInfo.MessageSource.Sender = chat // Use chat as placeholder
+	// Set sender correctly: fromMe uses own JID, incoming uses provided sender JID
+	if oldestMsgFromMe {
+		msgInfo.MessageSource.Sender = ownJID
+	} else if oldestMsgSender != "" {
+		senderJID, parseErr := types.ParseJID(oldestMsgSender)
+		if parseErr == nil {
+			msgInfo.MessageSource.Sender = senderJID
+		} else {
+			msgInfo.MessageSource.Sender = ownJID
+		}
 	} else {
-		msgInfo.MessageSource.Sender = c.Store.ID.ToNonAD()
+		msgInfo.MessageSource.Sender = ownJID
 	}
 
 	// Build the history sync request
@@ -601,9 +678,9 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 
 	msg := c.Client.BuildHistorySyncRequest(msgInfo, count)
 
-	// Send the request to the phone
-	// The response comes as events.HistorySync with type ON_DEMAND
-	_, err = c.Client.SendMessage(context.Background(), chat, msg, whatsmeow.SendRequestExtra{Peer: true})
+	// Send as peer message to own device (NOT to the group/chat).
+	// History sync is a device-to-device protocol request to our own phone.
+	_, err = c.Client.SendMessage(context.Background(), ownJID, msg, whatsmeow.SendRequestExtra{Peer: true})
 	if err != nil {
 		return fmt.Errorf("failed to send history request: %v", err)
 	}

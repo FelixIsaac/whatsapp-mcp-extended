@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 	"time"
 
 	"whatsapp-bridge/internal/database"
@@ -12,13 +13,16 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 )
 
+// isPhoneNumber matches strings that look like raw phone numbers (no real name).
+var isPhoneNumber = regexp.MustCompile(`^\+?\d{5,15}$`).MatchString
+
 // GetChatName determines the appropriate name for a chat based on JID and other info
 func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID, chatJID string, conversation interface{}, sender string) string {
-	// First, check if chat already exists in database with a name
+	// First, check if chat already exists in database with a non-phone-number name
 	var existingName string
 	err := messageStore.GetDB().QueryRow("SELECT name FROM chats WHERE jid = ?", chatJID).Scan(&existingName)
-	if err == nil && existingName != "" {
-		// Chat exists with a name, use that
+	if err == nil && existingName != "" && !isPhoneNumber(existingName) {
+		// Chat exists with a real name, use that
 		c.logger.Infof("Using existing chat name for %s: %s", chatJID, existingName)
 		return existingName
 	}
@@ -77,16 +81,27 @@ func (c *Client) GetChatName(messageStore *database.MessageStore, jid types.JID,
 		// This is an individual contact
 		c.logger.Infof("Getting name for contact: %s", chatJID)
 
-		// Just use contact info (full name)
+		// Use priority fallback: FullName > PushName > FirstName > BusinessName
 		contact, err := c.Store.Contacts.GetContact(context.Background(), jid)
-		if err == nil && contact.FullName != "" {
-			name = contact.FullName
-		} else if sender != "" {
-			// Fallback to sender
-			name = sender
-		} else {
-			// Last fallback to JID
-			name = jid.User
+		if err == nil && contact.Found {
+			if contact.FullName != "" {
+				name = contact.FullName
+			} else if contact.PushName != "" {
+				name = contact.PushName
+			} else if contact.FirstName != "" {
+				name = contact.FirstName
+			} else if contact.BusinessName != "" {
+				name = contact.BusinessName
+			}
+		}
+		if name == "" {
+			if sender != "" {
+				// Fallback to sender
+				name = sender
+			} else {
+				// Last fallback to JID
+				name = jid.User
+			}
 		}
 
 		c.logger.Infof("Using contact name: %s", name)
@@ -114,7 +129,7 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 	content := ExtractTextContent(msg.Message)
 
 	// Extract media info
-	mediaType, filename, url, mediaKey, fileSHA256, fileEncSHA256, fileLength := ExtractMediaInfo(msg.Message)
+	mediaType, filename, url, directPath, mediaKey, fileSHA256, fileEncSHA256, fileLength := ExtractMediaInfo(msg.Message)
 
 	// Skip if there's no content and no media
 	if content == "" && mediaType == "" {
@@ -139,6 +154,7 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 		mediaType,
 		filename,
 		url,
+		directPath,
 		mediaKey,
 		fileSHA256,
 		fileEncSHA256,
@@ -216,12 +232,12 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 				}
 
 				// Extract media info
-				var mediaType, filename, url string
+				var mediaType, filename, url, directPath string
 				var mediaKey, fileSHA256, fileEncSHA256 []byte
 				var fileLength uint64
 
 				if msg.Message.Message != nil {
-					mediaType, filename, url, mediaKey, fileSHA256, fileEncSHA256, fileLength = ExtractMediaInfo(msg.Message.Message)
+					mediaType, filename, url, directPath, mediaKey, fileSHA256, fileEncSHA256, fileLength = ExtractMediaInfo(msg.Message.Message)
 				}
 
 				// Log the message content for debugging
@@ -277,6 +293,7 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 					mediaType,
 					filename,
 					url,
+					directPath,
 					mediaKey,
 					fileSHA256,
 					fileEncSHA256,

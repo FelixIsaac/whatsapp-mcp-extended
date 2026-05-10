@@ -120,6 +120,9 @@ func (s *Server) registerHandlers() {
 	// Connection management
 	http.HandleFunc("/api/reconnect", SecureMiddleware(s.handleReconnect))
 
+	// Media download
+	http.HandleFunc("/api/download", SecureMiddleware(s.handleDownload))
+
 	// Sync status monitoring
 	http.HandleFunc("/api/sync-status", SecureMiddleware(s.handleSyncStatus))
 }

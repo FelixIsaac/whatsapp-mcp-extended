@@ -223,6 +223,8 @@ type WebhookMessageInfo struct {
 	MediaType        string `json:"media_type"`
 	Filename         string `json:"filename"`
 	MediaDownloadURL string `json:"media_download_url"`
+	QuotedMessageID  string `json:"quoted_message_id,omitempty"`
+	QuotedSender     string `json:"quoted_sender,omitempty"`
 }
 
 type WebhookMetadata struct {
@@ -255,9 +257,10 @@ type WebhookLog struct {
 
 // SendMessageRequest represents the request body for the send message API
 type SendMessageRequest struct {
-	Recipient string `json:"recipient"`
-	Message   string `json:"message"`
-	MediaPath string `json:"media_path,omitempty"`
+	Recipient     string   `json:"recipient"`
+	Message       string   `json:"message"`
+	MediaPath     string   `json:"media_path,omitempty"`
+	MentionedJIDs []string `json:"mentioned_jids,omitempty"`
 }
 
 // SendMessageResponse represents the response for the send message API
@@ -354,6 +357,7 @@ type RequestHistoryRequest struct {
 	ChatJID            string `json:"chat_jid"`
 	OldestMsgID        string `json:"oldest_msg_id"`
 	OldestMsgFromMe    bool   `json:"oldest_msg_from_me"`
+	OldestMsgSender    string `json:"oldest_msg_sender"`    // Sender JID (needed for group chats)
 	OldestMsgTimestamp int64  `json:"oldest_msg_timestamp"` // Unix milliseconds
 	Count              int    `json:"count"`                // Max 50
 }

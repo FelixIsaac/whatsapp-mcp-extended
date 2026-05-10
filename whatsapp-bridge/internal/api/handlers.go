@@ -52,7 +52,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send the message
-	result := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath)
+	result := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath, req.MentionedJIDs)
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
@@ -363,7 +363,7 @@ func (s *Server) handleReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.client.SendReaction(req.ChatJID, req.MessageID, req.Emoji); err != nil {
+	if err := s.client.SendReaction(s.messageStore, req.ChatJID, req.MessageID, req.Emoji); err != nil {
 		SendJSONError(w, fmt.Sprintf("Failed to send reaction: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -937,7 +937,7 @@ func (s *Server) handleRequestHistory(w http.ResponseWriter, r *http.Request) {
 		req.Count = 50
 	}
 
-	err := s.client.RequestChatHistory(req.ChatJID, req.OldestMsgID, req.OldestMsgFromMe, req.OldestMsgTimestamp, req.Count)
+	err := s.client.RequestChatHistory(req.ChatJID, req.OldestMsgID, req.OldestMsgFromMe, req.OldestMsgSender, req.OldestMsgTimestamp, req.Count)
 	if err != nil {
 		SendJSONError(w, fmt.Sprintf("Failed to request history: %v", err), http.StatusInternalServerError)
 		return

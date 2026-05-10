@@ -20,7 +20,7 @@ func (store *MessageStore) StoreChat(jid, name string, lastMessageTime time.Time
 
 // StoreMessage stores a message in the database
 func (store *MessageStore) StoreMessage(id, chatJID, sender, senderName, content string, timestamp time.Time, isFromMe bool,
-	mediaType, filename, url string, mediaKey, fileSHA256, fileEncSHA256 []byte, fileLength uint64) error {
+	mediaType, filename, url, directPath string, mediaKey, fileSHA256, fileEncSHA256 []byte, fileLength uint64) error {
 	// Only store if there's actual content or media
 	if content == "" && mediaType == "" {
 		return nil
@@ -33,11 +33,23 @@ func (store *MessageStore) StoreMessage(id, chatJID, sender, senderName, content
 
 	_, err := store.db.Exec(
 		`INSERT OR REPLACE INTO messages
-		(id, chat_jid, sender, sender_name, content, timestamp, is_from_me, media_type, filename, url, media_key, file_sha256, file_enc_sha256, file_length)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, chatJID, sender, senderName, content, timestamp, isFromMe, mediaType, filename, url, mediaKey, fileSHA256, fileEncSHA256, fileLength,
+		(id, chat_jid, sender, sender_name, content, timestamp, is_from_me, media_type, filename, url, direct_path, media_key, file_sha256, file_enc_sha256, file_length)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, chatJID, sender, senderName, content, timestamp, isFromMe, mediaType, filename, url, directPath, mediaKey, fileSHA256, fileEncSHA256, fileLength,
 	)
 	return err
+}
+
+// GetMessageMedia retrieves media metadata for a single message.
+func (store *MessageStore) GetMessageMedia(id, chatJID string) (mediaType, filename, url, directPath string, mediaKey, fileSHA256, fileEncSHA256 []byte, fileLength uint64, err error) {
+	row := store.db.QueryRow(
+		`SELECT COALESCE(media_type,''), COALESCE(filename,''), COALESCE(url,''), COALESCE(direct_path,''),
+		        media_key, file_sha256, file_enc_sha256, COALESCE(file_length,0)
+		   FROM messages WHERE id = ? AND chat_jid = ?`,
+		id, chatJID,
+	)
+	err = row.Scan(&mediaType, &filename, &url, &directPath, &mediaKey, &fileSHA256, &fileEncSHA256, &fileLength)
+	return
 }
 
 // GetMessages gets messages from a chat
@@ -291,6 +303,16 @@ func (store *MessageStore) GetRecentMedia(chatJID string, limit int) ([]string, 
 		result = append(result, filename)
 	}
 	return result, rows.Err()
+}
+
+// GetMessageSender returns the sender JID and is_from_me flag for a message.
+// Used by SendReaction to build the correct message key.
+func (store *MessageStore) GetMessageSender(messageID, chatJID string) (sender string, isFromMe bool, err error) {
+	err = store.db.QueryRow(
+		"SELECT sender, is_from_me FROM messages WHERE id = ? AND chat_jid = ?",
+		messageID, chatJID,
+	).Scan(&sender, &isFromMe)
+	return
 }
 
 // GetPreviousMessageTime returns the timestamp of the message sent immediately before the given time in same chat.
