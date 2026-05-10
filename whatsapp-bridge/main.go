@@ -204,6 +204,12 @@ func main() {
 				}()
 			}
 
+		case *events.KeepAliveRestored:
+			logger.Infof("✓ KeepAlive restored after timeout")
+
+		case *events.StreamReplaced:
+			logger.Warnf("⚠ Stream replaced — another device may have taken over this session")
+
 		case *events.StreamError:
 			client.Antiban().RecordEvent(antiban.EventStreamError)
 			logger.Errorf("✗ Stream error: %v", v.Code)
