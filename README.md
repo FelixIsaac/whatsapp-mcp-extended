@@ -160,7 +160,7 @@ Access webhook UI at `http://localhost:8089`
 ### Manual Setup
 
 ```bash
-# Bridge (Go 1.24+)
+# Bridge (Go 1.25+)
 cd whatsapp-bridge && go run main.go
 
 # MCP Server (Python 3.11+)
@@ -227,6 +227,20 @@ docker-compose logs -f whatsapp-bridge
 **Libraries:**
 - [whatsmeow](https://github.com/tulir/whatsmeow) - Go WhatsApp Web API
 - [FastMCP](https://github.com/jlowin/fastmcp) - Python MCP SDK
+
+### Community Acknowledgements
+
+Several forks independently solved real problems and their ideas have been incorporated into this repo. Credit where it's due:
+
+| Contributor | What they figured out |
+|---|---|
+| [simonseifert](https://github.com/simonseifert/whatsapp-mcp-extended-pro) | First to track the `direct_path` DB column needed for CDN fallback during media download; whatsmeow-native `Download()` approach in `/api/download`; correct DB path resolution across Docker/local environments; inline `Image` content blocks in `download_media` |
+| [laudite](https://github.com/laudite/whatsapp-mcp-extended) | Media captions were silently dropped for images/video/docs — fixed in `ExtractTextContent()`; quoted/reply context in webhook payloads; `@mention` auto-detection; `request_history` peer-message target bug (was sending to group JID instead of own device JID) |
+| [kasperpeulen](https://github.com/kasperpeulen/whatsapp-mcp-extended) | Contact name resolution priority chain (`FullName > PushName > FirstName > Business`) and the phone-number-cache bug; full call event pipeline (offer/accept/terminate/reject with duration); LID → phone JID resolution via `GetAltJID()` |
+| [Coriatel](https://github.com/Coriatel/whatsapp-mcp-extended) | First working `/api/download` implementation with manual HKDF/AES-CBC decryption |
+| [jedijashwa](https://github.com/jedijashwa/whatsapp-mcp-extended) | Reactions silently failing fix (wrong sender JID lookup); extended MIME type support for audio/document types |
+
+If you've forked this repo and built something useful, open a PR or issue — good ideas deserve to flow upstream.
 
 ## License
 

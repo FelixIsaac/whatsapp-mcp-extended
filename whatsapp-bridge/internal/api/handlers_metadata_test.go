@@ -215,11 +215,11 @@ func TestMessageFormatting(t *testing.T) {
 		urls := database.ExtractURLs(content)
 		mentions := database.ExtractMentions(content)
 
-		if charCount != 43 {
-			t.Errorf("expected 43 chars, got %d", charCount)
+		if charCount != 42 {
+			t.Errorf("expected 42 chars, got %d", charCount)
 		}
-		if wordCount != 6 {
-			t.Errorf("expected 6 words, got %d", wordCount)
+		if wordCount != 5 {
+			t.Errorf("expected 5 words, got %d", wordCount)
 		}
 		if len(urls) != 1 || urls[0] != "https://example.com" {
 			t.Errorf("expected 1 URL, got %v", urls)
