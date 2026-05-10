@@ -3,12 +3,16 @@ package whatsapp
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"whatsapp-bridge/internal/database"
 
+	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 )
@@ -165,6 +169,11 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 		c.logger.Warnf("Failed to store message: %v", err)
 	}
 
+	// Auto-download media while CDN URL is still fresh
+	if mediaType != "" && (url != "" || directPath != "") {
+		go c.autoDownloadMedia(msg.Info.ID, chatJID, mediaType, filename, url, directPath, mediaKey, fileSHA256, fileEncSHA256, fileLength)
+	}
+
 	// Process webhooks if manager is available
 	if webhookManager != nil {
 		// Cast to webhook manager and process message
@@ -317,4 +326,108 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 	}
 
 	c.logger.Infof("History sync complete. Stored %d messages.", syncedCount)
+}
+
+// autoDownloadMedia downloads and saves media to disk immediately after receiving a message,
+// before the WhatsApp CDN URL expires. Runs as a goroutine; all errors are logged and ignored.
+func (c *Client) autoDownloadMedia(msgID, chatJID, mediaType, filename, rawURL, directPath string, mediaKey, fileSHA256, fileEncSHA256 []byte, fileLength uint64) {
+	// Sanitize JID for filesystem (replace colons and other special chars)
+	sanitizedJID := regexp.MustCompile(`[^a-zA-Z0-9._-]`).ReplaceAllString(chatJID, "_")
+	outDir := filepath.Join("store", sanitizedJID)
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		c.logger.Warnf("auto-download: mkdir %s: %v", outDir, err)
+		return
+	}
+
+	if filename == "" {
+		filename = msgID + ".bin"
+	}
+	// Sanitize filename
+	safeFilename := regexp.MustCompile(`[^a-zA-Z0-9._-]`).ReplaceAllString(filename, "_")
+	outPath := filepath.Join(outDir, safeFilename)
+
+	// Skip if already downloaded
+	if info, err := os.Stat(outPath); err == nil && info.Size() > 0 {
+		c.logger.Infof("auto-download: %s already exists, skipping", outPath)
+		return
+	}
+
+	// Resolve directPath from URL if not provided
+	if directPath == "" {
+		directPath = autoDownloadExtractDirectPath(rawURL)
+	}
+
+	// Classify media type for whatsmeow
+	var wmMediaType whatsmeow.MediaType
+	switch strings.ToLower(mediaType) {
+	case "image":
+		wmMediaType = whatsmeow.MediaImage
+	case "video":
+		wmMediaType = whatsmeow.MediaVideo
+	case "audio":
+		wmMediaType = whatsmeow.MediaAudio
+	case "document":
+		wmMediaType = whatsmeow.MediaDocument
+	default:
+		wmMediaType = whatsmeow.MediaImage
+	}
+
+	dl := &autoDownloadableMedia{
+		url:           rawURL,
+		directPath:    directPath,
+		mediaKey:      mediaKey,
+		fileLength:    fileLength,
+		fileSHA256:    fileSHA256,
+		fileEncSHA256: fileEncSHA256,
+		mediaType:     wmMediaType,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	data, err := c.Client.Download(ctx, dl)
+	if err != nil {
+		c.logger.Warnf("auto-download: %s/%s: %v", chatJID, msgID, err)
+		return
+	}
+
+	if err := os.WriteFile(outPath, data, 0o644); err != nil {
+		c.logger.Warnf("auto-download: write %s: %v", outPath, err)
+		return
+	}
+
+	c.logger.Infof("auto-download: saved %s (%d bytes)", outPath, len(data))
+}
+
+// autoDownloadableMedia implements whatsmeow.DownloadableMessage for auto-download.
+type autoDownloadableMedia struct {
+	url           string
+	directPath    string
+	mediaKey      []byte
+	fileLength    uint64
+	fileSHA256    []byte
+	fileEncSHA256 []byte
+	mediaType     whatsmeow.MediaType
+}
+
+func (d *autoDownloadableMedia) GetDirectPath() string             { return d.directPath }
+func (d *autoDownloadableMedia) GetMediaKey() []byte               { return d.mediaKey }
+func (d *autoDownloadableMedia) GetFileLength() uint64             { return d.fileLength }
+func (d *autoDownloadableMedia) GetFileSHA256() []byte             { return d.fileSHA256 }
+func (d *autoDownloadableMedia) GetFileEncSHA256() []byte          { return d.fileEncSHA256 }
+func (d *autoDownloadableMedia) GetMediaType() whatsmeow.MediaType { return d.mediaType }
+func (d *autoDownloadableMedia) GetUrl() string                    { return d.url }
+
+// autoDownloadExtractDirectPath strips the scheme+host from a WhatsApp CDN URL to get the path.
+func autoDownloadExtractDirectPath(rawURL string) string {
+	if idx := strings.Index(rawURL, ".net/"); idx >= 0 {
+		return rawURL[idx+4:]
+	}
+	if i := strings.Index(rawURL, "://"); i >= 0 {
+		rest := rawURL[i+3:]
+		if j := strings.Index(rest, "/"); j >= 0 {
+			return rest[j:]
+		}
+	}
+	return rawURL
 }
