@@ -1,5 +1,5 @@
 # Dockerfile for WhatsApp Bridge service
-FROM golang:1.24-bullseye AS builder
+FROM golang:latest AS builder
 
 # Set up Go environment
 ENV CGO_ENABLED=1
@@ -15,7 +15,7 @@ COPY ./whatsapp-bridge /app/whatsapp-bridge
 WORKDIR /app/whatsapp-bridge
 RUN go mod download && go build -o whatsapp-bridge
 
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies (gosu for privilege dropping after fixing bind-mount perms)
 RUN apt-get update && apt-get install -y --no-install-recommends \
