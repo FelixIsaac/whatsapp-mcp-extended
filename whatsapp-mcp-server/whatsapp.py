@@ -809,18 +809,26 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any] | Non
         if 'conn' in locals():
             conn.close()
 
-def send_message(recipient: str, message: str) -> dict[str, Any]:
-    """Send a WhatsApp message and return structured result with message_id."""
+def send_message(recipient: str, message: str, mentioned_jids: list[str] | None = None) -> dict[str, Any]:
+    """Send a WhatsApp message and return structured result with message_id.
+
+    Args:
+        recipient: WhatsApp JID of the recipient
+        message: Text content to send
+        mentioned_jids: Optional list of JIDs to mention (e.g. ["5521998593002@s.whatsapp.net"])
+    """
     try:
         # Validate input
         if not recipient:
             return {"success": False, "error": "Recipient must be provided"}
 
         url = f"{WHATSAPP_API_BASE_URL}/send"
-        payload = {
+        payload: dict[str, Any] = {
             "recipient": recipient,
             "message": message,
         }
+        if mentioned_jids:
+            payload["mentioned_jids"] = mentioned_jids
 
         response = requests.post(url, json=payload, headers=_get_headers(), timeout=30)
 

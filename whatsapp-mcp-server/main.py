@@ -1,7 +1,11 @@
 """WhatsApp MCP Server - stdio transport for Claude Code CLI"""
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.utilities.types import Image
+
+_INLINE_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 # Phase 2: Group Management
 from whatsapp import add_group_members as whatsapp_add_group_members
@@ -206,18 +210,19 @@ def get_message_context(
     return context
 
 @mcp.tool()
-def send_message(recipient: str, message: str) -> dict[str, Any]:
+def send_message(recipient: str, message: str, mentioned_jids: list[str] | None = None) -> dict[str, Any]:
     """Send a WhatsApp message to a person or group. For group chats use the JID.
 
     Args:
         recipient: The recipient - either a phone number with country code but no + or other symbols,
                  or a JID (e.g., "123456789@s.whatsapp.net" or a group JID like "123456789@g.us")
         message: The message text to send
+        mentioned_jids: Optional list of JIDs to mention in the message (e.g. ["123456789@s.whatsapp.net"])
 
     Returns:
         A dictionary containing success status and a status message
     """
-    return whatsapp_send_message(recipient, message)
+    return whatsapp_send_message(recipient, message, mentioned_jids)
 
 @mcp.tool()
 def send_file(recipient: str, media_path: str) -> dict[str, Any]:
@@ -248,15 +253,20 @@ def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
     return whatsapp_audio_voice_message(recipient, media_path)
 
 @mcp.tool()
-def download_media(message_id: str, chat_jid: str) -> dict[str, Any]:
+def download_media(message_id: str, chat_jid: str) -> Any:
     """Download media from a WhatsApp message and get the local file path.
+
+    For image media (jpg/jpeg/png/gif/webp) the response also embeds the image
+    inline as an MCP image content block, so MCP clients without filesystem
+    access can still view and analyze it without a separate Read step.
 
     Args:
         message_id: The ID of the message containing the media
         chat_jid: The JID of the chat containing the message
 
     Returns:
-        A dictionary containing success status, a status message, and the file path if successful
+        For images: a list with [inline image, status dict].
+        For other media: a status dict with success, message, file_path.
 
     Hints:
         - Use `list_messages` first to find messages with media_type set (image, video, audio, document)
@@ -265,10 +275,18 @@ def download_media(message_id: str, chat_jid: str) -> dict[str, Any]:
     """
     file_path = whatsapp_download_media(message_id, chat_jid)
 
-    if file_path:
-        return {"success": True, "message": "Media downloaded successfully", "file_path": file_path}
-    else:
+    if not file_path:
         return {"success": False, "message": "Failed to download media"}
+
+    status = {
+        "success": True,
+        "message": "Media downloaded successfully",
+        "file_path": file_path,
+    }
+
+    if Path(file_path).suffix.lower() in _INLINE_IMAGE_EXTS:
+        return [Image(path=file_path), status]
+    return status
 
 @mcp.tool()
 def get_contact_details(identifier: str) -> dict[str, Any] | None:
