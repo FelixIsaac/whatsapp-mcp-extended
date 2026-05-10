@@ -12,6 +12,7 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"whatsapp-bridge/internal/antiban"
 	"whatsapp-bridge/internal/api"
 	"whatsapp-bridge/internal/config"
 	"whatsapp-bridge/internal/database"
@@ -130,6 +131,7 @@ func main() {
 		case *events.Connected:
 			_, _, discAt, _ := client.ConnectionState()
 			client.MarkConnected()
+			client.Antiban().RecordEvent(antiban.EventConnected)
 			// Send presence to keep session active and receive real-time messages
 			if err := client.SetPresence("available"); err != nil {
 				logger.Warnf("Failed to set presence: %v", err)
@@ -177,6 +179,7 @@ func main() {
 			}
 
 		case *events.LoggedOut:
+			client.Antiban().RecordEvent(antiban.EventLoggedOut)
 			logger.Warnf("✗ Device logged out - please scan QR code to log in again")
 
 		case *events.PairSuccess:
@@ -188,6 +191,7 @@ func main() {
 			client.HandlePairingError(v.Error)
 
 		case *events.KeepAliveTimeout:
+			client.Antiban().RecordEvent(antiban.EventKeepAliveTimeout)
 			logger.Warnf("⚠ KeepAlive timeout (errors: %d)", v.ErrorCount)
 			if v.ErrorCount >= 3 {
 				logger.Errorf("KeepAlive: %d consecutive failures, forcing disconnect+reconnect", v.ErrorCount)
@@ -201,10 +205,12 @@ func main() {
 			}
 
 		case *events.StreamError:
+			client.Antiban().RecordEvent(antiban.EventStreamError)
 			logger.Errorf("✗ Stream error: %v", v.Code)
 
 		case *events.Disconnected:
 			client.MarkDisconnected()
+			client.Antiban().RecordEvent(antiban.EventDisconnected)
 			logger.Warnf("⚠ Disconnected from WhatsApp - attempting reconnect")
 
 		case *events.CallOffer:
@@ -402,6 +408,10 @@ func main() {
 	<-exitChan
 
 	fmt.Println("Disconnecting...")
+	// Flush antiban state before disconnect
+	if err := client.Antiban().Close(); err != nil {
+		logger.Warnf("Antiban close error: %v", err)
+	}
 	// Disconnect client
 	client.Disconnect()
 }

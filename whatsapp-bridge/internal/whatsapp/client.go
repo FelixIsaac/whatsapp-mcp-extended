@@ -21,6 +21,7 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
+	"whatsapp-bridge/internal/antiban"
 	"whatsapp-bridge/internal/config"
 	localTypes "whatsapp-bridge/internal/types"
 )
@@ -37,6 +38,9 @@ type Client struct {
 	lastConnectedAt     time.Time
 	disconnectedAt      time.Time
 	autoReconnectErrors int
+
+	// Anti-ban protection
+	antiban *antiban.SendInterceptor
 
 	// Pairing state
 	pairingMutex      sync.Mutex
@@ -103,10 +107,20 @@ func NewClientWithConfig(logger waLog.Logger, cfg *config.Config) (*Client, erro
 		return nil, fmt.Errorf("failed to create WhatsApp client")
 	}
 
+	antibanCfg := antiban.LoadConfig()
+	antibanInterceptor, antibanErr := antiban.NewSendInterceptor(antibanCfg)
+	if antibanErr != nil {
+		logger.Warnf("Failed to initialize antiban, continuing without protection: %v", antibanErr)
+		antibanInterceptor, _ = antiban.NewSendInterceptor(&antiban.Config{Enabled: false})
+	} else if antibanCfg.Enabled {
+		logger.Infof("Antiban protection enabled")
+	}
+
 	c := &Client{
 		Client:    client,
 		logger:    logger,
 		startedAt: time.Now(),
+		antiban:   antibanInterceptor,
 	}
 
 	// Explicit auto-reconnect with failure circuit breaker
@@ -585,4 +599,9 @@ func (c *Client) HandlePairingError(err error) {
 	c.pairingError = err
 	c.pairingInProgress = false
 	c.logger.Errorf("Pairing failed: %v", err)
+}
+
+// Antiban returns the anti-ban send interceptor.
+func (c *Client) Antiban() *antiban.SendInterceptor {
+	return c.antiban
 }

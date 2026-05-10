@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"whatsapp-bridge/internal/antiban"
 	"whatsapp-bridge/internal/database"
 	bridgeTypes "whatsapp-bridge/internal/types"
 
@@ -277,11 +278,24 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		}
 	}
 
+	// Antiban: simulate typing and enforce rate limit / warm-up before sending
+	if c.antiban.Enabled() {
+		_ = c.SendTypingIndicator(recipientJID.String(), "typing")
+	}
+	if err := c.antiban.BeforeSend(context.Background(), antiban.Text, len(message)); err != nil {
+		_ = c.SendTypingIndicator(recipientJID.String(), "paused")
+		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("antiban blocked send: %v", err)}
+	}
+
 	// Send message
 	sendResp, err := c.Client.SendMessage(context.Background(), recipientJID, msg)
 	if err != nil {
+		_ = c.SendTypingIndicator(recipientJID.String(), "paused")
+		c.antiban.AfterSendFailed(antiban.Text, err)
 		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error sending message: %v", err)}
 	}
+	_ = c.SendTypingIndicator(recipientJID.String(), "paused")
+	c.antiban.AfterSend(antiban.Text)
 
 	_ = messageStore.StoreMessage(
 		sendResp.ID, // Use the ID from SendResponse
@@ -336,10 +350,16 @@ func (c *Client) SendReaction(messageStore *database.MessageStore, chatJID, mess
 	}
 
 	msg := c.Client.BuildReaction(chat, senderJID, msgID, emoji)
+
+	if err := c.antiban.BeforeSend(context.Background(), antiban.Reaction, 0); err != nil {
+		return fmt.Errorf("antiban blocked reaction: %v", err)
+	}
 	_, err = c.Client.SendMessage(context.Background(), chat, msg)
 	if err != nil {
+		c.antiban.AfterSendFailed(antiban.Reaction, err)
 		return fmt.Errorf("failed to send reaction: %v", err)
 	}
+	c.antiban.AfterSend(antiban.Reaction)
 
 	return nil
 }
@@ -361,10 +381,21 @@ func (c *Client) EditMessage(chatJID, messageID, newContent string) error {
 		Conversation: proto.String(newContent),
 	}
 	msg := c.Client.BuildEdit(chat, msgID, newMsg)
+
+	if c.antiban.Enabled() {
+		_ = c.SendTypingIndicator(chatJID, "typing")
+	}
+	if err := c.antiban.BeforeSend(context.Background(), antiban.Edit, len(newContent)); err != nil {
+		_ = c.SendTypingIndicator(chatJID, "paused")
+		return fmt.Errorf("antiban blocked edit: %v", err)
+	}
 	_, err = c.Client.SendMessage(context.Background(), chat, msg)
+	_ = c.SendTypingIndicator(chatJID, "paused")
 	if err != nil {
+		c.antiban.AfterSendFailed(antiban.Edit, err)
 		return fmt.Errorf("failed to edit message: %v", err)
 	}
+	c.antiban.AfterSend(antiban.Edit)
 
 	return nil
 }
@@ -393,10 +424,16 @@ func (c *Client) DeleteMessage(chatJID, messageID, senderJID string) error {
 	}
 
 	msg := c.Client.BuildRevoke(chat, sender, msgID)
+
+	if err := c.antiban.BeforeSend(context.Background(), antiban.Delete, 0); err != nil {
+		return fmt.Errorf("antiban blocked delete: %v", err)
+	}
 	_, err = c.Client.SendMessage(context.Background(), chat, msg)
 	if err != nil {
+		c.antiban.AfterSendFailed(antiban.Delete, err)
 		return fmt.Errorf("failed to delete message: %v", err)
 	}
+	c.antiban.AfterSend(antiban.Delete)
 
 	return nil
 }
@@ -616,11 +653,23 @@ func (c *Client) CreatePoll(chatJID string, question string, options []string, m
 	// Build poll creation message
 	pollMsg := c.Client.BuildPollCreation(question, options, selectableCount)
 
+	// Antiban: typing indicator + rate limit
+	if c.antiban.Enabled() {
+		_ = c.SendTypingIndicator(chatJID, "typing")
+	}
+	if err := c.antiban.BeforeSend(context.Background(), antiban.Poll, len(question)); err != nil {
+		_ = c.SendTypingIndicator(chatJID, "paused")
+		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("antiban blocked poll: %v", err)}, err
+	}
+
 	// Send the poll
 	resp, err := c.Client.SendMessage(context.Background(), chat, pollMsg)
+	_ = c.SendTypingIndicator(chatJID, "paused")
 	if err != nil {
+		c.antiban.AfterSendFailed(antiban.Poll, err)
 		return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("failed to send poll: %v", err)}, err
 	}
+	c.antiban.AfterSend(antiban.Poll)
 
 	return bridgeTypes.SendResult{
 		Success:   true,
@@ -680,10 +729,15 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 
 	// Send as peer message to own device (NOT to the group/chat).
 	// History sync is a device-to-device protocol request to our own phone.
+	if err := c.antiban.BeforeSend(context.Background(), antiban.Peer, 0); err != nil {
+		return fmt.Errorf("antiban blocked history request: %v", err)
+	}
 	_, err = c.Client.SendMessage(context.Background(), ownJID, msg, whatsmeow.SendRequestExtra{Peer: true})
 	if err != nil {
+		c.antiban.AfterSendFailed(antiban.Peer, err)
 		return fmt.Errorf("failed to send history request: %v", err)
 	}
+	c.antiban.AfterSend(antiban.Peer)
 
 	return nil
 }
