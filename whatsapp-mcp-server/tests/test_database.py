@@ -239,10 +239,13 @@ class TestSearchContacts:
         # Add nickname to the test contact
         conn = sqlite3.connect(temp_messages_db)
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO contact_nicknames (jid, nickname, updated_at)
             VALUES (?, ?, datetime('now'))
-        """, ("123456789@s.whatsapp.net", "Johnny Doe"))
+        """,
+            ("123456789@s.whatsapp.net", "Johnny Doe"),
+        )
         conn.commit()
         conn.close()
 
@@ -254,10 +257,12 @@ class TestSearchContacts:
         assert contact["jid"] == "123456789@s.whatsapp.net"
         assert contact["nickname"] == "Johnny Doe"
 
-    def test_search_contacts_returns_all_fields(self, temp_whatsapp_db, monkeypatch):
+    def test_search_contacts_returns_all_fields(self, temp_whatsapp_db, temp_messages_db, monkeypatch):
         """Test search_contacts returns all expected fields."""
         monkeypatch.setenv("WHATSAPP_DB_PATH", temp_whatsapp_db)
+        monkeypatch.setenv("MESSAGES_DB_PATH", temp_messages_db)
         monkeypatch.setattr("lib.database.WHATSAPP_DB_PATH", temp_whatsapp_db)
+        monkeypatch.setattr("lib.database.MESSAGES_DB_PATH", temp_messages_db)
 
         results = search_contacts("John")
 
@@ -290,7 +295,7 @@ class TestMessageModel:
             content="Test",
             is_from_me=False,
             chat_jid="123@s.whatsapp.net",
-            id="msg1"
+            id="msg1",
         )
 
         result = msg.to_dict()
@@ -317,7 +322,7 @@ class TestMessageModel:
             character_count=26,
             word_count=2,
             url_list=["https://example.com"],
-            is_group=False
+            is_group=False,
         )
 
         result = msg.to_dict()
@@ -333,11 +338,7 @@ class TestChatModel:
 
     def test_chat_to_dict_omits_empty_fields(self):
         """Test Chat.to_dict() omits empty/null fields."""
-        chat = Chat(
-            jid="123@s.whatsapp.net",
-            name="Test User",
-            last_message_time=None
-        )
+        chat = Chat(jid="123@s.whatsapp.net", name="Test User", last_message_time=None)
 
         result = chat.to_dict()
 
@@ -359,7 +360,7 @@ class TestChatModel:
             total_message_count=42,
             message_count_today=5,
             message_count_last_7_days=20,
-            chat_type="group"
+            chat_type="group",
         )
 
         result = chat.to_dict()
@@ -375,11 +376,7 @@ class TestContactModel:
 
     def test_contact_to_dict_omits_empty_fields(self):
         """Test Contact.to_dict() omits empty/null fields."""
-        contact = Contact(
-            phone_number="123456789",
-            name="John Doe",
-            jid="123456789@s.whatsapp.net"
-        )
+        contact = Contact(phone_number="123456789", name="John Doe", jid="123456789@s.whatsapp.net")
 
         result = contact.to_dict()
 
@@ -401,7 +398,7 @@ class TestContactModel:
             total_message_count=150,
             message_count_today=10,
             is_responsive=True,
-            days_since_last_message=2
+            days_since_last_message=2,
         )
 
         result = contact.to_dict()

@@ -1857,29 +1857,6 @@ func enrichChatWithMetadata(chat *types.Chat, store *database.MessageStore) {
 	// - participant_names (from participant_list names)
 }
 
-// enrichContactWithMetadata populates metadata fields for a contact.
-// Initializes collections and prepares structure for Phase 2 calculations.
-func enrichContactWithMetadata(contact *types.Contact) {
-	if contact == nil {
-		return
-	}
-
-	// Initialize empty collections instead of nil
-	if contact.SharedGroupList == nil {
-		contact.SharedGroupList = []*types.ContactInfo{}
-	}
-	if contact.ActivityTrend == nil {
-		contact.ActivityTrend = &types.ActivityTrend{}
-	}
-
-	// TODO: Phase 2 - populate these fields with database queries:
-	// - activity_trend (analyze message patterns)
-	// - typical_response_time_seconds (calculate from reply pairs)
-	// - typical_reply_rate (messages_responded / total_messages)
-	// - is_responsive (based on reply rate threshold)
-	// - shared_group_list (groups containing both user and contact)
-}
-
 // extractURLsFromContent extracts URLs from message content
 func extractURLsFromContent(content string) []string {
 	if content == "" {

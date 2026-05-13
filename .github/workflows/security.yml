@@ -12,11 +12,12 @@ jobs:
   go-security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.25.10'
+          cache-dependency-path: whatsapp-bridge/go.sum
 
       - name: Run govulncheck
         working-directory: whatsapp-bridge
