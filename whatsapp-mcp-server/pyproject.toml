@@ -24,6 +24,13 @@ dev = [
     "pytest-cov>=4.0",
     "pytest-asyncio>=0.24.0",
 ]
+# Multilingual semantic search over message history via sentence-transformers.
+# Heavy install (~470 MB of model weights cached lazily at ~/.cache/huggingface
+# on first use), so kept behind an opt-in extra.
+recall = [
+    "sentence-transformers>=3.0.0",
+    "numpy>=1.26.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

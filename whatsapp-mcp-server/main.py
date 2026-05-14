@@ -723,6 +723,74 @@ def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
     return whatsapp_create_newsletter(name, description)
 
 
+# ----- Optional: semantic recall over message history --------------------
+#
+# Requires the `recall` optional extra:
+#     uv sync --extra recall
+# When the extra isn't installed the tools return a structured install hint
+# instead of crashing the server. ~470 MB of model weights are cached lazily
+# to ~/.cache/huggingface on first use.
+
+from lib.recall import index_status as _recall_index_status  # noqa: E402
+from lib.recall import recall as _recall_search  # noqa: E402
+
+
+@mcp.tool()
+def recall(
+    query: str,
+    chat_jid: str | None = None,
+    sender: str | None = None,
+    after: str | None = None,
+    before: str | None = None,
+    is_from_me: bool | None = None,
+    limit: int = 10,
+) -> dict[str, Any]:
+    """Semantic search over WhatsApp message history.
+
+    Natural-language search across all stored messages. Multilingual
+    (Croatian, German, English, Italian, French, Spanish, and 45+ more)
+    via paraphrase-multilingual-MiniLM-L12-v2.
+
+    Args:
+        query: Natural-language query.
+        chat_jid: Optional, restrict to one chat.
+        sender: Optional sender JID or LID, restrict to one author.
+        after: Optional ISO-8601 datetime; only messages with timestamp >= this.
+        before: Optional ISO-8601 datetime; only messages with timestamp <= this.
+        is_from_me: Optional, True for outgoing only, False for incoming only.
+        limit: Max results to return (default 10).
+
+    Returns:
+        Dict with `results` (list of matches ranked by cosine similarity) and
+        `index_status` so the caller can see indexer progress. If the `recall`
+        extra isn't installed, returns a structured install hint instead.
+
+    Hints:
+        - First call kicks off a background indexer that embeds all text messages.
+        - Call `recall_index_status` to see how far indexing has gotten.
+    """
+    return _recall_search(
+        query,
+        chat_jid=chat_jid,
+        sender=sender,
+        after=after,
+        before=before,
+        is_from_me=is_from_me,
+        limit=limit,
+    )
+
+
+@mcp.tool()
+def recall_index_status() -> dict[str, Any]:
+    """Show how far the background recall indexer has gotten.
+
+    Returns:
+        Dict with status, embedded count, total count, remaining, and model name.
+        If the `recall` extra isn't installed, returns a structured install hint.
+    """
+    return _recall_index_status()
+
+
 if __name__ == "__main__":
     # Run with stdio transport for Claude Code CLI
     mcp.run(transport="stdio")
