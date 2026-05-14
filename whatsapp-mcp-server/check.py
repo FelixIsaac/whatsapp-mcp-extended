@@ -6,6 +6,7 @@ Usage:
     uv run python check.py         # full check with ruff + mypy
     uv run python check.py --quick # syntax only (fastest)
 """
+
 import os
 import subprocess
 import sys
@@ -13,12 +14,14 @@ from pathlib import Path
 
 FILES = ["whatsapp.py", "main.py", "gradio-main.py"]
 
+
 def run(cmd: list[str], desc: str) -> bool:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {desc}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     result = subprocess.run(cmd)
     return result.returncode == 0
+
 
 def main():
     quick = "--quick" in sys.argv
@@ -48,14 +51,15 @@ def main():
     if not run([sys.executable, "-m", "mypy", "--no-error-summary"] + FILES, "Mypy type check"):
         all_ok = False
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     if all_ok:
         print("  ALL CHECKS PASSED")
     else:
         print("  SOME CHECKS FAILED")
-    print("="*60)
+    print("=" * 60)
 
     sys.exit(0 if all_ok else 1)
+
 
 if __name__ == "__main__":
     main()
