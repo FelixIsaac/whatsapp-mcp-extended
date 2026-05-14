@@ -723,6 +723,65 @@ def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
     return whatsapp_create_newsletter(name, description)
 
 
+# ----- Optional: on-device voice-message transcription via mlx-whisper -----
+#
+# These tools require the `transcribe` optional extra (Apple Silicon only):
+#     uv sync --extra transcribe
+# When mlx-whisper isn't installed the tool returns a structured error with
+# install hints instead of crashing the server, so non-Mac users keep a
+# working MCP server with the tool simply unavailable.
+
+from lib.transcribe import transcribe_file as _transcribe_file  # noqa: E402
+
+
+@mcp.tool()
+def transcribe_audio(
+    message_id: str,
+    chat_jid: str,
+    language: str | None = None,
+) -> dict[str, Any]:
+    """Download a WhatsApp voice/audio message and transcribe it locally.
+
+    Runs on-device via mlx-whisper (Apple Silicon). First call per model
+    downloads weights (~1.5 GB) to ~/.cache/huggingface; subsequent calls
+    are local and offline.
+
+    Args:
+        message_id: The ID of the message containing the audio.
+        chat_jid: The JID of the chat containing the message.
+        language: Optional ISO-639-1 code (e.g. "en", "hr", "de"). Auto-detected if omitted.
+
+    Returns:
+        Dict with {success, text, language, file_path} on success, or
+        {success: False, message, file_path?} on failure. Returns an
+        actionable install hint if the `transcribe` extra isn't installed.
+    """
+    file_path = whatsapp_download_media(message_id, chat_jid)
+    if not file_path:
+        return {"success": False, "message": "Failed to download media"}
+
+    result = _transcribe_file(file_path, language=language)
+    result["file_path"] = file_path
+    return result
+
+
+@mcp.tool()
+def transcribe_audio_file(
+    file_path: str,
+    language: str | None = None,
+) -> dict[str, Any]:
+    """Transcribe an arbitrary local audio file with mlx-whisper.
+
+    Args:
+        file_path: Absolute path to an audio file (any format ffmpeg can decode).
+        language: Optional ISO-639-1 code. Auto-detected if omitted.
+
+    Returns:
+        Dict with {success, text, language} on success, or {success: False, message}.
+    """
+    return _transcribe_file(file_path, language=language)
+
+
 if __name__ == "__main__":
     # Run with stdio transport for Claude Code CLI
     mcp.run(transport="stdio")
