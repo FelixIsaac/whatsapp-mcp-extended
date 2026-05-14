@@ -60,26 +60,31 @@ def temp_messages_db():
     """)
 
     # Insert test data
-    cursor.execute(
-        "INSERT INTO chats (jid, name) VALUES (?, ?)",
-        ("123456789@s.whatsapp.net", "Test User")
-    )
-    cursor.execute(
-        "INSERT INTO chats (jid, name) VALUES (?, ?)",
-        ("987654321@g.us", "Test Group")
-    )
+    cursor.execute("INSERT INTO chats (jid, name) VALUES (?, ?)", ("123456789@s.whatsapp.net", "Test User"))
+    cursor.execute("INSERT INTO chats (jid, name) VALUES (?, ?)", ("987654321@g.us", "Test Group"))
 
     # Insert test messages
     now = datetime.now().isoformat()
     cursor.execute(
         """INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me, media_type, filename, file_length, sender_name)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        ("msg1", "123456789@s.whatsapp.net", "123456789@s.whatsapp.net", "Hello world", now, 0, None, None, None, "Test User")
+        (
+            "msg1",
+            "123456789@s.whatsapp.net",
+            "123456789@s.whatsapp.net",
+            "Hello world",
+            now,
+            0,
+            None,
+            None,
+            None,
+            "Test User",
+        ),
     )
     cursor.execute(
         """INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me, media_type, filename, file_length, sender_name)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        ("msg2", "123456789@s.whatsapp.net", "me", "Hi there", now, 1, None, None, None, "Me")
+        ("msg2", "123456789@s.whatsapp.net", "me", "Hi there", now, 1, None, None, None, "Me"),
     )
 
     conn.commit()
@@ -113,7 +118,7 @@ def temp_whatsapp_db():
     cursor.execute(
         """INSERT INTO whatsmeow_contacts (their_jid, first_name, full_name, push_name, business_name)
            VALUES (?, ?, ?, ?, ?)""",
-        ("123456789@s.whatsapp.net", "John", "John Doe", "Johnny", None)
+        ("123456789@s.whatsapp.net", "John", "John Doe", "Johnny", None),
     )
 
     conn.commit()

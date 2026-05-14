@@ -2,7 +2,6 @@ package antiban
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -61,7 +60,7 @@ func (r *RateLimiter) Wait(ctx context.Context, msgType MessageType, msgLen int)
 		}
 	}
 
-	log.Print(fmt.Sprintf("ANTIBAN delay=%s type=%s", delay, msgType))
+	log.Printf("ANTIBAN delay=%s type=%s", delay, msgType)
 
 	return nil
 }

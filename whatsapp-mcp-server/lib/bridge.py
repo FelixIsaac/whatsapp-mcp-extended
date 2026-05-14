@@ -1,9 +1,15 @@
 """Bridge API client for WhatsApp Go bridge."""
+
 from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-    possible_paths = [Path(__file__).parent.parent.parent / ".env", Path(__file__).parent.parent.parent.parent / ".env", Path.cwd() / ".env"]
+
+    possible_paths = [
+        Path(__file__).parent.parent.parent / ".env",
+        Path(__file__).parent.parent.parent.parent / ".env",
+        Path.cwd() / ".env",
+    ]
     for env_path in possible_paths:
         if env_path.exists():
             load_dotenv(env_path)
@@ -21,6 +27,7 @@ from .utils import WHATSAPP_API_BASE_URL, logger
 
 class BridgeError(Exception):
     """Exception for bridge API errors."""
+
     pass
 
 
@@ -52,7 +59,7 @@ def send_message(recipient: str, message: str) -> dict[str, Any]:
             f"{WHATSAPP_API_BASE_URL}/send",
             json={"recipient": recipient, "message": message},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -79,7 +86,7 @@ def send_file(recipient: str, media_path: str) -> dict[str, Any]:
             f"{WHATSAPP_API_BASE_URL}/send",
             json={"recipient": recipient, "message": "", "media_path": media_path},
             headers=_get_headers(),
-            timeout=60
+            timeout=60,
         )
         response.raise_for_status()
         return response.json()
@@ -107,7 +114,7 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> dict[str, Any]:
             f"{WHATSAPP_API_BASE_URL}/reaction",
             json={"chat_jid": chat_jid, "message_id": message_id, "emoji": emoji},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -135,7 +142,7 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> dict[str, 
             f"{WHATSAPP_API_BASE_URL}/edit",
             json={"chat_jid": chat_jid, "message_id": message_id, "new_content": new_content},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -163,12 +170,7 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: str | None = None
         if sender_jid:
             payload["sender_jid"] = sender_jid
 
-        response = requests.post(
-            f"{WHATSAPP_API_BASE_URL}/delete",
-            json=payload,
-            headers=_get_headers(),
-            timeout=30
-        )
+        response = requests.post(f"{WHATSAPP_API_BASE_URL}/delete", json=payload, headers=_get_headers(), timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -195,12 +197,7 @@ def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = No
         if sender_jid:
             payload["sender_jid"] = sender_jid
 
-        response = requests.post(
-            f"{WHATSAPP_API_BASE_URL}/read",
-            json=payload,
-            headers=_get_headers(),
-            timeout=30
-        )
+        response = requests.post(f"{WHATSAPP_API_BASE_URL}/read", json=payload, headers=_get_headers(), timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -221,11 +218,7 @@ def get_group_info(group_jid: str) -> dict[str, Any]:
         BridgeError: If API call fails.
     """
     try:
-        response = requests.get(
-            f"{WHATSAPP_API_BASE_URL}/group/{group_jid}",
-            headers=_get_headers(),
-            timeout=30
-        )
+        response = requests.get(f"{WHATSAPP_API_BASE_URL}/group/{group_jid}", headers=_get_headers(), timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -251,7 +244,7 @@ def create_group(name: str, participants: list[str]) -> dict[str, Any]:
             f"{WHATSAPP_API_BASE_URL}/group/create",
             json={"name": name, "participants": participants},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -260,12 +253,7 @@ def create_group(name: str, participants: list[str]) -> dict[str, Any]:
         raise BridgeError(f"Failed to create group: {e}") from e
 
 
-def create_poll(
-    chat_jid: str,
-    question: str,
-    options: list[str],
-    multi_select: bool = False
-) -> dict[str, Any]:
+def create_poll(chat_jid: str, question: str, options: list[str], multi_select: bool = False) -> dict[str, Any]:
     """Create and send a poll.
 
     Args:
@@ -283,14 +271,9 @@ def create_poll(
     try:
         response = requests.post(
             f"{WHATSAPP_API_BASE_URL}/poll/create",
-            json={
-                "chat_jid": chat_jid,
-                "question": question,
-                "options": options,
-                "multi_select": multi_select
-            },
+            json={"chat_jid": chat_jid, "question": question, "options": options, "multi_select": multi_select},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -317,7 +300,7 @@ def send_typing(chat_jid: str, state: str = "typing") -> dict[str, Any]:
             f"{WHATSAPP_API_BASE_URL}/typing",
             json={"chat_jid": chat_jid, "state": state},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -340,10 +323,7 @@ def set_about_text(text: str) -> dict[str, Any]:
     """
     try:
         response = requests.post(
-            f"{WHATSAPP_API_BASE_URL}/set-about",
-            json={"text": text},
-            headers=_get_headers(),
-            timeout=30
+            f"{WHATSAPP_API_BASE_URL}/set-about", json={"text": text}, headers=_get_headers(), timeout=30
         )
         response.raise_for_status()
         return response.json()
@@ -370,7 +350,7 @@ def set_disappearing_timer(chat_jid: str, duration: str) -> dict[str, Any]:
             f"{WHATSAPP_API_BASE_URL}/disappearing",
             json={"chat_jid": chat_jid, "duration": duration},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -396,11 +376,7 @@ def get_privacy_settings() -> dict[str, Any]:
         BridgeError: If API call fails.
     """
     try:
-        response = requests.get(
-            f"{WHATSAPP_API_BASE_URL}/privacy",
-            headers=_get_headers(),
-            timeout=30
-        )
+        response = requests.get(f"{WHATSAPP_API_BASE_URL}/privacy", headers=_get_headers(), timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -423,10 +399,7 @@ def pin_chat(chat_jid: str, pin: bool = True) -> dict[str, Any]:
     """
     try:
         response = requests.post(
-            f"{WHATSAPP_API_BASE_URL}/pin",
-            json={"chat_jid": chat_jid, "pin": pin},
-            headers=_get_headers(),
-            timeout=30
+            f"{WHATSAPP_API_BASE_URL}/pin", json={"chat_jid": chat_jid, "pin": pin}, headers=_get_headers(), timeout=30
         )
         response.raise_for_status()
         return response.json()
@@ -454,7 +427,7 @@ def mute_chat(chat_jid: str, mute: bool = True, duration: str = "forever") -> di
             f"{WHATSAPP_API_BASE_URL}/mute",
             json={"chat_jid": chat_jid, "mute": mute, "duration": duration},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
@@ -481,7 +454,7 @@ def archive_chat(chat_jid: str, archive: bool = True) -> dict[str, Any]:
             f"{WHATSAPP_API_BASE_URL}/archive",
             json={"chat_jid": chat_jid, "archive": archive},
             headers=_get_headers(),
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         return response.json()
