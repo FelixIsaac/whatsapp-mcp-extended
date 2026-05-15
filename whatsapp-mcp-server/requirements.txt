@@ -1,7 +1,9 @@
 httpx>=0.28.1
-mcp[cli]>=1.6.0
+mcp[cli]>=1.23.0
 requests>=2.32.3
-starlette>=0.37.2
+starlette>=0.49.1
 uvicorn>=0.23.2
-gradio==5.34.2
+urllib3>=2.6.3
+h11>=0.16.0
+gradio==6.14.0
 gradio_client==1.10.3

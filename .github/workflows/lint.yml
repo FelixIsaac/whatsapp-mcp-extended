@@ -16,7 +16,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           cache-dependency-path: whatsapp-bridge/go.sum
 
       - name: golangci-lint
@@ -56,10 +56,10 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile.bridge
-          failure-threshold: warning
+          failure-threshold: error
 
       - name: Lint MCP Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile.mcp
-          failure-threshold: warning
+          failure-threshold: error

@@ -36,6 +36,16 @@ def temp_messages_db():
             media_type TEXT,
             filename TEXT,
             file_length INTEGER,
+            sender_name TEXT,
+            quoted_message_id TEXT,
+            quoted_sender_name TEXT,
+            reply_to_message_id TEXT,
+            edit_count INTEGER DEFAULT 0,
+            is_edited INTEGER DEFAULT 0,
+            is_forwarded INTEGER DEFAULT 0,
+            forwarded_from TEXT,
+            is_system_message INTEGER DEFAULT 0,
+            system_message_type TEXT,
             FOREIGN KEY (chat_jid) REFERENCES chats(jid)
         )
     """)
@@ -62,14 +72,14 @@ def temp_messages_db():
     # Insert test messages
     now = datetime.now().isoformat()
     cursor.execute(
-        """INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me, media_type, filename, file_length)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        ("msg1", "123456789@s.whatsapp.net", "123456789@s.whatsapp.net", "Hello world", now, 0, None, None, None)
+        """INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me, media_type, filename, file_length, sender_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        ("msg1", "123456789@s.whatsapp.net", "123456789@s.whatsapp.net", "Hello world", now, 0, None, None, None, "Test User")
     )
     cursor.execute(
-        """INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me, media_type, filename, file_length)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        ("msg2", "123456789@s.whatsapp.net", "me", "Hi there", now, 1, None, None, None)
+        """INSERT INTO messages (id, chat_jid, sender, content, timestamp, is_from_me, media_type, filename, file_length, sender_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        ("msg2", "123456789@s.whatsapp.net", "me", "Hi there", now, 1, None, None, None, "Me")
     )
 
     conn.commit()

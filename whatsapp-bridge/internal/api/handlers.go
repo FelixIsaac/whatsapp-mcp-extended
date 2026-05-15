@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
+	"whatsapp-bridge/internal/database"
 	"whatsapp-bridge/internal/types"
 )
 
@@ -50,7 +52,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send the message
-	result := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath)
+	result := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath, req.MentionedJIDs)
 
 	// Set response headers
 	w.Header().Set("Content-Type", "application/json")
@@ -361,7 +363,7 @@ func (s *Server) handleReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.client.SendReaction(req.ChatJID, req.MessageID, req.Emoji); err != nil {
+	if err := s.client.SendReaction(s.messageStore, req.ChatJID, req.MessageID, req.Emoji); err != nil {
 		SendJSONError(w, fmt.Sprintf("Failed to send reaction: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -935,7 +937,7 @@ func (s *Server) handleRequestHistory(w http.ResponseWriter, r *http.Request) {
 		req.Count = 50
 	}
 
-	err := s.client.RequestChatHistory(req.ChatJID, req.OldestMsgID, req.OldestMsgFromMe, req.OldestMsgTimestamp, req.Count)
+	err := s.client.RequestChatHistory(req.ChatJID, req.OldestMsgID, req.OldestMsgFromMe, req.OldestMsgSender, req.OldestMsgTimestamp, req.Count)
 	if err != nil {
 		SendJSONError(w, fmt.Sprintf("Failed to request history: %v", err), http.StatusInternalServerError)
 		return
@@ -1710,6 +1712,280 @@ func (s *Server) handleConnectionStatus(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// enrichMessageWithMetadata populates metadata fields for a message.
+// Calculates character/word counts, extracts URLs and mentions, and queries database for rich metadata.
+func enrichMessageWithMetadata(msg *types.Message, store *database.MessageStore, chatJID string) {
+	if msg == nil {
+		return
+	}
+
+	// Calculate simple metadata from content
+	if msg.Content != "" {
+		msg.CharacterCount = len([]rune(msg.Content))
+		msg.WordCount = len(strings.Fields(msg.Content))
+		msg.URLList = extractURLsFromContent(msg.Content)
+		msg.Mentions = extractMentionsFromContent(msg.Content)
+	}
+
+	// Populate sender contact info (Tier 1)
+	if msg.Sender != "" && store != nil {
+		if contactInfo, err := store.GetContactInfo(msg.Sender); err == nil && contactInfo != nil {
+			msg.SenderContactInfo = contactInfo
+		}
+	}
+
+	// Populate reaction summary (Tier 1)
+	if msg.ID != "" && chatJID != "" && store != nil {
+		if reactions, err := store.GetMessageReactionSummary(chatJID, msg.ID); err == nil {
+			msg.ReactionSummary = reactions
+			msg.HasReactions = len(reactions) > 0
+		}
+	}
+
+	// Compute response time to previous message (Tier 2)
+	if !msg.Time.IsZero() && chatJID != "" && store != nil {
+		if prevTime, err := store.GetPreviousMessageTime(chatJID, msg.Time); err == nil && !prevTime.IsZero() {
+			msg.ResponseTimeSeconds = msg.Time.Sub(prevTime).Seconds()
+		}
+	}
+
+	// Initialize empty collections instead of nil
+	if msg.ReactionSummary == nil {
+		msg.ReactionSummary = make(map[string]int)
+	}
+	if msg.URLList == nil {
+		msg.URLList = []string{}
+	}
+	if msg.Mentions == nil {
+		msg.Mentions = []string{}
+	}
+}
+
+// enrichChatWithMetadata populates metadata fields for a chat.
+// Queries database for rich metadata about chat activity and participants.
+func enrichChatWithMetadata(chat *types.Chat, store *database.MessageStore) {
+	if chat == nil {
+		return
+	}
+
+	// Initialize empty collections instead of nil
+	if chat.MediaCountByType == nil {
+		chat.MediaCountByType = make(map[string]int)
+	}
+	if chat.ParticipantNames == nil {
+		chat.ParticipantNames = []string{}
+	}
+	if chat.ParticipantList == nil {
+		chat.ParticipantList = []*types.ContactInfo{}
+	}
+	if chat.AdminList == nil {
+		chat.AdminList = []string{}
+	}
+	if chat.RecentMedia == nil {
+		chat.RecentMedia = []string{}
+	}
+	if chat.MessageVelocityLast7Days == nil {
+		chat.MessageVelocityLast7Days = &types.MessageVelocity{}
+	}
+
+	if store == nil {
+		return
+	}
+
+	// Populate last_sender_contact_info (Tier 1)
+	if chat.LastSender != "" {
+		if contactInfo, err := store.GetContactInfo(chat.LastSender); err == nil && contactInfo != nil {
+			chat.LastSenderContactInfo = contactInfo
+		}
+	}
+
+	// Populate most_active_member (Tier 2)
+	if chat.IsGroup {
+		if name, count, err := store.GetMostActiveGroupMember(chat.JID); err == nil && name != "" {
+			chat.MostActiveMemberName = name
+			chat.MostActiveMemberMsgCount = count
+		}
+	}
+
+	// Populate media stats (Tier 2)
+	if mediaCountByType, err := store.GetMediaCountByType(chat.JID); err == nil {
+		chat.MediaCountByType = mediaCountByType
+		chat.HasMedia = len(mediaCountByType) > 0
+	}
+
+	// Populate recent media (Tier 2)
+	if recentMedia, err := store.GetRecentMedia(chat.JID, 5); err == nil {
+		chat.RecentMedia = recentMedia
+	}
+
+	// Populate message velocity (Tier 2)
+	if chat.MessageCountLast7Days > 0 {
+		chat.MessageVelocityLast7Days.MessagesPerDay = float64(chat.MessageCountLast7Days) / 7.0
+		// Determine trend direction based on today vs 7-day average
+		if chat.MessageCountToday > 0 {
+			avgPerDay := float64(chat.MessageCountLast7Days) / 7.0
+			if float64(chat.MessageCountToday) > avgPerDay*1.2 {
+				chat.MessageVelocityLast7Days.TrendDirection = "increasing"
+			} else if float64(chat.MessageCountToday) < avgPerDay*0.8 {
+				chat.MessageVelocityLast7Days.TrendDirection = "decreasing"
+			} else {
+				chat.MessageVelocityLast7Days.TrendDirection = "stable"
+			}
+		}
+	}
+
+	// Set recently_active flag (Tier 2)
+	now := time.Now()
+	if !chat.LastMessageTime.IsZero() {
+		chat.IsRecentlyActive = now.Sub(chat.LastMessageTime) < 24*time.Hour
+		chat.SilentDurationSeconds = int(now.Sub(chat.LastMessageTime).Seconds())
+	}
+
+	// Set chat_type based on JID format (already set in getChatsWithMetadata)
+	if chat.IsGroup {
+		chat.ChatType = "group"
+	} else {
+		chat.ChatType = "individual"
+	}
+
+	// TODO: Phase 2 - populate these fields when group_members table is added:
+	// - participant_list (from group_members query)
+	// - admin_list (from group_members WHERE is_admin=true)
+	// - participant_count (from len(participant_list))
+	// - participant_names (from participant_list names)
+}
+
+// enrichContactWithMetadata populates metadata fields for a contact.
+// Initializes collections and prepares structure for Phase 2 calculations.
+func enrichContactWithMetadata(contact *types.Contact) {
+	if contact == nil {
+		return
+	}
+
+	// Initialize empty collections instead of nil
+	if contact.SharedGroupList == nil {
+		contact.SharedGroupList = []*types.ContactInfo{}
+	}
+	if contact.ActivityTrend == nil {
+		contact.ActivityTrend = &types.ActivityTrend{}
+	}
+
+	// TODO: Phase 2 - populate these fields with database queries:
+	// - activity_trend (analyze message patterns)
+	// - typical_response_time_seconds (calculate from reply pairs)
+	// - typical_reply_rate (messages_responded / total_messages)
+	// - is_responsive (based on reply rate threshold)
+	// - shared_group_list (groups containing both user and contact)
+}
+
+// extractURLsFromContent extracts URLs from message content
+func extractURLsFromContent(content string) []string {
+	if content == "" {
+		return []string{}
+	}
+	urlPattern := regexp.MustCompile(`(?:https?|ftp)://[^\s]+|www\.[^\s]+`)
+	matches := urlPattern.FindAllString(content, -1)
+	if matches == nil {
+		return []string{}
+	}
+	return matches
+}
+
+// extractMentionsFromContent extracts @mentions from message content
+func extractMentionsFromContent(content string) []string {
+	if content == "" {
+		return []string{}
+	}
+	mentionPattern := regexp.MustCompile(`@[a-zA-Z0-9._-]+(?:@[a-z.]+)?`)
+	matches := mentionPattern.FindAllString(content, -1)
+	if matches == nil {
+		return []string{}
+	}
+	return matches
+}
+
+// handleGetMessages handles GET /api/messages for retrieving message history.
+// Query parameters:
+//   - chat_jid: Target chat (required)
+//   - limit: Max messages to return (default 100)
+//
+// Response includes new metadata fields for each message.
+func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	chatJID := r.URL.Query().Get("chat_jid")
+	if chatJID == "" {
+		SendJSONError(w, "chat_jid is required", http.StatusBadRequest)
+		return
+	}
+
+	limit := 100
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := fmt.Sscanf(limitStr, "%d", &limit); err != nil || parsedLimit == 0 {
+			limit = 100
+		}
+	}
+
+	messages, err := s.messageStore.GetMessages(chatJID, limit)
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to retrieve messages: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Enrich messages with metadata
+	enrichedMessages := make([]interface{}, len(messages))
+	for i := range messages {
+		enrichMessageWithMetadata(&messages[i], s.messageStore, chatJID)
+		enrichedMessages[i] = messages[i]
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"count":    len(enrichedMessages),
+		"messages": enrichedMessages,
+	})
+}
+
+// handleGetChats handles GET /api/chats for retrieving chat list.
+// Response includes new metadata fields for each chat.
+func (s *Server) handleGetChats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	chatMap, err := s.messageStore.GetChats()
+	if err != nil {
+		SendJSONError(w, fmt.Sprintf("Failed to retrieve chats: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to Chat structs with metadata
+	chats := make([]interface{}, 0, len(chatMap))
+	for jid, lastTime := range chatMap {
+		chat := &types.Chat{
+			JID:             jid,
+			LastMessageTime: lastTime,
+			IsGroup:         strings.HasSuffix(jid, "@g.us"),
+		}
+		enrichChatWithMetadata(chat, s.messageStore)
+		chats = append(chats, chat)
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"count":   len(chats),
+		"chats":   chats,
+	})
 }
 
 // handleSyncStatus returns current sync state and recommendations

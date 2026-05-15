@@ -79,7 +79,7 @@ func (wm *Manager) MatchesTriggers(msg *events.Message, chatName string) []*type
 
 	// Extract message content
 	content := whatsapp.ExtractTextContent(msg.Message)
-	mediaType, _, _, _, _, _, _ := whatsapp.ExtractMediaInfo(msg.Message)
+	mediaType, _, _, _, _, _, _, _ := whatsapp.ExtractMediaInfo(msg.Message)
 
 	for _, config := range wm.configs {
 		if !config.Enabled {
@@ -170,7 +170,8 @@ func (wm *Manager) ProcessMessage(client interface{}, msg *events.Message, chatN
 
 	// Extract message content and media info
 	content := whatsapp.ExtractTextContent(msg.Message)
-	mediaType, filename, _, _, _, _, _ := whatsapp.ExtractMediaInfo(msg.Message)
+	mediaType, filename, _, _, _, _, _, _ := whatsapp.ExtractMediaInfo(msg.Message)
+	quotedMsgID, quotedSender := whatsapp.ExtractQuotedContext(msg.Message)
 
 	// Determine sender name
 	senderName := msg.Info.Sender.User
@@ -181,17 +182,19 @@ func (wm *Manager) ProcessMessage(client interface{}, msg *events.Message, chatN
 		EventType: "message_received",
 		Timestamp: msg.Info.Timestamp.Format(time.RFC3339),
 		Message: types.WebhookMessageInfo{
-			ID:         msg.Info.ID,
-			ChatJID:    msg.Info.Chat.String(),
-			ChatName:   chatName,
-			Sender:     msg.Info.Sender.String(),
-			SenderName: senderName,
-			Content:    content,
-			Timestamp:  msg.Info.Timestamp.Format(time.RFC3339),
-			PushName:   msg.Info.PushName,
-			IsFromMe:   msg.Info.IsFromMe,
-			MediaType:  mediaType,
-			Filename:   filename,
+			ID:              msg.Info.ID,
+			ChatJID:         msg.Info.Chat.String(),
+			ChatName:        chatName,
+			Sender:          msg.Info.Sender.String(),
+			SenderName:      senderName,
+			Content:         content,
+			Timestamp:       msg.Info.Timestamp.Format(time.RFC3339),
+			PushName:        msg.Info.PushName,
+			IsFromMe:        msg.Info.IsFromMe,
+			MediaType:       mediaType,
+			Filename:        filename,
+			QuotedMessageID: quotedMsgID,
+			QuotedSender:    quotedSender,
 		},
 		Metadata: types.WebhookMetadata{
 			ProcessingTimeMs: time.Since(startTime).Milliseconds(),
@@ -217,7 +220,7 @@ func (wm *Manager) ProcessMessage(client interface{}, msg *events.Message, chatN
 		// Find the specific trigger that matched
 		var matchedTrigger *types.WebhookTrigger
 		content := whatsapp.ExtractTextContent(msg.Message)
-		mediaType, _, _, _, _, _, _ := whatsapp.ExtractMediaInfo(msg.Message)
+		mediaType, _, _, _, _, _, _, _ := whatsapp.ExtractMediaInfo(msg.Message)
 
 		for _, trigger := range config.Triggers {
 			if trigger.Enabled && wm.matchesTrigger(trigger, msg, content, mediaType, chatName) {

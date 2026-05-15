@@ -45,24 +45,24 @@ def setup_logging(debug: bool = False) -> logging.Logger:
 logger = setup_logging(os.getenv("DEBUG", "false").lower() == "true")
 
 
-# Database paths - check for Docker (/app) or local development
-if os.path.exists('/app/store'):
-    # Docker environment
-    MESSAGES_DB_PATH = '/app/store/messages.db'
-    WHATSAPP_DB_PATH = '/app/store/whatsapp.db'
+# Database paths - WA_STORE_PATH env var > /app/store (Docker) > whatsapp-bridge/store (local dev) > store (legacy)
+_wa_store_env = os.getenv('WA_STORE_PATH')
+if _wa_store_env:
+    _store_path = _wa_store_env
+elif os.path.exists('/app/store'):
+    _store_path = '/app/store'
 else:
-    # Local development - use relative path from project root
-    _store_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'store')
-    MESSAGES_DB_PATH = os.path.join(_store_path, 'messages.db')
-    WHATSAPP_DB_PATH = os.path.join(_store_path, 'whatsapp.db')
+    # Local dev: whatsapp-bridge/store relative to project root (parent of whatsapp-mcp-server/)
+    _project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    _local_dev_path = os.path.join(_project_root, 'whatsapp-bridge', 'store')
+    _legacy_path = os.path.join(_project_root, 'store')
+    if os.path.exists(_local_dev_path):
+        _store_path = _local_dev_path
+    else:
+        _store_path = _legacy_path
 
-
-# Bridge API configuration
-_bridge_host = os.getenv('BRIDGE_HOST', 'localhost:8080')
-if ':' not in _bridge_host:
-    _bridge_host = f"{_bridge_host}:8080"
-BRIDGE_HOST = _bridge_host
-WHATSAPP_API_BASE_URL = f"http://{BRIDGE_HOST}/api"
+MESSAGES_DB_PATH = os.path.join(_store_path, 'messages.db')
+WHATSAPP_DB_PATH = os.path.join(_store_path, 'whatsapp.db')
 
 
 # Bridge API configuration

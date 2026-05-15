@@ -44,11 +44,66 @@ func NewMessageStore() (*MessageStore, error) {
 
 // runMigrations applies database migrations for schema updates
 func runMigrations(db *sql.DB) error {
-	// Add sender_name column if it doesn't exist (for existing databases)
-	_, err := db.Exec(`ALTER TABLE messages ADD COLUMN sender_name TEXT`)
-	if err != nil && err.Error() != "duplicate column name: sender_name" {
-		// Unexpected migration error - log but don't fail
-		fmt.Printf("Warning: migration error (sender_name column): %v\n", err)
+	migrations := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "sender_name",
+			sql:  `ALTER TABLE messages ADD COLUMN sender_name TEXT`,
+		},
+		{
+			name: "quoted_message_id",
+			sql:  `ALTER TABLE messages ADD COLUMN quoted_message_id TEXT`,
+		},
+		{
+			name: "quoted_sender_name",
+			sql:  `ALTER TABLE messages ADD COLUMN quoted_sender_name TEXT`,
+		},
+		{
+			name: "quoted_text_preview",
+			sql:  `ALTER TABLE messages ADD COLUMN quoted_text_preview TEXT`,
+		},
+		{
+			name: "reply_to_message_id",
+			sql:  `ALTER TABLE messages ADD COLUMN reply_to_message_id TEXT`,
+		},
+		{
+			name: "edit_count",
+			sql:  `ALTER TABLE messages ADD COLUMN edit_count INTEGER DEFAULT 0`,
+		},
+		{
+			name: "is_edited",
+			sql:  `ALTER TABLE messages ADD COLUMN is_edited BOOLEAN DEFAULT 0`,
+		},
+		{
+			name: "is_forwarded",
+			sql:  `ALTER TABLE messages ADD COLUMN is_forwarded BOOLEAN DEFAULT 0`,
+		},
+		{
+			name: "forwarded_from",
+			sql:  `ALTER TABLE messages ADD COLUMN forwarded_from TEXT`,
+		},
+		{
+			name: "is_system_message",
+			sql:  `ALTER TABLE messages ADD COLUMN is_system_message BOOLEAN DEFAULT 0`,
+		},
+		{
+			name: "system_message_type",
+			sql:  `ALTER TABLE messages ADD COLUMN system_message_type TEXT`,
+		},
+		{
+			name: "direct_path",
+			sql:  `ALTER TABLE messages ADD COLUMN direct_path TEXT`,
+		},
+	}
+
+	for _, m := range migrations {
+		_, err := db.Exec(m.sql)
+		if err != nil && err.Error() != fmt.Sprintf("duplicate column name: %s", m.name) {
+			// Unexpected migration error - log but don't fail
+			fmt.Printf("Warning: migration error (%s column): %v\n", m.name, err)
+		}
 	}
 	return nil
 }
@@ -77,6 +132,17 @@ func createTables(db *sql.DB) error {
 			file_sha256 BLOB,
 			file_enc_sha256 BLOB,
 			file_length INTEGER,
+			direct_path TEXT,
+			quoted_message_id TEXT,
+			quoted_sender_name TEXT,
+			quoted_text_preview TEXT,
+			reply_to_message_id TEXT,
+			edit_count INTEGER DEFAULT 0,
+			is_edited BOOLEAN DEFAULT 0,
+			is_forwarded BOOLEAN DEFAULT 0,
+			forwarded_from TEXT,
+			is_system_message BOOLEAN DEFAULT 0,
+			system_message_type TEXT,
 			PRIMARY KEY (id, chat_jid),
 			FOREIGN KEY (chat_jid) REFERENCES chats(jid)
 		);

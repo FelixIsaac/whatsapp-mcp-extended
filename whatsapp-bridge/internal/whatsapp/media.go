@@ -17,39 +17,97 @@ func ExtractTextContent(msg *waE2E.Message) string {
 		return ""
 	}
 
-	// Try to get text content
+	// Plain text
 	if text := msg.GetConversation(); text != "" {
 		return text
-	} else if extendedText := msg.GetExtendedTextMessage(); extendedText != nil {
-		return extendedText.GetText()
 	}
 
-	// For now, we're ignoring non-text messages
+	// Rich text / links
+	if ext := msg.GetExtendedTextMessage(); ext != nil {
+		if text := ext.GetText(); text != "" {
+			return text
+		}
+	}
+
+	// Media captions
+	if img := msg.GetImageMessage(); img != nil {
+		if caption := img.GetCaption(); caption != "" {
+			return caption
+		}
+	}
+	if vid := msg.GetVideoMessage(); vid != nil {
+		if caption := vid.GetCaption(); caption != "" {
+			return caption
+		}
+	}
+	if doc := msg.GetDocumentMessage(); doc != nil {
+		if caption := doc.GetCaption(); caption != "" {
+			return caption
+		}
+		if title := doc.GetTitle(); title != "" {
+			return title
+		}
+	}
+
+	// Location
+	if loc := msg.GetLocationMessage(); loc != nil {
+		if name := loc.GetName(); name != "" {
+			return fmt.Sprintf("[Location: %s]", name)
+		}
+		return fmt.Sprintf("[Location: %.5f, %.5f]", loc.GetDegreesLatitude(), loc.GetDegreesLongitude())
+	}
+
+	// Contact card
+	if contact := msg.GetContactMessage(); contact != nil {
+		if name := contact.GetDisplayName(); name != "" {
+			return fmt.Sprintf("[Contact: %s]", name)
+		}
+	}
+
+	// Sticker
+	if msg.GetStickerMessage() != nil {
+		return "[Sticker]"
+	}
+
+	// Poll
+	if poll := msg.GetPollCreationMessage(); poll != nil {
+		if q := poll.GetName(); q != "" {
+			return fmt.Sprintf("[Poll: %s]", q)
+		}
+	}
+
+	// Reaction (stores emoji + referenced message)
+	if reaction := msg.GetReactionMessage(); reaction != nil {
+		if emoji := reaction.GetText(); emoji != "" {
+			return fmt.Sprintf("[Reaction: %s]", emoji)
+		}
+	}
+
 	return ""
 }
 
 // ExtractMediaInfo extracts media information from a WhatsApp message
-func ExtractMediaInfo(msg *waE2E.Message) (mediaType string, filename string, url string, mediaKey []byte, fileSHA256 []byte, fileEncSHA256 []byte, fileLength uint64) {
+func ExtractMediaInfo(msg *waE2E.Message) (mediaType string, filename string, url string, directPath string, mediaKey []byte, fileSHA256 []byte, fileEncSHA256 []byte, fileLength uint64) {
 	if msg == nil {
-		return "", "", "", nil, nil, nil, 0
+		return "", "", "", "", nil, nil, nil, 0
 	}
 
 	// Check for image message
 	if img := msg.GetImageMessage(); img != nil {
 		return "image", "image_" + time.Now().Format("20060102_150405") + ".jpg",
-			img.GetURL(), img.GetMediaKey(), img.GetFileSHA256(), img.GetFileEncSHA256(), img.GetFileLength()
+			img.GetURL(), img.GetDirectPath(), img.GetMediaKey(), img.GetFileSHA256(), img.GetFileEncSHA256(), img.GetFileLength()
 	}
 
 	// Check for video message
 	if vid := msg.GetVideoMessage(); vid != nil {
 		return "video", "video_" + time.Now().Format("20060102_150405") + ".mp4",
-			vid.GetURL(), vid.GetMediaKey(), vid.GetFileSHA256(), vid.GetFileEncSHA256(), vid.GetFileLength()
+			vid.GetURL(), vid.GetDirectPath(), vid.GetMediaKey(), vid.GetFileSHA256(), vid.GetFileEncSHA256(), vid.GetFileLength()
 	}
 
 	// Check for audio message
 	if aud := msg.GetAudioMessage(); aud != nil {
 		return "audio", "audio_" + time.Now().Format("20060102_150405") + ".ogg",
-			aud.GetURL(), aud.GetMediaKey(), aud.GetFileSHA256(), aud.GetFileEncSHA256(), aud.GetFileLength()
+			aud.GetURL(), aud.GetDirectPath(), aud.GetMediaKey(), aud.GetFileSHA256(), aud.GetFileEncSHA256(), aud.GetFileLength()
 	}
 
 	// Check for document message
@@ -59,10 +117,34 @@ func ExtractMediaInfo(msg *waE2E.Message) (mediaType string, filename string, ur
 			filename = "document_" + time.Now().Format("20060102_150405")
 		}
 		return "document", filename,
-			doc.GetURL(), doc.GetMediaKey(), doc.GetFileSHA256(), doc.GetFileEncSHA256(), doc.GetFileLength()
+			doc.GetURL(), doc.GetDirectPath(), doc.GetMediaKey(), doc.GetFileSHA256(), doc.GetFileEncSHA256(), doc.GetFileLength()
 	}
 
-	return "", "", "", nil, nil, nil, 0
+	return "", "", "", "", nil, nil, nil, 0
+}
+
+// ExtractQuotedContext returns the stanza ID and participant of the quoted/replied-to message.
+func ExtractQuotedContext(msg *waE2E.Message) (stanzaID string, participant string) {
+	if msg == nil {
+		return "", ""
+	}
+
+	var ctx *waE2E.ContextInfo
+	if ext := msg.GetExtendedTextMessage(); ext != nil {
+		ctx = ext.GetContextInfo()
+	} else if img := msg.GetImageMessage(); img != nil {
+		ctx = img.GetContextInfo()
+	} else if vid := msg.GetVideoMessage(); vid != nil {
+		ctx = vid.GetContextInfo()
+	} else if doc := msg.GetDocumentMessage(); doc != nil {
+		ctx = doc.GetContextInfo()
+	}
+
+	if ctx == nil {
+		return "", ""
+	}
+
+	return ctx.GetStanzaID(), ctx.GetParticipant()
 }
 
 // AnalyzeOggOpus tries to extract duration and generate a simple waveform from an Ogg Opus file
