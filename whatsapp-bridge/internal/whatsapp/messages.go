@@ -180,6 +180,33 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 		case "cbz":
 			mediaType = whatsmeow.MediaDocument
 			mimeType = "application/x-cbz"
+		case "doc":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/msword"
+		case "docx":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+		case "xls":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/vnd.ms-excel"
+		case "xlsx":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+		case "ppt":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/vnd.ms-powerpoint"
+		case "pptx":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+		case "txt":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "text/plain"
+		case "csv":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "text/csv"
+		case "zip":
+			mediaType = whatsmeow.MediaDocument
+			mimeType = "application/zip"
 		default:
 			mediaType = whatsmeow.MediaDocument
 			mimeType = "application/octet-stream"
@@ -244,10 +271,10 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				FileLength:    &resp.FileLength,
 			}
 		case whatsmeow.MediaDocument:
-			fileName := mediaPath[strings.LastIndex(mediaPath, "/")+1:]
+			docName := filepath.Base(mediaPath)
 			msg.DocumentMessage = &waE2E.DocumentMessage{
-				Title:         proto.String(fileName),
-				FileName:      proto.String(fileName),
+				Title:         proto.String(docName),
+				FileName:      proto.String(docName),
 				Caption:       proto.String(message),
 				Mimetype:      proto.String(mimeType),
 				URL:           &resp.URL,
