@@ -1,6 +1,6 @@
 # WhatsApp MCP Extended
 
-An extended Model Context Protocol (MCP) server for WhatsApp with **41 tools** - advanced messaging, group management, webhooks, presence, and more.
+An extended Model Context Protocol (MCP) server for WhatsApp with a curated **17-tool core profile** and a backward-compatible legacy profile for advanced messaging, group management, webhooks, presence, and more.
 
 > Built on [AdamRussak/whatsapp-mcp](https://github.com/AdamRussak/whatsapp-mcp) (webhooks, containers) which forked [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) (original). Extended with reactions, message editing, polls, group management, presence, newsletters, and more.
 
@@ -10,7 +10,7 @@ An extended Model Context Protocol (MCP) server for WhatsApp with **41 tools** -
 
 | Feature | Original | Extended |
 |---------|----------|----------|
-| MCP Tools | 12 | **41** |
+| MCP Tools | 12 | **17 core / 46 legacy** |
 | Reactions | - | ✅ |
 | Edit/Delete Messages | - | ✅ |
 | Group Management | - | ✅ |
@@ -67,7 +67,42 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
 }
 ```
 
-## MCP Tools (41 Total)
+## MCP Tools
+
+The default tool profile is `legacy` to avoid breaking existing users. It exposes the historical narrow tools plus newer merged tools.
+
+For new installs, prefer the smaller core profile:
+
+```json
+{
+  "mcpServers": {
+    "whatsapp": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/whatsapp-mcp-extended/whatsapp-mcp-server", "python", "main.py"],
+      "env": {
+        "WHATSAPP_MCP_TOOL_PROFILE": "core"
+      }
+    }
+  }
+}
+```
+
+Profiles:
+
+| Profile | Tools | Use |
+|---------|-------|-----|
+| `legacy` | 46 | Default. Keeps old tool names working. |
+| `core` | 17 | Smaller agent-facing surface for normal chat/search/send/media use. |
+
+Merged replacements:
+
+| Prefer | Replaces |
+|--------|----------|
+| `get_contact_context` | `get_contact_details`, `get_direct_chat_by_contact`, `get_contact_chats`, `get_last_interaction` |
+| `manage_nickname` | `set_nickname`, `get_nickname`, `remove_nickname`, `list_nicknames` |
+| `manage_group` | `create_group`, `add_group_members`, `remove_group_members`, `promote_to_admin`, `demote_admin`, `leave_group`, `update_group` |
+| `manage_blocklist` | `get_blocklist`, `block_user`, `unblock_user` |
+| `manage_newsletter` | `follow_newsletter`, `unfollow_newsletter`, `create_newsletter` |
 
 ### Messaging
 | Tool | Description |

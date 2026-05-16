@@ -1,10 +1,12 @@
 """WhatsApp MCP Server - stdio transport for Claude Code CLI"""
 
+import os
 from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.utilities.types import Image
+from mcp.types import ToolAnnotations
 
 # Phase 2: Group Management
 from whatsapp import add_group_members as whatsapp_add_group_members
@@ -59,9 +61,49 @@ _INLINE_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
+TOOL_PROFILE = os.getenv("WHATSAPP_MCP_TOOL_PROFILE", "legacy").lower()
+
+READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True)
+DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=True)
 
 
-@mcp.tool()
+def _noop_tool(*args: Any, **kwargs: Any) -> Any:
+    if args and callable(args[0]) and len(args) == 1 and not kwargs:
+        return args[0]
+
+    def decorator(func: Any) -> Any:
+        return func
+
+    return decorator
+
+
+def legacy_tool(*args: Any, **kwargs: Any) -> Any:
+    """Register deprecated compatibility tools unless core profile is requested."""
+    if TOOL_PROFILE == "core":
+        return _noop_tool(*args, **kwargs)
+    return mcp.tool(*args, **kwargs)
+
+
+def advanced_tool(*args: Any, **kwargs: Any) -> Any:
+    """Register advanced/destructive tools unless core profile is requested."""
+    if TOOL_PROFILE == "core":
+        return _noop_tool(*args, **kwargs)
+    return mcp.tool(*args, **kwargs)
+
+
+def _invalid_action(action: str, allowed: tuple[str, ...], replacement: str | None = None) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "success": False,
+        "error": f"Invalid action '{action}'. Use one of: {', '.join(allowed)}",
+        "allowed_actions": list(allowed),
+    }
+    if replacement:
+        result["use_tool"] = replacement
+    return result
+
+
+@mcp.tool(annotations=READ_ONLY)
 def search_contacts(query: str) -> list[dict[str, Any]]:
     """Search WhatsApp contacts by name or phone number.
 
@@ -79,7 +121,7 @@ def search_contacts(query: str) -> list[dict[str, Any]]:
     return whatsapp_search_contacts(query)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_messages(
     after: str | None = None,
     before: str | None = None,
@@ -118,7 +160,7 @@ def list_messages(
     return messages
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_chats(
     query: str | None = None,
     limit: int = 20,
@@ -146,7 +188,7 @@ def list_chats(
     return chats
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]:
     """Get WhatsApp chat metadata by JID.
 
@@ -158,7 +200,10 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]
     return chat
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=READ_ONLY,
+    description="Deprecated narrow lookup. Prefer get_contact_context(identifier, include_chats=True).",
+)
 def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any]:
     """Get WhatsApp chat metadata by sender phone number.
 
@@ -169,7 +214,10 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any]:
     return chat
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=READ_ONLY,
+    description="Deprecated narrow lookup. Prefer get_contact_context(identifier, include_chats=True).",
+)
 def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str, Any]]:
     """Get all WhatsApp chats involving the contact.
 
@@ -182,7 +230,10 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str
     return chats
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=READ_ONLY,
+    description="Deprecated narrow lookup. Prefer get_contact_context(identifier, include_last_interaction=True).",
+)
 def get_last_interaction(jid: str) -> str:
     """Get most recent WhatsApp message involving the contact.
 
@@ -193,7 +244,7 @@ def get_last_interaction(jid: str) -> str:
     return message
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_message_context(message_id: str, before: int = 5, after: int = 5) -> dict[str, Any]:
     """Get context around a specific WhatsApp message.
 
@@ -211,7 +262,7 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> dic
     return context
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def send_message(recipient: str, message: str, mentioned_jids: list[str] | None = None) -> dict[str, Any]:
     """Send a WhatsApp message to a person or group. For group chats use the JID.
 
@@ -227,7 +278,7 @@ def send_message(recipient: str, message: str, mentioned_jids: list[str] | None 
     return whatsapp_send_message(recipient, message, mentioned_jids)
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def send_file(recipient: str, media_path: str) -> dict[str, Any]:
     """Send a file such as a picture, raw audio, video or document via WhatsApp to the specified recipient. For group messages use the JID.
 
@@ -242,7 +293,7 @@ def send_file(recipient: str, media_path: str) -> dict[str, Any]:
     return whatsapp_send_file(recipient, media_path)
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
     """Send any audio file as a WhatsApp audio message to the specified recipient. For group messages use the JID. If it errors due to ffmpeg not being installed, use send_file instead.
 
@@ -257,7 +308,7 @@ def send_audio_message(recipient: str, media_path: str) -> dict[str, Any]:
     return whatsapp_audio_voice_message(recipient, media_path)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def download_media(message_id: str, chat_jid: str) -> Any:
     """Download media from a WhatsApp message and get the local file path.
 
@@ -294,7 +345,10 @@ def download_media(message_id: str, chat_jid: str) -> Any:
     return status
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=READ_ONLY,
+    description="Deprecated narrow lookup. Prefer get_contact_context(identifier).",
+)
 def get_contact_details(identifier: str) -> dict[str, Any] | None:
     """Get detailed information about a WhatsApp contact.
 
@@ -311,7 +365,7 @@ def get_contact_details(identifier: str) -> dict[str, Any] | None:
     return contact
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_all_contacts(limit: int = 100) -> list[dict[str, Any]]:
     """List all WhatsApp contacts with their information.
 
@@ -324,7 +378,10 @@ def list_all_contacts(limit: int = 100) -> list[dict[str, Any]]:
     return whatsapp_list_all_contacts(limit)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=WRITE,
+    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='set', jid=..., nickname=...).",
+)
 def set_nickname(jid: str, nickname: str) -> dict[str, Any]:
     """Set a custom nickname for a WhatsApp contact.
 
@@ -338,7 +395,10 @@ def set_nickname(jid: str, nickname: str) -> dict[str, Any]:
     return whatsapp_set_contact_nickname(jid, nickname)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=READ_ONLY,
+    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='get', jid=...).",
+)
 def get_nickname(jid: str) -> str:
     """Get the custom nickname for a WhatsApp contact.
 
@@ -351,7 +411,10 @@ def get_nickname(jid: str) -> str:
     return f"No nickname set for {jid}"
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=WRITE,
+    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='remove', jid=...).",
+)
 def remove_nickname(jid: str) -> dict[str, Any]:
     """Remove the custom nickname for a WhatsApp contact.
 
@@ -364,7 +427,10 @@ def remove_nickname(jid: str) -> dict[str, Any]:
     return whatsapp_remove_contact_nickname(jid)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=READ_ONLY,
+    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='list').",
+)
 def list_nicknames() -> list[dict[str, Any]]:
     """List all custom contact nicknames.
 
@@ -374,10 +440,67 @@ def list_nicknames() -> list[dict[str, Any]]:
     return whatsapp_list_contact_nicknames()
 
 
+@mcp.tool(
+    annotations=READ_ONLY,
+    description=(
+        "Get contact details plus optional related chats and last interaction. "
+        "Prefer this over get_contact_details, get_direct_chat_by_contact, get_contact_chats, and get_last_interaction."
+    ),
+)
+def get_contact_context(
+    identifier: str,
+    include_chats: bool = False,
+    include_last_interaction: bool = False,
+    limit: int = 20,
+    page: int = 0,
+) -> dict[str, Any]:
+    """Get contact details and optional chat/message context in one composable call."""
+    contact = whatsapp_get_contact_by_jid(identifier)
+    if not contact:
+        contact = whatsapp_get_contact_by_phone(identifier)
+
+    jid = contact.get("jid") if contact else identifier
+    result: dict[str, Any] = {"contact": contact}
+
+    if include_chats:
+        result["chats"] = whatsapp_get_contact_chats(jid, limit, page)
+        result["direct_chat"] = whatsapp_get_direct_chat_by_contact(jid.split("@")[0])
+    if include_last_interaction:
+        result["last_interaction"] = whatsapp_get_last_interaction(jid)
+
+    return result
+
+
+@mcp.tool(
+    annotations=WRITE,
+    description=(
+        "Manage custom contact nicknames. "
+        "Use action='set', 'get', 'remove', or 'list'. Prefer this over set_nickname/get_nickname/remove_nickname/list_nicknames."
+    ),
+)
+def manage_nickname(action: str, jid: str | None = None, nickname: str | None = None) -> dict[str, Any]:
+    """Manage custom contact nicknames with one action-based tool."""
+    allowed = ("set", "get", "remove", "list")
+    if action not in allowed:
+        return _invalid_action(action, allowed, "manage_nickname")
+
+    if action == "list":
+        return {"success": True, "nicknames": whatsapp_list_contact_nicknames()}
+    if not jid:
+        return {"success": False, "error": "jid is required for set/get/remove", "use_tool": "manage_nickname"}
+    if action == "set":
+        if nickname is None:
+            return {"success": False, "error": "nickname is required for action='set'", "use_tool": "manage_nickname"}
+        return whatsapp_set_contact_nickname(jid, nickname)
+    if action == "get":
+        return {"success": True, "jid": jid, "nickname": whatsapp_get_contact_nickname(jid)}
+    return whatsapp_remove_contact_nickname(jid)
+
+
 # Phase 1 Features: Reactions, Edit, Delete, Group Info, Mark Read
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def send_reaction(chat_jid: str, message_id: str, emoji: str) -> dict[str, Any]:
     """Send an emoji reaction to a WhatsApp message.
 
@@ -392,7 +515,7 @@ def send_reaction(chat_jid: str, message_id: str, emoji: str) -> dict[str, Any]:
     return whatsapp_send_reaction(chat_jid, message_id, emoji)
 
 
-@mcp.tool()
+@advanced_tool(annotations=WRITE)
 def edit_message(chat_jid: str, message_id: str, new_content: str) -> dict[str, Any]:
     """Edit a previously sent WhatsApp message.
 
@@ -407,7 +530,7 @@ def edit_message(chat_jid: str, message_id: str, new_content: str) -> dict[str, 
     return whatsapp_edit_message(chat_jid, message_id, new_content)
 
 
-@mcp.tool()
+@advanced_tool(annotations=DESTRUCTIVE)
 def delete_message(chat_jid: str, message_id: str, sender_jid: str | None = None) -> dict[str, Any]:
     """Delete/revoke a WhatsApp message.
 
@@ -422,7 +545,7 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: str | None = None
     return whatsapp_delete_message(chat_jid, message_id, sender_jid)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_group_info(group_jid: str) -> dict[str, Any]:
     """Get information about a WhatsApp group.
 
@@ -435,7 +558,7 @@ def get_group_info(group_jid: str) -> dict[str, Any]:
     return whatsapp_get_group_info(group_jid)
 
 
-@mcp.tool()
+@advanced_tool(annotations=WRITE)
 def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = None) -> dict[str, Any]:
     """Mark WhatsApp messages as read (sends blue ticks).
 
@@ -453,7 +576,10 @@ def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = No
 # Phase 2: Group Management
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow group tool. Prefer manage_group(action='create', name=..., participants=...).",
+)
 def create_group(name: str, participants: list[str]) -> dict[str, Any]:
     """Create a new WhatsApp group.
 
@@ -467,7 +593,10 @@ def create_group(name: str, participants: list[str]) -> dict[str, Any]:
     return whatsapp_create_group(name, participants)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow group tool. Prefer manage_group(action='add_members', group_jid=..., participants=...).",
+)
 def add_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
     """Add members to a WhatsApp group.
 
@@ -481,7 +610,10 @@ def add_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]
     return whatsapp_add_group_members(group_jid, participants)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow group tool. Prefer manage_group(action='remove_members', group_jid=..., participants=...).",
+)
 def remove_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
     """Remove members from a WhatsApp group.
 
@@ -495,7 +627,10 @@ def remove_group_members(group_jid: str, participants: list[str]) -> dict[str, A
     return whatsapp_remove_group_members(group_jid, participants)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow group tool. Prefer manage_group(action='promote_admin', group_jid=..., participant=...).",
+)
 def promote_to_admin(group_jid: str, participant: str) -> dict[str, Any]:
     """Promote a group member to admin.
 
@@ -509,7 +644,10 @@ def promote_to_admin(group_jid: str, participant: str) -> dict[str, Any]:
     return whatsapp_promote_to_admin(group_jid, participant)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow group tool. Prefer manage_group(action='demote_admin', group_jid=..., participant=...).",
+)
 def demote_admin(group_jid: str, participant: str) -> dict[str, Any]:
     """Demote a group admin to regular member.
 
@@ -523,7 +661,10 @@ def demote_admin(group_jid: str, participant: str) -> dict[str, Any]:
     return whatsapp_demote_admin(group_jid, participant)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow group tool. Prefer manage_group(action='leave', group_jid=...).",
+)
 def leave_group(group_jid: str) -> dict[str, Any]:
     """Leave a WhatsApp group.
 
@@ -536,7 +677,10 @@ def leave_group(group_jid: str) -> dict[str, Any]:
     return whatsapp_leave_group(group_jid)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow group tool. Prefer manage_group(action='update', group_jid=..., name=..., topic=...).",
+)
 def update_group(group_jid: str, name: str | None = None, topic: str | None = None) -> dict[str, Any]:
     """Update group name and/or topic (description).
 
@@ -551,10 +695,79 @@ def update_group(group_jid: str, name: str | None = None, topic: str | None = No
     return whatsapp_update_group(group_jid, name, topic)
 
 
+@advanced_tool(
+    annotations=DESTRUCTIVE,
+    description=(
+        "Manage WhatsApp groups with one composable tool. "
+        "Use action='create', 'add_members', 'remove_members', 'promote_admin', 'demote_admin', 'leave', or 'update'. "
+        "Prefer this over create_group/add_group_members/remove_group_members/promote_to_admin/demote_admin/leave_group/update_group."
+    ),
+)
+def manage_group(
+    action: str,
+    group_jid: str | None = None,
+    name: str | None = None,
+    participants: list[str] | None = None,
+    participant: str | None = None,
+    topic: str | None = None,
+) -> dict[str, Any]:
+    """Create/update/administer groups through one action-based tool."""
+    allowed = ("create", "add_members", "remove_members", "promote_admin", "demote_admin", "leave", "update")
+    if action not in allowed:
+        return _invalid_action(action, allowed, "manage_group")
+
+    if action == "create":
+        if not name or not participants:
+            return {
+                "success": False,
+                "error": "name and participants are required for action='create'",
+                "use_tool": "manage_group",
+            }
+        return whatsapp_create_group(name, participants)
+
+    if not group_jid:
+        return {"success": False, "error": "group_jid is required for this action", "use_tool": "manage_group"}
+    if action == "add_members":
+        if not participants:
+            return {
+                "success": False,
+                "error": "participants is required for action='add_members'",
+                "use_tool": "manage_group",
+            }
+        return whatsapp_add_group_members(group_jid, participants)
+    if action == "remove_members":
+        if not participants:
+            return {
+                "success": False,
+                "error": "participants is required for action='remove_members'",
+                "use_tool": "manage_group",
+            }
+        return whatsapp_remove_group_members(group_jid, participants)
+    if action == "promote_admin":
+        if not participant:
+            return {
+                "success": False,
+                "error": "participant is required for action='promote_admin'",
+                "use_tool": "manage_group",
+            }
+        return whatsapp_promote_to_admin(group_jid, participant)
+    if action == "demote_admin":
+        if not participant:
+            return {
+                "success": False,
+                "error": "participant is required for action='demote_admin'",
+                "use_tool": "manage_group",
+            }
+        return whatsapp_demote_admin(group_jid, participant)
+    if action == "leave":
+        return whatsapp_leave_group(group_jid)
+    return whatsapp_update_group(group_jid, name, topic)
+
+
 # Phase 3: Polls
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_poll(chat_jid: str, question: str, options: list[str], multi_select: bool = False) -> dict[str, Any]:
     """Create and send a poll to a WhatsApp chat.
 
@@ -573,7 +786,7 @@ def create_poll(chat_jid: str, question: str, options: list[str], multi_select: 
 # Phase 4: History Sync
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def request_history(
     chat_jid: str, oldest_msg_id: str, oldest_msg_timestamp: int, oldest_msg_from_me: bool = False, count: int = 50
 ) -> dict[str, Any]:
@@ -604,7 +817,7 @@ def request_history(
 # Phase 5: Advanced Features
 
 
-@mcp.tool()
+@advanced_tool(annotations=WRITE)
 def set_presence(presence: str) -> dict[str, Any]:
     """Set your own presence status (available/unavailable).
 
@@ -617,7 +830,7 @@ def set_presence(presence: str) -> dict[str, Any]:
     return whatsapp_set_presence(presence)
 
 
-@mcp.tool()
+@advanced_tool(annotations=WRITE)
 def subscribe_presence(jid: str) -> dict[str, Any]:
     """Subscribe to presence updates for a contact.
 
@@ -633,7 +846,7 @@ def subscribe_presence(jid: str) -> dict[str, Any]:
     return whatsapp_subscribe_presence(jid)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_profile_picture(jid: str, preview: bool = False) -> dict[str, Any]:
     """Get the profile picture URL for a user or group.
 
@@ -647,7 +860,10 @@ def get_profile_picture(jid: str, preview: bool = False) -> dict[str, Any]:
     return whatsapp_get_profile_picture(jid, preview)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=READ_ONLY,
+    description="Deprecated narrow blocklist tool. Prefer manage_blocklist(action='list').",
+)
 def get_blocklist() -> dict[str, Any]:
     """Get the list of blocked users.
 
@@ -657,7 +873,10 @@ def get_blocklist() -> dict[str, Any]:
     return whatsapp_get_blocklist()
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow blocklist tool. Prefer manage_blocklist(action='block', jid=...).",
+)
 def block_user(jid: str) -> dict[str, Any]:
     """Block a WhatsApp user.
 
@@ -670,7 +889,10 @@ def block_user(jid: str) -> dict[str, Any]:
     return whatsapp_update_blocklist(jid, "block")
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow blocklist tool. Prefer manage_blocklist(action='unblock', jid=...).",
+)
 def unblock_user(jid: str) -> dict[str, Any]:
     """Unblock a WhatsApp user.
 
@@ -683,7 +905,10 @@ def unblock_user(jid: str) -> dict[str, Any]:
     return whatsapp_update_blocklist(jid, "unblock")
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow newsletter tool. Prefer manage_newsletter(action='follow', jid=...).",
+)
 def follow_newsletter(jid: str) -> dict[str, Any]:
     """Follow (join) a WhatsApp newsletter/channel.
 
@@ -696,7 +921,10 @@ def follow_newsletter(jid: str) -> dict[str, Any]:
     return whatsapp_follow_newsletter(jid)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow newsletter tool. Prefer manage_newsletter(action='unfollow', jid=...).",
+)
 def unfollow_newsletter(jid: str) -> dict[str, Any]:
     """Unfollow a WhatsApp newsletter/channel.
 
@@ -709,7 +937,10 @@ def unfollow_newsletter(jid: str) -> dict[str, Any]:
     return whatsapp_unfollow_newsletter(jid)
 
 
-@mcp.tool()
+@legacy_tool(
+    annotations=DESTRUCTIVE,
+    description="Deprecated narrow newsletter tool. Prefer manage_newsletter(action='create', name=..., description=...).",
+)
 def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
     """Create a new WhatsApp newsletter/channel.
 
@@ -721,6 +952,53 @@ def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
         A dictionary with jid, name, description of created newsletter
     """
     return whatsapp_create_newsletter(name, description)
+
+
+@advanced_tool(
+    annotations=DESTRUCTIVE,
+    description=(
+        "Manage blocked WhatsApp users. Use action='list', 'block', or 'unblock'. "
+        "Prefer this over get_blocklist/block_user/unblock_user."
+    ),
+)
+def manage_blocklist(action: str, jid: str | None = None) -> dict[str, Any]:
+    """List, block, or unblock users through one action-based tool."""
+    allowed = ("list", "block", "unblock")
+    if action not in allowed:
+        return _invalid_action(action, allowed, "manage_blocklist")
+    if action == "list":
+        return whatsapp_get_blocklist()
+    if not jid:
+        return {"success": False, "error": "jid is required for block/unblock", "use_tool": "manage_blocklist"}
+    return whatsapp_update_blocklist(jid, action)
+
+
+@advanced_tool(
+    annotations=DESTRUCTIVE,
+    description=(
+        "Manage WhatsApp newsletters/channels. Use action='follow', 'unfollow', or 'create'. "
+        "Prefer this over follow_newsletter/unfollow_newsletter/create_newsletter."
+    ),
+)
+def manage_newsletter(
+    action: str,
+    jid: str | None = None,
+    name: str | None = None,
+    description: str = "",
+) -> dict[str, Any]:
+    """Follow, unfollow, or create newsletters through one action-based tool."""
+    allowed = ("follow", "unfollow", "create")
+    if action not in allowed:
+        return _invalid_action(action, allowed, "manage_newsletter")
+    if action == "create":
+        if not name:
+            return {"success": False, "error": "name is required for action='create'", "use_tool": "manage_newsletter"}
+        return whatsapp_create_newsletter(name, description)
+    if not jid:
+        return {"success": False, "error": "jid is required for follow/unfollow", "use_tool": "manage_newsletter"}
+    if action == "follow":
+        return whatsapp_follow_newsletter(jid)
+    return whatsapp_unfollow_newsletter(jid)
 
 
 if __name__ == "__main__":
