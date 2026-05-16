@@ -5,7 +5,7 @@ import sqlite3
 import tempfile
 from datetime import datetime, timedelta
 
-from whatsapp import list_chats
+from whatsapp import get_chat, list_chats
 
 
 def _build_messages_db() -> str:
@@ -87,5 +87,22 @@ def test_list_chats_include_last_message_true_returns_latest(monkeypatch):
         assert chats[0]["last_message_id"] == "m2"
         assert chats[0]["last_sender"] == "111@s.whatsapp.net"
         assert chats[0]["last_is_from_me"] == 0
+    finally:
+        os.unlink(db_path)
+
+
+def test_get_chat_include_last_message_false_no_sql_error(monkeypatch):
+    db_path = _build_messages_db()
+    try:
+        monkeypatch.setenv("MESSAGES_DB_PATH", db_path)
+        monkeypatch.setattr("whatsapp.MESSAGES_DB_PATH", db_path)
+
+        chat = get_chat("111@s.whatsapp.net", include_last_message=False)
+
+        assert chat is not None
+        assert chat["jid"] == "111@s.whatsapp.net"
+        assert chat["last_message"] is None
+        assert chat["last_sender"] is None
+        assert chat["last_is_from_me"] is None
     finally:
         os.unlink(db_path)

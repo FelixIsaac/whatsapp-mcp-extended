@@ -593,19 +593,16 @@ def list_chats(
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
 
-        if include_last_message:
-            query_sql = """
-                SELECT c.jid, c.name,
-                       m.timestamp, m.content, m.id, m.sender, m.is_from_me, m.sender_name
-                FROM chats c
-                LEFT JOIN (
-                    SELECT chat_jid, timestamp, content, id, sender, is_from_me, sender_name,
-                           ROW_NUMBER() OVER (PARTITION BY chat_jid ORDER BY timestamp DESC) as rn
-                    FROM messages
-                ) m ON c.jid = m.chat_jid AND m.rn = 1
-            """
-        else:
-            query_sql = "SELECT jid, name, NULL, NULL, NULL, NULL, NULL, NULL FROM chats"
+        query_sql = """
+            SELECT c.jid, c.name,
+                   m.timestamp, m.content, m.id, m.sender, m.is_from_me, m.sender_name
+            FROM chats c
+            LEFT JOIN (
+                SELECT chat_jid, timestamp, content, id, sender, is_from_me, sender_name,
+                       ROW_NUMBER() OVER (PARTITION BY chat_jid ORDER BY timestamp DESC, id DESC) as rn
+                FROM messages
+            ) m ON c.jid = m.chat_jid AND m.rn = 1
+        """
 
         where_clauses = []
         params: list[Any] = []
@@ -631,9 +628,14 @@ def list_chats(
 
         result = []
         for chat in chats:
+            last_message = chat[3] if include_last_message else None
+            last_message_id = chat[4] if include_last_message else None
+            last_sender = chat[5] if include_last_message else None
+            last_is_from_me = bool(chat[6]) if include_last_message and chat[6] is not None else None
+
             # Use stored sender_name if available, otherwise fallback to lookup
             last_sender_name = None
-            if chat[5]:  # if there's a last_sender
+            if include_last_message and chat[5]:  # if there's a last_sender
                 last_sender_name = chat[7] if chat[7] else get_sender_name(chat[5])
 
             # Get chat statistics
@@ -681,11 +683,11 @@ def list_chats(
                 jid=chat[0],
                 name=chat[1],
                 last_message_time=last_msg_time,
-                last_message=chat[3],
-                last_message_id=chat[4],
-                last_sender=chat[5],
+                last_message=last_message,
+                last_message_id=last_message_id,
+                last_sender=last_sender,
                 last_sender_name=last_sender_name,
-                last_is_from_me=bool(chat[6]) if chat[6] is not None else None,
+                last_is_from_me=last_is_from_me,
                 total_message_count=total_msgs,
                 message_count_today=msgs_today,
                 message_count_last_7_days=msgs_week,

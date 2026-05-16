@@ -190,6 +190,29 @@ class TestListChats:
             else:
                 assert chat["chat_type"] == "individual"
 
+    def test_list_chats_include_last_message_false_no_sql_error(self, temp_messages_db, monkeypatch):
+        """Regression: include_last_message=False should not break query aliases."""
+        monkeypatch.setenv("MESSAGES_DB_PATH", temp_messages_db)
+        monkeypatch.setattr("lib.database.MESSAGES_DB_PATH", temp_messages_db)
+
+        chats = list_chats(limit=10, include_last_message=False)
+
+        assert len(chats) > 0
+        for chat in chats:
+            assert "last_message" not in chat
+            assert "last_message_id" not in chat
+            assert "last_sender" not in chat
+            assert "last_is_from_me" not in chat
+
+    def test_list_chats_include_last_message_false_with_query(self, temp_messages_db, monkeypatch):
+        """Regression: include_last_message=False with query should not reference missing aliases."""
+        monkeypatch.setenv("MESSAGES_DB_PATH", temp_messages_db)
+        monkeypatch.setattr("lib.database.MESSAGES_DB_PATH", temp_messages_db)
+
+        chats = list_chats(query="Test", limit=10, include_last_message=False)
+
+        assert len(chats) > 0
+
 
 class TestGetChatStatistics:
     """Tests for get_chat_statistics function."""

@@ -777,17 +777,23 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]
                 c.jid,
                 c.name,
                 c.last_message_time,
-                m.content as last_message,
-                m.sender as last_sender,
-                m.is_from_me as last_is_from_me
+                lm.content as last_message,
+                lm.sender as last_sender,
+                lm.is_from_me as last_is_from_me
             FROM chats c
+            LEFT JOIN (
+                SELECT
+                    chat_jid,
+                    content,
+                    sender,
+                    is_from_me,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY chat_jid
+                        ORDER BY timestamp DESC, id DESC
+                    ) as rn
+                FROM messages
+            ) lm ON c.jid = lm.chat_jid AND lm.rn = 1
         """
-
-        if include_last_message:
-            query += """
-                LEFT JOIN messages m ON c.jid = m.chat_jid
-                AND c.last_message_time = m.timestamp
-            """
 
         query += " WHERE c.jid = ?"
 
@@ -797,13 +803,17 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]
         if not chat_data:
             return None
 
+        last_message = chat_data[3] if include_last_message else None
+        last_sender = chat_data[4] if include_last_message else None
+        last_is_from_me = chat_data[5] if include_last_message else None
+
         chat = Chat(
             jid=chat_data[0],
             name=chat_data[1],
             last_message_time=datetime.fromisoformat(chat_data[2]) if chat_data[2] else None,
-            last_message=chat_data[3],
-            last_sender=chat_data[4],
-            last_is_from_me=chat_data[5],
+            last_message=last_message,
+            last_sender=last_sender,
+            last_is_from_me=last_is_from_me,
         )
         return chat.to_dict()
 
