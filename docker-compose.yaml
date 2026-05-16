@@ -15,7 +15,7 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     ports:
-      - "0.0.0.0:8180:8080"  # Localhost only for security
+      - "127.0.0.1:8180:8080"
     volumes:
       - ./store:/app/whatsapp-bridge/store
     environment:
@@ -80,7 +80,7 @@ services:
           memory: 300M
           cpus: '0.5'
     ports:
-      - "0.0.0.0:8090:8080"  # Unified Web UI (pairing + webhooks)
+      - "127.0.0.1:8090:8080"
     depends_on:
       - whatsapp-bridge
     restart: unless-stopped
