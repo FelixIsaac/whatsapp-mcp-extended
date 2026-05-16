@@ -1,6 +1,6 @@
 # WhatsApp MCP Extended
 
-An extended Model Context Protocol (MCP) server for WhatsApp with a curated **17-tool core profile** and a backward-compatible legacy profile for advanced messaging, group management, webhooks, presence, and more.
+An extended Model Context Protocol (MCP) server for WhatsApp with a curated agent-facing tool surface for messaging, search, media, group management, webhooks, presence, and more.
 
 > Built on [AdamRussak/whatsapp-mcp](https://github.com/AdamRussak/whatsapp-mcp) (webhooks, containers) which forked [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) (original). Extended with reactions, message editing, polls, group management, presence, newsletters, and more.
 
@@ -10,7 +10,7 @@ An extended Model Context Protocol (MCP) server for WhatsApp with a curated **17
 
 | Feature | Original | Extended |
 |---------|----------|----------|
-| MCP Tools | 12 | **17 core / 46 legacy** |
+| MCP Tools | 12 | **25 curated** |
 | Reactions | - | ✅ |
 | Edit/Delete Messages | - | ✅ |
 | Group Management | - | ✅ |
@@ -25,9 +25,9 @@ An extended Model Context Protocol (MCP) server for WhatsApp with a curated **17
 
 ```
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│   whatsapp-bridge   │     │   whatsapp-mcp      │     │    webhook-ui       │
+│   whatsapp-bridge   │     │   whatsapp-mcp      │     │   whatsapp-web-ui   │
 │   (Go + whatsmeow)  │◄────│   (Python + MCP)    │     │   (HTML/JS SPA)     │
-│   Port: 8080        │     │   Ports: 8081,8082  │     │   Port: 8089        │
+│   Port: 8080        │     │   Ports: 8081,8082  │     │   Port: 8090        │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
          │                           │
          ▼                           ▼
@@ -69,32 +69,9 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
 
 ## MCP Tools
 
-The default tool profile is `legacy` to avoid breaking existing users. It exposes the historical narrow tools plus newer merged tools.
+Version `0.2.0` exposes a curated 25-tool surface. Older narrow tools are no longer exposed to the agent; use the merged replacements below.
 
-For new installs, prefer the smaller core profile:
-
-```json
-{
-  "mcpServers": {
-    "whatsapp": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/whatsapp-mcp-extended/whatsapp-mcp-server", "python", "main.py"],
-      "env": {
-        "WHATSAPP_MCP_TOOL_PROFILE": "core"
-      }
-    }
-  }
-}
-```
-
-Profiles:
-
-| Profile | Tools | Use |
-|---------|-------|-----|
-| `legacy` | 46 | Default. Keeps old tool names working. |
-| `core` | 17 | Smaller agent-facing surface for normal chat/search/send/media use. |
-
-Merged replacements:
+Migration:
 
 | Prefer | Replaces |
 |--------|----------|
@@ -123,9 +100,6 @@ Merged replacements:
 | `get_chat` | Get chat by JID |
 | `list_messages` | Search messages with filters |
 | `get_message_context` | Get messages around a specific message |
-| `get_direct_chat_by_contact` | Find DM with contact |
-| `get_contact_chats` | All chats involving contact |
-| `get_last_interaction` | Most recent message with contact |
 | `request_history` | Request older message history |
 
 ### Contacts
@@ -133,23 +107,14 @@ Merged replacements:
 |------|-------------|
 | `search_contacts` | Search by name/phone |
 | `list_all_contacts` | List all contacts |
-| `get_contact_details` | Full contact info |
-| `set_nickname` | Set custom nickname |
-| `get_nickname` | Get custom nickname |
-| `remove_nickname` | Remove nickname |
-| `list_nicknames` | List all nicknames |
+| `get_contact_context` | Full contact info, related chats, and last interaction |
+| `manage_nickname` | Set/get/remove/list custom nicknames |
 
 ### Groups
 | Tool | Description |
 |------|-------------|
 | `get_group_info` | Group metadata & participants |
-| `create_group` | Create new group |
-| `add_group_members` | Add members |
-| `remove_group_members` | Remove members |
-| `promote_to_admin` | Promote to admin |
-| `demote_admin` | Demote admin |
-| `leave_group` | Leave group |
-| `update_group` | Update name/topic |
+| `manage_group` | Create/update/leave groups and manage members/admins |
 | `create_poll` | Create poll in chat |
 
 ### Presence & Profile
@@ -158,16 +123,12 @@ Merged replacements:
 | `set_presence` | Set online/offline status |
 | `subscribe_presence` | Subscribe to contact's presence |
 | `get_profile_picture` | Get profile picture URL |
-| `get_blocklist` | List blocked users |
-| `block_user` | Block user |
-| `unblock_user` | Unblock user |
+| `manage_blocklist` | List/block/unblock users |
 
 ### Newsletters (Channels)
 | Tool | Description |
 |------|-------------|
-| `follow_newsletter` | Follow channel |
-| `unfollow_newsletter` | Unfollow channel |
-| `create_newsletter` | Create new channel |
+| `manage_newsletter` | Follow/unfollow/create channels |
 
 ## API Design Philosophy
 
@@ -188,7 +149,7 @@ Real-time HTTP webhooks for incoming messages with:
 - **Security**: HMAC-SHA256 signatures
 - **Retry**: Exponential backoff
 
-Access webhook UI at `http://localhost:8089`
+Access the web UI at `http://localhost:8090`
 
 ## Development
 
@@ -201,8 +162,8 @@ cd whatsapp-bridge && go run main.go
 # MCP Server (Python 3.11+)
 cd whatsapp-mcp-server && uv sync && uv run python main.py
 
-# Webhook UI
-cd whatsapp-webhook-ui && python3 -m http.server 8089
+# Web UI
+cd whatsapp-web-ui && npm install && npm run dev
 ```
 
 ### Pre-build Checks
@@ -231,7 +192,7 @@ docker-compose up -d whatsapp-bridge
 | Bridge API | 8080 (→8180) | REST API |
 | MCP Server | 8081 | SSE transport |
 | Gradio UI | 8082 | Web testing UI |
-| Webhook UI | 8089 | Webhook management |
+| Web UI | 8090 | Chat, contacts, and webhook management |
 
 ## Troubleshooting
 
@@ -257,7 +218,7 @@ docker-compose logs -f whatsapp-bridge
 **Fork chain:**
 - [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) - Original MCP server (12 tools)
 - [AdamRussak/whatsapp-mcp](https://github.com/AdamRussak/whatsapp-mcp) - Added webhooks, container split, webhook UI
-- This repo - Added reactions, edit/delete, groups, polls, presence, newsletters (41 tools)
+- This repo - Added reactions, edit/delete, groups, polls, presence, newsletters, and a curated MCP tool surface
 
 **Libraries:**
 - [whatsmeow](https://github.com/tulir/whatsmeow) - Go WhatsApp Web API

@@ -37,11 +37,12 @@ uv run python main.py
 uv run python check.py
 ```
 
-### Webhook UI (whatsapp-webhook-ui/)
+### Web UI (whatsapp-web-ui/)
 
 ```bash
-cd whatsapp-webhook-ui
-python3 -m http.server 8089
+cd whatsapp-web-ui
+npm install
+npm run dev
 ```
 
 ## Code Style
@@ -83,7 +84,7 @@ python3 -m http.server 8089
 ```
 whatsapp-bridge/     # Go - WhatsApp connection, REST API
 whatsapp-mcp-server/ # Python - MCP tools, Claude integration
-whatsapp-webhook-ui/ # HTML/JS - Webhook management UI
+whatsapp-web-ui/     # HTML/JS - Chat/contact/webhook UI
 ```
 
 ## Adding New MCP Tools
@@ -91,8 +92,10 @@ whatsapp-webhook-ui/ # HTML/JS - Webhook management UI
 1. Add Go endpoint in `whatsapp-bridge/internal/api/handlers.go`
 2. Add route in `whatsapp-bridge/internal/api/server.go`
 3. Add Python function in `whatsapp-mcp-server/whatsapp.py`
-4. Add MCP tool in `whatsapp-mcp-server/main.py` and `gradio-main.py`
-5. Update README tool list
+4. Prefer extending an existing composable MCP tool in `whatsapp-mcp-server/main.py`
+5. Add a new MCP tool only for a distinct user task, not a one-endpoint wrapper
+6. Add/update `whatsapp-mcp-server/tests/test_main_tools.py`
+7. Update README tool list
 
 ## Questions?
 

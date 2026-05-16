@@ -1,5 +1,7 @@
 # WhatsApp MCP Extended - Feature Roadmap
 
+> Historical note: this roadmap tracks feature implementation history. As of MCP server `0.2.0`, the agent-facing MCP surface is curated to 25 tools. Several older one-action tools below are now exposed through merged tools such as `get_contact_context`, `manage_nickname`, `manage_group`, `manage_blocklist`, and `manage_newsletter`.
+
 ## Project Context
 
 - **Base**: `whatsapp-mcp-extended` (Dockerized, with webhooks)
@@ -19,9 +21,9 @@
 ### Architecture
 ```
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│   whatsapp-bridge   │     │   whatsapp-mcp      │     │    webhook-ui       │
+│   whatsapp-bridge   │     │   whatsapp-mcp      │     │   whatsapp-web-ui   │
 │   (Go + whatsmeow)  │◄────│   (Python + MCP)    │     │   (HTML/JS SPA)     │
-│   Port: 8080        │     │   Ports: 8081,8082  │     │   Port: 8089        │
+│   Port: 8080        │     │   Ports: 8081,8082  │     │   Port: 8090        │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
          │                           │
          ▼                           ▼
@@ -101,7 +103,7 @@
 | `archive_chat` | ❌ | ✅ |
 | `send_paused` | ❌ | ✅ |
 
-**Total: 12 tools (whatsapp) → 49 tools (extended)**
+**Current exposed MCP surface: 25 curated tools. Historical implementation list below includes internal/merged capabilities.**
 
 ---
 

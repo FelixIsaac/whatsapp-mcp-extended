@@ -1,6 +1,5 @@
 """WhatsApp MCP Server - stdio transport for Claude Code CLI"""
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -61,7 +60,6 @@ _INLINE_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp-extended")
-TOOL_PROFILE = os.getenv("WHATSAPP_MCP_TOOL_PROFILE", "legacy").lower()
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True)
@@ -78,17 +76,8 @@ def _noop_tool(*args: Any, **kwargs: Any) -> Any:
     return decorator
 
 
-def legacy_tool(*args: Any, **kwargs: Any) -> Any:
-    """Register deprecated compatibility tools unless core profile is requested."""
-    if TOOL_PROFILE == "core":
-        return _noop_tool(*args, **kwargs)
-    return mcp.tool(*args, **kwargs)
-
-
 def advanced_tool(*args: Any, **kwargs: Any) -> Any:
-    """Register advanced/destructive tools unless core profile is requested."""
-    if TOOL_PROFILE == "core":
-        return _noop_tool(*args, **kwargs)
+    """Register advanced/destructive MCP tools."""
     return mcp.tool(*args, **kwargs)
 
 
@@ -200,50 +189,6 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]
     return chat
 
 
-@legacy_tool(
-    annotations=READ_ONLY,
-    description="Deprecated narrow lookup. Prefer get_contact_context(identifier, include_chats=True).",
-)
-def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any]:
-    """Get WhatsApp chat metadata by sender phone number.
-
-    Args:
-        sender_phone_number: The phone number to search for
-    """
-    chat = whatsapp_get_direct_chat_by_contact(sender_phone_number)
-    return chat
-
-
-@legacy_tool(
-    annotations=READ_ONLY,
-    description="Deprecated narrow lookup. Prefer get_contact_context(identifier, include_chats=True).",
-)
-def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str, Any]]:
-    """Get all WhatsApp chats involving the contact.
-
-    Args:
-        jid: The contact's JID to search for
-        limit: Maximum number of chats to return (default 20)
-        page: Page number for pagination (default 0)
-    """
-    chats = whatsapp_get_contact_chats(jid, limit, page)
-    return chats
-
-
-@legacy_tool(
-    annotations=READ_ONLY,
-    description="Deprecated narrow lookup. Prefer get_contact_context(identifier, include_last_interaction=True).",
-)
-def get_last_interaction(jid: str) -> str:
-    """Get most recent WhatsApp message involving the contact.
-
-    Args:
-        jid: The JID of the contact to search for
-    """
-    message = whatsapp_get_last_interaction(jid)
-    return message
-
-
 @mcp.tool(annotations=READ_ONLY)
 def get_message_context(message_id: str, before: int = 5, after: int = 5) -> dict[str, Any]:
     """Get context around a specific WhatsApp message.
@@ -345,26 +290,6 @@ def download_media(message_id: str, chat_jid: str) -> Any:
     return status
 
 
-@legacy_tool(
-    annotations=READ_ONLY,
-    description="Deprecated narrow lookup. Prefer get_contact_context(identifier).",
-)
-def get_contact_details(identifier: str) -> dict[str, Any] | None:
-    """Get detailed information about a WhatsApp contact.
-
-    Args:
-        identifier: Either a JID or phone number of the contact
-
-    Returns:
-        Contact dict with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
-        or None if not found
-    """
-    contact = whatsapp_get_contact_by_jid(identifier)
-    if not contact:
-        contact = whatsapp_get_contact_by_phone(identifier)
-    return contact
-
-
 @mcp.tool(annotations=READ_ONLY)
 def list_all_contacts(limit: int = 100) -> list[dict[str, Any]]:
     """List all WhatsApp contacts with their information.
@@ -376,68 +301,6 @@ def list_all_contacts(limit: int = 100) -> list[dict[str, Any]]:
         List of contact dicts with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
     """
     return whatsapp_list_all_contacts(limit)
-
-
-@legacy_tool(
-    annotations=WRITE,
-    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='set', jid=..., nickname=...).",
-)
-def set_nickname(jid: str, nickname: str) -> dict[str, Any]:
-    """Set a custom nickname for a WhatsApp contact.
-
-    Args:
-        jid: The JID of the contact
-        nickname: The custom nickname to set
-
-    Returns:
-        A dictionary containing success, jid, nickname, and updated_at
-    """
-    return whatsapp_set_contact_nickname(jid, nickname)
-
-
-@legacy_tool(
-    annotations=READ_ONLY,
-    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='get', jid=...).",
-)
-def get_nickname(jid: str) -> str:
-    """Get the custom nickname for a WhatsApp contact.
-
-    Args:
-        jid: The JID of the contact
-    """
-    nickname = whatsapp_get_contact_nickname(jid)
-    if nickname:
-        return f"Nickname for {jid}: {nickname}"
-    return f"No nickname set for {jid}"
-
-
-@legacy_tool(
-    annotations=WRITE,
-    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='remove', jid=...).",
-)
-def remove_nickname(jid: str) -> dict[str, Any]:
-    """Remove the custom nickname for a WhatsApp contact.
-
-    Args:
-        jid: The JID of the contact
-
-    Returns:
-        A dictionary containing success and jid
-    """
-    return whatsapp_remove_contact_nickname(jid)
-
-
-@legacy_tool(
-    annotations=READ_ONLY,
-    description="Deprecated narrow nickname tool. Prefer manage_nickname(action='list').",
-)
-def list_nicknames() -> list[dict[str, Any]]:
-    """List all custom contact nicknames.
-
-    Returns:
-        List of dicts with jid, nickname, created_at, updated_at
-    """
-    return whatsapp_list_contact_nicknames()
 
 
 @mcp.tool(
@@ -574,125 +437,6 @@ def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = No
 
 
 # Phase 2: Group Management
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow group tool. Prefer manage_group(action='create', name=..., participants=...).",
-)
-def create_group(name: str, participants: list[str]) -> dict[str, Any]:
-    """Create a new WhatsApp group.
-
-    Args:
-        name: The name for the new group
-        participants: List of participant JIDs to add (e.g., ["123456789@s.whatsapp.net"])
-
-    Returns:
-        A dictionary containing success, group_jid, name, and participants
-    """
-    return whatsapp_create_group(name, participants)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow group tool. Prefer manage_group(action='add_members', group_jid=..., participants=...).",
-)
-def add_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
-    """Add members to a WhatsApp group.
-
-    Args:
-        group_jid: The JID of the group (e.g., "123456789@g.us")
-        participants: List of participant JIDs to add
-
-    Returns:
-        A dictionary containing success, group_jid, added count
-    """
-    return whatsapp_add_group_members(group_jid, participants)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow group tool. Prefer manage_group(action='remove_members', group_jid=..., participants=...).",
-)
-def remove_group_members(group_jid: str, participants: list[str]) -> dict[str, Any]:
-    """Remove members from a WhatsApp group.
-
-    Args:
-        group_jid: The JID of the group (e.g., "123456789@g.us")
-        participants: List of participant JIDs to remove
-
-    Returns:
-        A dictionary containing success, group_jid, removed count
-    """
-    return whatsapp_remove_group_members(group_jid, participants)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow group tool. Prefer manage_group(action='promote_admin', group_jid=..., participant=...).",
-)
-def promote_to_admin(group_jid: str, participant: str) -> dict[str, Any]:
-    """Promote a group member to admin.
-
-    Args:
-        group_jid: The JID of the group (e.g., "123456789@g.us")
-        participant: The JID of the participant to promote
-
-    Returns:
-        A dictionary containing success, group_jid, participant
-    """
-    return whatsapp_promote_to_admin(group_jid, participant)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow group tool. Prefer manage_group(action='demote_admin', group_jid=..., participant=...).",
-)
-def demote_admin(group_jid: str, participant: str) -> dict[str, Any]:
-    """Demote a group admin to regular member.
-
-    Args:
-        group_jid: The JID of the group (e.g., "123456789@g.us")
-        participant: The JID of the admin to demote
-
-    Returns:
-        A dictionary containing success, group_jid, participant
-    """
-    return whatsapp_demote_admin(group_jid, participant)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow group tool. Prefer manage_group(action='leave', group_jid=...).",
-)
-def leave_group(group_jid: str) -> dict[str, Any]:
-    """Leave a WhatsApp group.
-
-    Args:
-        group_jid: The JID of the group to leave (e.g., "123456789@g.us")
-
-    Returns:
-        A dictionary containing success, group_jid
-    """
-    return whatsapp_leave_group(group_jid)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow group tool. Prefer manage_group(action='update', group_jid=..., name=..., topic=...).",
-)
-def update_group(group_jid: str, name: str | None = None, topic: str | None = None) -> dict[str, Any]:
-    """Update group name and/or topic (description).
-
-    Args:
-        group_jid: The JID of the group (e.g., "123456789@g.us")
-        name: New group name (optional)
-        topic: New group topic/description (optional)
-
-    Returns:
-        A dictionary containing success, group_jid, updated fields
-    """
-    return whatsapp_update_group(group_jid, name, topic)
 
 
 @advanced_tool(
@@ -858,100 +602,6 @@ def get_profile_picture(jid: str, preview: bool = False) -> dict[str, Any]:
         A dictionary with url, id, type, direct_path (or has_picture=False if none)
     """
     return whatsapp_get_profile_picture(jid, preview)
-
-
-@legacy_tool(
-    annotations=READ_ONLY,
-    description="Deprecated narrow blocklist tool. Prefer manage_blocklist(action='list').",
-)
-def get_blocklist() -> dict[str, Any]:
-    """Get the list of blocked users.
-
-    Returns:
-        A dictionary with users list and count
-    """
-    return whatsapp_get_blocklist()
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow blocklist tool. Prefer manage_blocklist(action='block', jid=...).",
-)
-def block_user(jid: str) -> dict[str, Any]:
-    """Block a WhatsApp user.
-
-    Args:
-        jid: The JID of the user to block (e.g., "123456789@s.whatsapp.net")
-
-    Returns:
-        A dictionary containing success status
-    """
-    return whatsapp_update_blocklist(jid, "block")
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow blocklist tool. Prefer manage_blocklist(action='unblock', jid=...).",
-)
-def unblock_user(jid: str) -> dict[str, Any]:
-    """Unblock a WhatsApp user.
-
-    Args:
-        jid: The JID of the user to unblock (e.g., "123456789@s.whatsapp.net")
-
-    Returns:
-        A dictionary containing success status
-    """
-    return whatsapp_update_blocklist(jid, "unblock")
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow newsletter tool. Prefer manage_newsletter(action='follow', jid=...).",
-)
-def follow_newsletter(jid: str) -> dict[str, Any]:
-    """Follow (join) a WhatsApp newsletter/channel.
-
-    Args:
-        jid: The JID of the newsletter to follow
-
-    Returns:
-        A dictionary containing success status
-    """
-    return whatsapp_follow_newsletter(jid)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow newsletter tool. Prefer manage_newsletter(action='unfollow', jid=...).",
-)
-def unfollow_newsletter(jid: str) -> dict[str, Any]:
-    """Unfollow a WhatsApp newsletter/channel.
-
-    Args:
-        jid: The JID of the newsletter to unfollow
-
-    Returns:
-        A dictionary containing success status
-    """
-    return whatsapp_unfollow_newsletter(jid)
-
-
-@legacy_tool(
-    annotations=DESTRUCTIVE,
-    description="Deprecated narrow newsletter tool. Prefer manage_newsletter(action='create', name=..., description=...).",
-)
-def create_newsletter(name: str, description: str = "") -> dict[str, Any]:
-    """Create a new WhatsApp newsletter/channel.
-
-    Args:
-        name: The name for the newsletter
-        description: Optional description for the newsletter
-
-    Returns:
-        A dictionary with jid, name, description of created newsletter
-    """
-    return whatsapp_create_newsletter(name, description)
 
 
 @advanced_tool(
