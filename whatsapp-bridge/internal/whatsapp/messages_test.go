@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"go.mau.fi/whatsmeow"
 )
 
 func TestValidateMediaPath(t *testing.T) {
@@ -13,24 +15,18 @@ func TestValidateMediaPath(t *testing.T) {
 		wantErr     bool
 		errContains string
 	}{
-		// Valid paths
 		{"empty path", "", false, ""},
 		{"allowed /app/media", "/app/media/file.jpg", false, ""},
 		{"allowed /app/store", "/app/store/data.db", false, ""},
 		{"allowed /tmp", "/tmp/upload.png", false, ""},
-
-		// Path traversal attempts (should fail)
 		{"path traversal ../", "/app/media/../etc/passwd", true, "traversal"},
 		{"path traversal multiple", "/app/media/../../etc/passwd", true, "traversal"},
 		{"path traversal in middle", "/app/../../../etc/passwd", true, "traversal"},
-
-		// Outside allowed directories (should fail when DISABLE_PATH_CHECK is not set)
 		{"outside allowed /etc", "/etc/passwd", true, "outside allowed"},
 		{"outside allowed /home", "/home/user/file.txt", true, "outside allowed"},
 		{"outside allowed /var", "/var/log/syslog", true, "outside allowed"},
 	}
 
-	// Ensure DISABLE_PATH_CHECK is not set for these tests
 	os.Unsetenv("DISABLE_PATH_CHECK")
 
 	for _, tt := range tests {
@@ -45,41 +41,126 @@ func TestValidateMediaPath(t *testing.T) {
 				if tt.errContains != "" && !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.errContains)) {
 					t.Errorf("validateMediaPath(%s) error = %v, want error containing %q", tt.path, err, tt.errContains)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("validateMediaPath(%s) = %v, want nil", tt.path, err)
-				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("validateMediaPath(%s) = %v, want nil", tt.path, err)
 			}
 		})
 	}
 }
 
 func TestValidateMediaPath_DisableCheck(t *testing.T) {
-	// Save and restore env var
 	original := os.Getenv("DISABLE_PATH_CHECK")
 	defer os.Setenv("DISABLE_PATH_CHECK", original)
 
-	// Enable path check bypass
 	os.Setenv("DISABLE_PATH_CHECK", "true")
 
-	// Should now allow paths outside allowed directories
-	// Note: Path traversal attempts still blocked
-	err := validateMediaPath("/home/user/file.txt")
-	if err != nil {
+	if err := validateMediaPath("/home/user/file.txt"); err != nil {
 		t.Errorf("With DISABLE_PATH_CHECK=true, validateMediaPath should allow external paths, got: %v", err)
 	}
 }
 
 func TestValidateMediaPath_TraversalAlwaysBlocked(t *testing.T) {
-	// Save and restore env var
 	original := os.Getenv("DISABLE_PATH_CHECK")
 	defer os.Setenv("DISABLE_PATH_CHECK", original)
 
-	// Even with DISABLE_PATH_CHECK=true, path traversal should be blocked
 	os.Setenv("DISABLE_PATH_CHECK", "true")
 
-	err := validateMediaPath("/app/media/../../../etc/passwd")
-	if err == nil {
+	if err := validateMediaPath("/app/media/../../../etc/passwd"); err == nil {
 		t.Error("Path traversal should be blocked even with DISABLE_PATH_CHECK=true")
+	}
+}
+
+func TestMediaTypeAndMimeType(t *testing.T) {
+	tests := []struct {
+		name          string
+		mediaPath     string
+		wantMediaType whatsmeow.MediaType
+		wantMimeType  string
+	}{
+		{
+			name:          "pdf document",
+			mediaPath:     "/tmp/report.pdf",
+			wantMediaType: whatsmeow.MediaDocument,
+			wantMimeType:  "application/pdf",
+		},
+		{
+			name:          "docx document",
+			mediaPath:     "/tmp/spec.DOCX",
+			wantMediaType: whatsmeow.MediaDocument,
+			wantMimeType:  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		},
+		{
+			name:          "xlsx document",
+			mediaPath:     "/tmp/budget.xlsx",
+			wantMediaType: whatsmeow.MediaDocument,
+			wantMimeType:  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		},
+		{
+			name:          "cbz document",
+			mediaPath:     "/tmp/comic.cbz",
+			wantMediaType: whatsmeow.MediaDocument,
+			wantMimeType:  "application/x-cbz",
+		},
+		{
+			name:          "jpg image",
+			mediaPath:     "/tmp/photo.jpg",
+			wantMediaType: whatsmeow.MediaImage,
+			wantMimeType:  "image/jpeg",
+		},
+		{
+			name:          "unknown extension fallback",
+			mediaPath:     "/tmp/archive.weird",
+			wantMediaType: whatsmeow.MediaDocument,
+			wantMimeType:  "application/octet-stream",
+		},
+		{
+			name:          "no extension fallback",
+			mediaPath:     "/tmp/readme",
+			wantMediaType: whatsmeow.MediaDocument,
+			wantMimeType:  "application/octet-stream",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotMediaType, gotMimeType := mediaTypeAndMimeType(tt.mediaPath)
+			if gotMediaType != tt.wantMediaType {
+				t.Fatalf("mediaTypeAndMimeType() mediaType = %v, want %v", gotMediaType, tt.wantMediaType)
+			}
+			if gotMimeType != tt.wantMimeType {
+				t.Fatalf("mediaTypeAndMimeType() mimeType = %q, want %q", gotMimeType, tt.wantMimeType)
+			}
+		})
+	}
+}
+
+func TestDocumentFileName(t *testing.T) {
+	tests := []struct {
+		name      string
+		mediaPath string
+		want      string
+	}{
+		{
+			name:      "unix path",
+			mediaPath: "/tmp/Presidio-statement-May-2026.pdf",
+			want:      "Presidio-statement-May-2026.pdf",
+		},
+		{
+			name:      "windows path",
+			mediaPath: `C:\tmp\Quarterly Report.xlsx`,
+			want:      "Quarterly Report.xlsx",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := documentFileName(tt.mediaPath)
+			if got != tt.want {
+				t.Fatalf("documentFileName() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

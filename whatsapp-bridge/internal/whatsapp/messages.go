@@ -22,6 +22,63 @@ import (
 // mentionPattern matches @phone_number patterns in message text (7-15 digits)
 var mentionPattern = regexp.MustCompile(`@(\d{7,15})`)
 
+func mediaTypeAndMimeType(mediaPath string) (whatsmeow.MediaType, string) {
+	fileExt := strings.TrimPrefix(strings.ToLower(filepath.Ext(mediaPath)), ".")
+
+	switch fileExt {
+	case "jpg", "jpeg":
+		return whatsmeow.MediaImage, "image/jpeg"
+	case "png":
+		return whatsmeow.MediaImage, "image/png"
+	case "gif":
+		return whatsmeow.MediaImage, "image/gif"
+	case "webp":
+		return whatsmeow.MediaImage, "image/webp"
+	case "ogg":
+		return whatsmeow.MediaAudio, "audio/ogg; codecs=opus"
+	case "mp3":
+		return whatsmeow.MediaAudio, "audio/mpeg"
+	case "m4a", "aac":
+		return whatsmeow.MediaAudio, "audio/mp4"
+	case "mp4":
+		return whatsmeow.MediaVideo, "video/mp4"
+	case "avi":
+		return whatsmeow.MediaVideo, "video/avi"
+	case "mov":
+		return whatsmeow.MediaVideo, "video/quicktime"
+	case "epub":
+		return whatsmeow.MediaDocument, "application/epub+zip"
+	case "pdf":
+		return whatsmeow.MediaDocument, "application/pdf"
+	case "cbz":
+		return whatsmeow.MediaDocument, "application/x-cbz"
+	case "doc":
+		return whatsmeow.MediaDocument, "application/msword"
+	case "docx":
+		return whatsmeow.MediaDocument, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	case "xls":
+		return whatsmeow.MediaDocument, "application/vnd.ms-excel"
+	case "xlsx":
+		return whatsmeow.MediaDocument, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	case "ppt":
+		return whatsmeow.MediaDocument, "application/vnd.ms-powerpoint"
+	case "pptx":
+		return whatsmeow.MediaDocument, "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+	case "txt":
+		return whatsmeow.MediaDocument, "text/plain"
+	case "csv":
+		return whatsmeow.MediaDocument, "text/csv"
+	case "zip":
+		return whatsmeow.MediaDocument, "application/zip"
+	default:
+		return whatsmeow.MediaDocument, "application/octet-stream"
+	}
+}
+
+func documentFileName(mediaPath string) string {
+	return filepath.Base(mediaPath)
+}
+
 // extractMentionsFromText detects @number mentions in text and returns WhatsApp JIDs
 func extractMentionsFromText(text string) []string {
 	matches := mentionPattern.FindAllStringSubmatch(text, -1)
@@ -127,90 +184,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 			return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Error reading media file: %v", err)}
 		}
 
-		// Determine media type and mime type based on file extension
-		fileExt := strings.ToLower(mediaPath[strings.LastIndex(mediaPath, ".")+1:])
-		var mediaType whatsmeow.MediaType
-		var mimeType string
-
-		// Handle different media types
-		switch fileExt {
-		// Image types
-		case "jpg", "jpeg":
-			mediaType = whatsmeow.MediaImage
-			mimeType = "image/jpeg"
-		case "png":
-			mediaType = whatsmeow.MediaImage
-			mimeType = "image/png"
-		case "gif":
-			mediaType = whatsmeow.MediaImage
-			mimeType = "image/gif"
-		case "webp":
-			mediaType = whatsmeow.MediaImage
-			mimeType = "image/webp"
-
-		// Audio types
-		case "ogg":
-			mediaType = whatsmeow.MediaAudio
-			mimeType = "audio/ogg; codecs=opus"
-		case "mp3":
-			mediaType = whatsmeow.MediaAudio
-			mimeType = "audio/mpeg"
-		case "m4a", "aac":
-			mediaType = whatsmeow.MediaAudio
-			mimeType = "audio/mp4"
-
-		// Video types
-		case "mp4":
-			mediaType = whatsmeow.MediaVideo
-			mimeType = "video/mp4"
-		case "avi":
-			mediaType = whatsmeow.MediaVideo
-			mimeType = "video/avi"
-		case "mov":
-			mediaType = whatsmeow.MediaVideo
-			mimeType = "video/quicktime"
-
-		// Document types
-		case "epub":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/epub+zip"
-		case "pdf":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/pdf"
-		case "cbz":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/x-cbz"
-		case "doc":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/msword"
-		case "docx":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-		case "xls":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/vnd.ms-excel"
-		case "xlsx":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-		case "ppt":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/vnd.ms-powerpoint"
-		case "pptx":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-		case "txt":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "text/plain"
-		case "csv":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "text/csv"
-		case "zip":
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/zip"
-		default:
-			mediaType = whatsmeow.MediaDocument
-			mimeType = "application/octet-stream"
-		}
+		mediaType, mimeType := mediaTypeAndMimeType(mediaPath)
 
 		// Upload media to WhatsApp servers
 		resp, err := c.Upload(context.Background(), mediaData, mediaType)
@@ -271,7 +245,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				FileLength:    &resp.FileLength,
 			}
 		case whatsmeow.MediaDocument:
-			docName := filepath.Base(mediaPath)
+			docName := documentFileName(mediaPath)
 			msg.DocumentMessage = &waE2E.DocumentMessage{
 				Title:         proto.String(docName),
 				FileName:      proto.String(docName),
