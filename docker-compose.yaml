@@ -46,13 +46,15 @@ services:
           cpus: '1'
     ports:
       - "127.0.0.1:8081:8081"  # MCP server (localhost only)
-      - "127.0.0.1:8082:8082"  # Gradio UI (localhost only)
     volumes:
       - ./store:/app/store
     environment:
       - TZ=UTC
       - DEBUG=true
-      - GRADIO=false
+      - MCP_TRANSPORT=streamable-http
+      - HOST=0.0.0.0
+      - PORT=8081
+      - WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-core,send,media}
       - BRIDGE_HOST=whatsapp-bridge
       - API_KEY=${API_KEY}
     depends_on:

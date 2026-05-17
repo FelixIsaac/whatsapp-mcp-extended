@@ -3,7 +3,7 @@ FROM python:3.13 AS runtime
 
 WORKDIR /app
 
-# Copy the Python Gradio project files
+# Copy the Python MCP project files
 COPY ./whatsapp-mcp-server /app/whatsapp-mcp-server
 
 # Install system dependencies
@@ -27,15 +27,14 @@ RUN pip install -r requirements.txt
 
 # Create directories and entrypoint script
 RUN mkdir -p /app/store /app/media \
-    && printf '#!/bin/bash\ncd /app/whatsapp-mcp-server\npython gradio-main.py\n' > /app/entrypoint-mcp.sh \
+    && printf '#!/bin/bash\ncd /app/whatsapp-mcp-server\nexec python main.py\n' > /app/entrypoint-mcp.sh \
     && chmod +x /app/entrypoint-mcp.sh \
     && chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
 
-# Expose ports for MCP server and Gradio UI
+# Expose port for MCP server
 EXPOSE 8081
-EXPOSE 8082
 
 ENTRYPOINT ["/app/entrypoint-mcp.sh"]
