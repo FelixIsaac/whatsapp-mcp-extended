@@ -76,7 +76,7 @@ func mediaTypeAndMimeType(mediaPath string) (whatsmeow.MediaType, string) {
 }
 
 func documentFileName(mediaPath string) string {
-	return filepath.Base(mediaPath)
+	return filepath.Base(strings.ReplaceAll(mediaPath, "\\", "/"))
 }
 
 // extractMentionsFromText detects @number mentions in text and returns WhatsApp JIDs
