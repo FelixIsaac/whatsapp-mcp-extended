@@ -62,14 +62,6 @@ services:
       - n8n_n8n_traefik_network
       - whatsapp_internal
 
-  # Legacy webhook-ui - deprecated, use web-ui instead
-  # webhook-ui:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.ui
-  #   ports:
-  #     - "127.0.0.1:8089:8080"
-
   web-ui:
     build:
       context: .

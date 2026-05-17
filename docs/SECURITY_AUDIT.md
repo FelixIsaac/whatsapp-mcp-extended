@@ -230,7 +230,7 @@ func CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 ```go
 func CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
     allowedOrigins := map[string]bool{
-        "http://localhost:8089": true,  // Webhook UI
+        "http://localhost:8090": true,  // Web UI
         "http://localhost:8082": true,  // Gradio UI
     }
 
