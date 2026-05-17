@@ -13,6 +13,8 @@ import (
 	"whatsapp-bridge/internal/database"
 
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/proto/waCommon"
+	"go.mau.fi/whatsmeow/proto/waHistorySync"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 )
@@ -208,22 +210,12 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 		// Get appropriate chat name by passing the history sync conversation directly
 		name := c.GetChatName(messageStore, jid, chatJID, conversation, "")
 
-		// Process messages
 		messages := conversation.Messages
 		if len(messages) > 0 {
-			// Update chat with latest message timestamp
-			latestMsg := messages[0]
-			if latestMsg == nil || latestMsg.Message == nil {
+			timestamp, ok := latestHistoryMessageTime(messages)
+			if !ok {
 				continue
 			}
-
-			// Get timestamp from message info
-			ts := latestMsg.Message.GetMessageTimestamp()
-			if ts == 0 {
-				continue
-			}
-			timestamp := time.Unix(int64(ts), 0)
-
 			if err := messageStore.StoreChat(chatJID, name, timestamp); err != nil {
 				c.logger.Warnf("Failed to store chat: %v", err)
 			}
@@ -257,23 +249,7 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 					continue
 				}
 
-				// Determine sender
-				var sender string
-				isFromMe := false
-				if msg.Message.Key != nil {
-					if msg.Message.Key.FromMe != nil {
-						isFromMe = *msg.Message.Key.FromMe
-					}
-					if !isFromMe && msg.Message.Key.Participant != nil && *msg.Message.Key.Participant != "" {
-						sender = *msg.Message.Key.Participant
-					} else if isFromMe {
-						sender = c.Store.ID.User
-					} else {
-						sender = jid.User
-					}
-				} else {
-					sender = jid.User
-				}
+				sender, isFromMe := c.historyMessageSender(jid, msg.Message.Key)
 
 				// Store message
 				msgID := ""
@@ -326,6 +302,38 @@ func (c *Client) HandleHistorySync(messageStore *database.MessageStore, historyS
 	}
 
 	c.logger.Infof("History sync complete. Stored %d messages.", syncedCount)
+}
+
+func latestHistoryMessageTime(messages []*waHistorySync.HistorySyncMsg) (time.Time, bool) {
+	var latest time.Time
+	for _, msg := range messages {
+		if msg == nil || msg.Message == nil {
+			continue
+		}
+		ts := msg.Message.GetMessageTimestamp()
+		if ts == 0 {
+			continue
+		}
+		timestamp := time.Unix(int64(ts), 0)
+		if latest.IsZero() || timestamp.After(latest) {
+			latest = timestamp
+		}
+	}
+	return latest, !latest.IsZero()
+}
+
+func (c *Client) historyMessageSender(chat types.JID, key *waCommon.MessageKey) (string, bool) {
+	isFromMe := false
+	if key != nil && key.FromMe != nil {
+		isFromMe = *key.FromMe
+	}
+	if !isFromMe && key != nil && key.Participant != nil && *key.Participant != "" {
+		return *key.Participant, false
+	}
+	if isFromMe && c.Store != nil && c.Store.ID != nil {
+		return c.Store.ID.ToNonAD().String(), true
+	}
+	return chat.ToNonAD().String(), isFromMe
 }
 
 // autoDownloadMedia downloads and saves media to disk immediately after receiving a message,

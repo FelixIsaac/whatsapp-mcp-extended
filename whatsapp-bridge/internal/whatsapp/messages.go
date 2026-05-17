@@ -76,7 +76,7 @@ func mediaTypeAndMimeType(mediaPath string) (whatsmeow.MediaType, string) {
 }
 
 func documentFileName(mediaPath string) string {
-	return filepath.Base(mediaPath)
+	return filepath.Base(strings.ReplaceAll(mediaPath, "\\", "/"))
 }
 
 // extractMentionsFromText detects @number mentions in text and returns WhatsApp JIDs
@@ -298,22 +298,29 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 	_ = c.SendTypingIndicator(recipientJID.String(), "paused")
 	c.antiban.AfterSend(antiban.Text)
 
+	content := ExtractTextContent(msg)
+	mediaType, filename, url, directPath, mediaKey, fileSHA256, fileEncSHA256, fileLength := ExtractMediaInfo(msg)
+	sender := ""
+	if c.Store != nil && c.Store.ID != nil {
+		sender = c.Store.ID.ToNonAD().String()
+	}
+
 	_ = messageStore.StoreMessage(
 		sendResp.ID, // Use the ID from SendResponse
 		recipientJID.String(),
-		c.Store.ID.User,       // Use the client's user ID as sender
-		c.Store.ID.User,       // SenderName - use our own user ID for sent messages
-		msg.GetConversation(), // Use the conversation text
-		sendResp.Timestamp,    // Use the Timestamp from SendResponse
-		true,                  // IsFromMe is true since we are sending this message
-		"",
-		"",
-		"",
-		"",  // directPath
-		nil, // Replace "" with nil for []byte arguments
-		nil, // Replace "" with nil for []byte arguments
-		nil, // Replace "" with nil for []byte arguments
-		0,
+		sender,
+		sender,
+		content,
+		sendResp.Timestamp, // Use the Timestamp from SendResponse
+		true,               // IsFromMe is true since we are sending this message
+		mediaType,
+		filename,
+		url,
+		directPath,
+		mediaKey,
+		fileSHA256,
+		fileEncSHA256,
+		fileLength,
 	)
 
 	return bridgeTypes.SendResult{
