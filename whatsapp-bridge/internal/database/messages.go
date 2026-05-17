@@ -12,7 +12,16 @@ import (
 // StoreChat stores a chat in the database
 func (store *MessageStore) StoreChat(jid, name string, lastMessageTime time.Time) error {
 	_, err := store.db.Exec(
-		"INSERT OR REPLACE INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)",
+		`INSERT INTO chats (jid, name, last_message_time) VALUES (?, ?, ?)
+		ON CONFLICT(jid) DO UPDATE SET
+			name = CASE
+				WHEN excluded.name != '' THEN excluded.name
+				ELSE chats.name
+			END,
+			last_message_time = CASE
+				WHEN chats.last_message_time IS NULL OR excluded.last_message_time > chats.last_message_time THEN excluded.last_message_time
+				ELSE chats.last_message_time
+			END`,
 		jid, name, lastMessageTime,
 	)
 	return err
