@@ -1,6 +1,6 @@
 # WhatsApp MCP Extended - Feature Roadmap
 
-> Historical note: this roadmap tracks feature implementation history. As of MCP server `0.2.0`, the default agent-facing MCP surface is toolset-gated to 15 tools, with 26 maximum curated tools via `WHATSAPP_MCP_TOOLSETS=all`. Several older one-action tools below are now exposed through merged tools such as `get_contact_context`, `manage_nickname`, `manage_group`, `manage_blocklist`, and `manage_newsletter`.
+> Historical note: this roadmap tracks feature implementation history. As of MCP server `0.2.0`, the default agent-facing MCP surface exposes 26 curated tools, while lean installs can opt into 15 tools via `WHATSAPP_MCP_TOOLSETS=core,send,media`. Several older one-action tools below are now exposed through merged tools such as `get_contact_context`, `manage_nickname`, `manage_group`, `manage_blocklist`, and `manage_newsletter`.
 
 ## Project Context
 
@@ -11,8 +11,8 @@
 ## Current State
 
 ### Implemented MCP surface
-- Default toolsets: `core`, `send`, `media` (15 tools)
-- Maximum curated surface: 26 tools via `WHATSAPP_MCP_TOOLSETS=all`
+- Default toolsets: `all` (26 tools)
+- Lean surface: `core`, `send`, `media` (15 tools)
 - Merged context/action tools: `get_contact_context`, `manage_nickname`, `manage_group`, `manage_blocklist`, `manage_newsletter`
 - Webhook system (via REST API)
 
@@ -101,7 +101,7 @@
 | `archive_chat` | ❌ | ✅ |
 | `send_paused` | ❌ | ✅ |
 
-**Current exposed MCP surface: 15 default tools, 26 maximum curated tools. Historical implementation list below includes internal/merged capabilities.**
+**Current exposed MCP surface: 26 default tools, 15 lean tools. Historical implementation list below includes internal/merged capabilities.**
 
 ---
 

@@ -50,20 +50,20 @@ def tool_names(main) -> set[str]:
     return {tool.name for tool in main.mcp._tool_manager.list_tools()}
 
 
-def test_default_tool_surface_is_small_and_safe(monkeypatch):
+def test_default_tool_surface_exposes_full_curated_surface(monkeypatch):
     main = reload_main(monkeypatch)
+
+    assert tool_names(main) == ALL_TOOLS
+
+
+def test_lean_toolsets_expose_small_safe_surface(monkeypatch):
+    main = reload_main(monkeypatch, "core,send,media")
 
     assert tool_names(main) == DEFAULT_TOOLS
     assert "manage_group" not in tool_names(main)
     assert "delete_message" not in tool_names(main)
     assert "manage_blocklist" not in tool_names(main)
     assert "manage_newsletter" not in tool_names(main)
-
-
-def test_all_toolsets_expose_full_curated_surface(monkeypatch):
-    main = reload_main(monkeypatch, "all")
-
-    assert tool_names(main) == ALL_TOOLS
     assert "get_contact_chats" not in tool_names(main)
     assert "create_group" not in tool_names(main)
     assert "block_user" not in tool_names(main)
@@ -71,7 +71,7 @@ def test_all_toolsets_expose_full_curated_surface(monkeypatch):
 
 
 def test_explicit_tool_allowlist_can_add_single_advanced_tool(monkeypatch):
-    monkeypatch.delenv("WHATSAPP_MCP_TOOLSETS", raising=False)
+    monkeypatch.setenv("WHATSAPP_MCP_TOOLSETS", "core,send,media")
     monkeypatch.setenv("WHATSAPP_MCP_TOOLS", "manage_group")
 
     import main
@@ -147,4 +147,4 @@ def test_docker_mcp_entrypoint_uses_curated_main_server():
     assert "python main.py" in dockerfile
     assert "python gradio-main.py" not in dockerfile
     assert "MCP_TRANSPORT=streamable-http" in compose
-    assert "WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-core,send,media}" in compose
+    assert "WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-all}" in compose

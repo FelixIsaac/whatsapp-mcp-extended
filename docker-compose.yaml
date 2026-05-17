@@ -54,7 +54,7 @@ services:
       - MCP_TRANSPORT=streamable-http
       - HOST=0.0.0.0
       - PORT=8081
-      - WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-core,send,media}
+      - WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-all}
       - BRIDGE_HOST=whatsapp-bridge
       - API_KEY=${API_KEY}
     depends_on:

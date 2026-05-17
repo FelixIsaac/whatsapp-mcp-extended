@@ -10,7 +10,7 @@ An extended Model Context Protocol (MCP) server for WhatsApp with a toolset-gate
 
 | Feature | Original | Extended |
 |---------|----------|----------|
-| MCP Tools | 12 | **15 default / 26 max** |
+| MCP Tools | 12 | **26 default / 15 lean** |
 | Reactions | - | ✅ |
 | Edit/Delete Messages | - | ✅ |
 | Group Management | - | ✅ |
@@ -69,18 +69,18 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
 
 ## MCP Tools
 
-Version `0.2.0` exposes a smaller default MCP surface and opt-in toolsets for advanced/destructive actions.
+Version `0.2.0` exposes the full curated MCP surface by default for compatibility. Users who want a leaner agent context can opt into smaller toolsets.
 
 Default toolsets:
 
 ```bash
-WHATSAPP_MCP_TOOLSETS=core,send,media
+WHATSAPP_MCP_TOOLSETS=all
 ```
 
-Expose every curated tool:
+Lean recommended toolsets:
 
 ```bash
-WHATSAPP_MCP_TOOLSETS=all
+WHATSAPP_MCP_TOOLSETS=core,send,media
 ```
 
 Toolsets:

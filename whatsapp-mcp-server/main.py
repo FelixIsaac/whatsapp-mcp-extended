@@ -74,7 +74,7 @@ ALL_TOOLSETS = {
     "account_admin",
     "newsletter",
 }
-DEFAULT_TOOLSETS = {"core", "send", "media"}
+DEFAULT_TOOLSETS = set(ALL_TOOLSETS)
 ENABLED_TOOLSETS = {
     part.strip().lower()
     for part in os.getenv("WHATSAPP_MCP_TOOLSETS", ",".join(sorted(DEFAULT_TOOLSETS))).split(",")
