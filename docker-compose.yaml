@@ -9,7 +9,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 256M
           cpus: '0.5'
     dns:
       - 8.8.8.8
@@ -42,7 +42,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 512M
           cpus: '1'
     ports:
       - "127.0.0.1:8081:8081"  # MCP server (localhost only)
@@ -78,7 +78,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 64M
           cpus: '0.5'
     ports:
       - "127.0.0.1:8090:8080"
