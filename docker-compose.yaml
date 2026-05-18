@@ -57,8 +57,15 @@ services:
       - WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-all}
       - BRIDGE_HOST=whatsapp-bridge
       - API_KEY=${API_KEY}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8081), timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     depends_on:
-      - whatsapp-bridge
+      whatsapp-bridge:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - n8n_n8n_traefik_network
@@ -75,8 +82,15 @@ services:
           cpus: '0.5'
     ports:
       - "127.0.0.1:8090:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - whatsapp-bridge
+      whatsapp-bridge:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - whatsapp_internal
