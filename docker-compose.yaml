@@ -68,7 +68,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - n8n_n8n_traefik_network
       - whatsapp_internal
 
   web-ui:
@@ -96,7 +95,5 @@ services:
       - whatsapp_internal
 
 networks:
-  n8n_n8n_traefik_network:
-    external: true
   whatsapp_internal:
     driver: bridge
