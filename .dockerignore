@@ -1,0 +1,26 @@
+.git
+.gitignore
+
+# WhatsApp session data — bind mounted at runtime, never needed in build context
+store/
+
+# Python
+whatsapp-mcp-server/.venv/
+whatsapp-mcp-server/__pycache__/
+whatsapp-mcp-server/**/__pycache__/
+whatsapp-mcp-server/**/*.pyc
+whatsapp-mcp-server/.pytest_cache/
+whatsapp-mcp-server/tests/
+
+# Node / Next.js
+whatsapp-web-ui/node_modules/
+whatsapp-web-ui/.next/
+whatsapp-web-ui/out/
+
+# Go build artifacts
+whatsapp-bridge/whatsapp-bridge
+
+# Docs / misc
+**/*.md
+docs/
+whatsapp-mcp-server/check.py

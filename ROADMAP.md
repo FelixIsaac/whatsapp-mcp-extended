@@ -1,6 +1,6 @@
 # WhatsApp MCP Extended - Feature Roadmap
 
-> Historical note: this roadmap tracks feature implementation history. As of MCP server `0.2.0`, the agent-facing MCP surface is curated to 25 tools. Several older one-action tools below are now exposed through merged tools such as `get_contact_context`, `manage_nickname`, `manage_group`, `manage_blocklist`, and `manage_newsletter`.
+> Historical note: this roadmap tracks feature implementation history. As of MCP server `0.2.0`, the default agent-facing MCP surface exposes 26 curated tools, while lean installs can opt into 15 tools via `WHATSAPP_MCP_TOOLSETS=core,send,media`. Several older one-action tools below are now exposed through merged tools such as `get_contact_context`, `manage_nickname`, `manage_group`, `manage_blocklist`, and `manage_newsletter`.
 
 ## Project Context
 
@@ -10,12 +10,10 @@
 
 ## Current State
 
-### Implemented (16+ MCP tools)
-- `search_contacts`, `list_messages`, `list_chats`
-- `get_chat`, `get_direct_chat_by_contact`, `get_contact_chats`
-- `get_last_interaction`, `get_message_context`
-- `send_message`, `send_file`, `send_audio_message`, `download_media`
-- Contact nicknames: `set_contact_nickname`, `get_contact_nickname`, `remove_contact_nickname`, `list_contact_nicknames`
+### Implemented MCP surface
+- Default toolsets: `all` (26 tools)
+- Lean surface: `core`, `send`, `media` (15 tools)
+- Merged context/action tools: `get_contact_context`, `manage_nickname`, `manage_group`, `manage_blocklist`, `manage_newsletter`
 - Webhook system (via REST API)
 
 ### Architecture
@@ -23,7 +21,7 @@
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
 │   whatsapp-bridge   │     │   whatsapp-mcp      │     │   whatsapp-web-ui   │
 │   (Go + whatsmeow)  │◄────│   (Python + MCP)    │     │   (HTML/JS SPA)     │
-│   Port: 8080        │     │   Ports: 8081,8082  │     │   Port: 8090        │
+│   Port: 8080        │     │   Port: 8081        │     │   Port: 8090        │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
          │                           │
          ▼                           ▼
@@ -103,7 +101,7 @@
 | `archive_chat` | ❌ | ✅ |
 | `send_paused` | ❌ | ✅ |
 
-**Current exposed MCP surface: 25 curated tools. Historical implementation list below includes internal/merged capabilities.**
+**Current exposed MCP surface: 26 default tools, 15 lean tools. Historical implementation list below includes internal/merged capabilities.**
 
 ---
 

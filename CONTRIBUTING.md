@@ -94,8 +94,10 @@ whatsapp-web-ui/     # HTML/JS - Chat/contact/webhook UI
 3. Add Python function in `whatsapp-mcp-server/whatsapp.py`
 4. Prefer extending an existing composable MCP tool in `whatsapp-mcp-server/main.py`
 5. Add a new MCP tool only for a distinct user task, not a one-endpoint wrapper
-6. Add/update `whatsapp-mcp-server/tests/test_main_tools.py`
-7. Update README tool list
+6. Assign the tool to a `WHATSAPP_MCP_TOOLSETS` group and add title/annotations
+7. Use `Literal[...]` for action/sort/status parameters where possible
+8. Add/update `whatsapp-mcp-server/tests/test_main_tools.py`
+9. Update README tool list and migration notes
 
 ## Questions?
 

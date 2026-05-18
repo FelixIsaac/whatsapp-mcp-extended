@@ -1,6 +1,6 @@
 # WhatsApp MCP Extended
 
-An extended Model Context Protocol (MCP) server for WhatsApp with a curated agent-facing tool surface for messaging, search, media, group management, webhooks, presence, and more.
+An extended Model Context Protocol (MCP) server for WhatsApp with a toolset-gated, agent-facing surface for messaging, search, media, group management, webhooks, presence, and more.
 
 > Built on [AdamRussak/whatsapp-mcp](https://github.com/AdamRussak/whatsapp-mcp) (webhooks, containers) which forked [lharries/whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) (original). Extended with reactions, message editing, polls, group management, presence, newsletters, and more.
 
@@ -10,7 +10,7 @@ An extended Model Context Protocol (MCP) server for WhatsApp with a curated agen
 
 | Feature | Original | Extended |
 |---------|----------|----------|
-| MCP Tools | 12 | **25 curated** |
+| MCP Tools | 12 | **26 default / 15 lean** |
 | Reactions | - | ✅ |
 | Edit/Delete Messages | - | ✅ |
 | Group Management | - | ✅ |
@@ -27,7 +27,7 @@ An extended Model Context Protocol (MCP) server for WhatsApp with a curated agen
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
 │   whatsapp-bridge   │     │   whatsapp-mcp      │     │   whatsapp-web-ui   │
 │   (Go + whatsmeow)  │◄────│   (Python + MCP)    │     │   (HTML/JS SPA)     │
-│   Port: 8080        │     │   Ports: 8081,8082  │     │   Port: 8090        │
+│   Port: 8080        │     │   Port: 8081        │     │   Port: 8090        │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
          │                           │
          ▼                           ▼
@@ -69,7 +69,38 @@ Add to your MCP config (`claude_desktop_config.json` or Cursor settings):
 
 ## MCP Tools
 
-Version `0.2.0` exposes a curated 25-tool surface. Older narrow tools are no longer exposed to the agent; use the merged replacements below.
+Version `0.2.0` exposes the full curated MCP surface by default for compatibility. Users who want a leaner agent context can opt into smaller toolsets.
+
+Default toolsets:
+
+```bash
+WHATSAPP_MCP_TOOLSETS=all
+```
+
+Lean recommended toolsets:
+
+```bash
+WHATSAPP_MCP_TOOLSETS=core,send,media
+```
+
+Toolsets:
+
+| Toolset | Default | Tools |
+|---------|---------|-------|
+| `core` | Yes | Search/read tools, contact context, group info, profile picture |
+| `send` | Yes | `send_message`, `send_reaction`, `create_poll` |
+| `media` | Yes | `send_file`, `send_audio_message`, `download_media` |
+| `history` | No | `request_history` |
+| `contacts_write` | No | `manage_nickname` |
+| `message_admin` | No | `edit_message`, `delete_message`, `mark_read` |
+| `groups` | No | `manage_group` |
+| `presence` | No | `set_presence`, `subscribe_presence` |
+| `account_admin` | No | `get_blocklist`, `manage_blocklist` |
+| `newsletter` | No | `manage_newsletter` |
+
+You can also expose individual tools with `WHATSAPP_MCP_TOOLS=manage_group,delete_message`.
+
+Breaking change in `0.2.0`: older narrow tools are no longer exposed to the agent. Use the merged replacements below.
 
 Migration:
 
@@ -78,7 +109,7 @@ Migration:
 | `get_contact_context` | `get_contact_details`, `get_direct_chat_by_contact`, `get_contact_chats`, `get_last_interaction` |
 | `manage_nickname` | `set_nickname`, `get_nickname`, `remove_nickname`, `list_nicknames` |
 | `manage_group` | `create_group`, `add_group_members`, `remove_group_members`, `promote_to_admin`, `demote_admin`, `leave_group`, `update_group` |
-| `manage_blocklist` | `get_blocklist`, `block_user`, `unblock_user` |
+| `get_blocklist`, `manage_blocklist` | `get_blocklist`, `block_user`, `unblock_user` |
 | `manage_newsletter` | `follow_newsletter`, `unfollow_newsletter`, `create_newsletter` |
 
 ### Messaging
@@ -123,7 +154,8 @@ Migration:
 | `set_presence` | Set online/offline status |
 | `subscribe_presence` | Subscribe to contact's presence |
 | `get_profile_picture` | Get profile picture URL |
-| `manage_blocklist` | List/block/unblock users |
+| `get_blocklist` | List blocked users |
+| `manage_blocklist` | Block/unblock users |
 
 ### Newsletters (Channels)
 | Tool | Description |
@@ -190,8 +222,7 @@ docker-compose up -d whatsapp-bridge
 | Service | Port | Description |
 |---------|------|-------------|
 | Bridge API | 8080 (→8180) | REST API |
-| MCP Server | 8081 | SSE transport |
-| Gradio UI | 8082 | Web testing UI |
+| MCP Server | 8081 | Streamable HTTP transport |
 | Web UI | 8090 | Chat, contacts, and webhook management |
 
 ## Troubleshooting
