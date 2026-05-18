@@ -21,5 +21,6 @@ whatsapp-web-ui/out/
 whatsapp-bridge/whatsapp-bridge
 
 # Docs / misc
-*.md
+**/*.md
 docs/
+whatsapp-mcp-server/check.py
