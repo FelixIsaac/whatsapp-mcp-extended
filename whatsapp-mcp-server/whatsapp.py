@@ -29,17 +29,7 @@ except ImportError:
 
 import audio
 from lib.bridge import _get_headers
-
-# Database paths - check for Docker (/app) or local development
-if os.path.exists("/app/store"):
-    # Docker environment
-    MESSAGES_DB_PATH = "/app/store/messages.db"
-    WHATSAPP_DB_PATH = "/app/store/whatsapp.db"
-else:
-    # Local development - use relative path from project root
-    _store_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "store")
-    MESSAGES_DB_PATH = os.path.join(_store_path, "messages.db")
-    WHATSAPP_DB_PATH = os.path.join(_store_path, "whatsapp.db")
+from lib.utils import MESSAGES_DB_PATH, WHATSAPP_DB_PATH
 
 
 # Use environment variable for bridge host, default to localhost:8080 for development

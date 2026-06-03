@@ -42,24 +42,35 @@ def setup_logging(debug: bool = False) -> logging.Logger:
 logger = setup_logging(os.getenv("DEBUG", "false").lower() == "true")
 
 
-# Database paths - WA_STORE_PATH env var > /app/store (Docker) > whatsapp-bridge/store (local dev) > store (legacy)
+# Database paths — resolution order:
+#   1. WA_STORE_PATH env var (explicit override)
+#   2. /app/store  (Docker bind mount)
+#   3. <project_root>/whatsapp-bridge/store  (local dev, bridge-relative)
+#   4. <project_root>/store  (legacy / symlink)
 _wa_store_env = os.getenv("WA_STORE_PATH")
 if _wa_store_env:
     _store_path = _wa_store_env
 elif os.path.exists("/app/store"):
     _store_path = "/app/store"
 else:
-    # Local dev: whatsapp-bridge/store relative to project root (parent of whatsapp-mcp-server/)
     _project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     _local_dev_path = os.path.join(_project_root, "whatsapp-bridge", "store")
     _legacy_path = os.path.join(_project_root, "store")
-    if os.path.exists(_local_dev_path):
-        _store_path = _local_dev_path
-    else:
-        _store_path = _legacy_path
+    _store_path = _local_dev_path if os.path.exists(_local_dev_path) else _legacy_path
 
 MESSAGES_DB_PATH = os.path.join(_store_path, "messages.db")
 WHATSAPP_DB_PATH = os.path.join(_store_path, "whatsapp.db")
+
+# Fail loudly on import if the bridge DB is missing — sqlite3.connect() silently
+# creates an empty file at a wrong path, which causes every query to return empty
+# results with no error. Set WA_SKIP_DB_CHECK=1 to bypass (tests, lint).
+if not os.getenv("WA_SKIP_DB_CHECK") and not os.path.exists(MESSAGES_DB_PATH):
+    raise FileNotFoundError(
+        f"WhatsApp MCP: messages.db not found at {MESSAGES_DB_PATH}\n"
+        f"  Bridge store resolved to: {_store_path}\n"
+        f"  Override with: WA_STORE_PATH=/path/to/store\n"
+        f"  Bridge not running or store not mounted?"
+    )
 
 
 # Bridge API configuration

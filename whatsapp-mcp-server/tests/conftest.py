@@ -1,6 +1,12 @@
 """Pytest fixtures for WhatsApp MCP Server tests."""
 
 import os
+
+# Must be set before any test module imports lib.utils — importing lib.utils raises
+# FileNotFoundError when messages.db doesn't exist (by design, to prevent silent empty
+# results in production). Tests use temp DBs and don't need the real store.
+os.environ.setdefault("WA_SKIP_DB_CHECK", "1")
+
 import sqlite3
 import tempfile
 from datetime import datetime
