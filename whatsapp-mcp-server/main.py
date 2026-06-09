@@ -1,9 +1,13 @@
 """WhatsApp MCP Server - stdio transport for Claude Code CLI"""
 
+import json
 import os
 from pathlib import Path
 from typing import Any, Literal
 
+import requests as _requests
+
+from lib.utils import WHATSAPP_API_BASE_URL as _BRIDGE_URL
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.utilities.types import Image
 from mcp.types import ToolAnnotations
@@ -171,6 +175,9 @@ def list_messages(
     query: str | None = None,
     limit: int = 20,
     page: int = 0,
+    include_context: bool = False,
+    context_before: int = 1,
+    context_after: int = 1,
 ) -> list[dict[str, Any]]:
     """Get WhatsApp messages matching specified criteria.
 
@@ -181,10 +188,13 @@ def list_messages(
         query: Optional search term to filter messages by content
         limit: Maximum number of messages to return (default 20)
         page: Page number for pagination (default 0)
+        include_context: Return surrounding messages inline for each result (default False)
+        context_before: Messages before each result to include (default 1, requires include_context=True)
+        context_after: Messages after each result to include (default 1, requires include_context=True)
 
     Hints:
         - If expected messages are missing, use `request_history` to sync older messages from phone
-        - Use `get_message_context` to get surrounding messages for a specific message_id
+        - Set include_context=True to get surrounding messages inline, saving a get_message_context round-trip
         - Use `search_contacts` first to find a contact's JID for filtering
     """
     messages = whatsapp_list_messages(
@@ -195,9 +205,9 @@ def list_messages(
         query=query,
         limit=limit,
         page=page,
-        include_context=False,
-        context_before=1,
-        context_after=1,
+        include_context=include_context,
+        context_before=context_before,
+        context_after=context_after,
     )
     return messages
 
@@ -389,6 +399,24 @@ def get_contact_context(
         result["last_interaction"] = whatsapp_get_last_interaction(jid)
 
     return result
+
+
+@tool("core", "Get Direct Chat By Contact", read_only=True, idempotent=True, open_world=False)
+def get_direct_chat_by_contact(phone_number: str) -> dict[str, Any] | None:
+    """Find the direct message chat for a phone number.
+
+    Args:
+        phone_number: Phone number to look up — digits only, partial match supported (e.g. "60123456789")
+
+    Returns:
+        Chat dict with jid, name, last_message_time, last_message — or null if no DM found
+
+    Hints:
+        - Faster than get_contact_context when you only need the chat JID
+        - Returns only DM chats (not groups)
+        - Use returned jid with list_messages to read the conversation
+    """
+    return whatsapp_get_direct_chat_by_contact(phone_number)
 
 
 @tool(
@@ -719,6 +747,31 @@ def manage_newsletter(
     if action == "follow":
         return whatsapp_follow_newsletter(jid)
     return whatsapp_unfollow_newsletter(jid)
+
+
+def _bridge_get(path: str) -> dict[str, Any]:
+    api_key = os.getenv("API_KEY") or os.getenv("WHATSAPP_API_KEY")
+    headers = {"X-API-Key": api_key} if api_key else {}
+    try:
+        r = _requests.get(f"{_BRIDGE_URL}{path}", headers=headers, timeout=5)
+        r.raise_for_status()
+        return r.json()
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@mcp.resource("whatsapp://status")
+def resource_status() -> str:
+    """Live bridge connection state — connected, needs_pairing, disconnected_for."""
+    data = _bridge_get("/connection")
+    return json.dumps(data)
+
+
+@mcp.resource("whatsapp://sync-status")
+def resource_sync_status() -> str:
+    """Bridge sync statistics — message/chat counts, DB size, last sync time."""
+    data = _bridge_get("/sync-status")
+    return json.dumps(data)
 
 
 if __name__ == "__main__":
