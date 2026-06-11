@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS allowed_jids (
+    jid TEXT PRIMARY KEY,
+    label TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
