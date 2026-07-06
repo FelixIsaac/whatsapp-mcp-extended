@@ -51,11 +51,11 @@ services:
       - ./store:/app/store
     environment:
       - TZ=UTC
-      - DEBUG=true
+      - DEBUG=false
       - MCP_TRANSPORT=streamable-http
       - HOST=0.0.0.0
       - PORT=8081
-      - WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-all}
+      - WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-core,send,media,history,presence}
       - BRIDGE_HOST=whatsapp-bridge
       - API_KEY=${API_KEY}
     healthcheck:
