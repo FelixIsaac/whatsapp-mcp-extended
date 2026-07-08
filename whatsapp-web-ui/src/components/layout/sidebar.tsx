@@ -4,11 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Link2, MessageSquare, Settings, Webhook } from "lucide-react";
+import { Link2, MessageCircle, MessageSquare, Settings, Webhook } from "lucide-react";
 import { WhatsAppAPI } from "@/lib/api";
 import { useSettings } from "@/lib/store";
 
 const navItems = [
+  {
+    title: "Chats",
+    href: "/chats",
+    icon: MessageCircle,
+    description: "Browse conversations",
+  },
   {
     title: "Pairing",
     href: "/pairing",

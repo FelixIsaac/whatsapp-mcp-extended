@@ -1,6 +1,6 @@
 const getApiBaseUrl = () => {
   if (typeof window === "undefined") return "http://localhost:8180/api";
-  return `${window.location.protocol}//${window.location.hostname}:8180/api`;
+  return `${window.location.protocol}//${window.location.host}/api`;
 };
 
 // Pairing types
@@ -187,6 +187,24 @@ export class WhatsAppAPI {
     const response = await this.request<WebhookLogsResponse>(`/webhooks/${id}/logs`);
     return response.data || [];
   }
+
+  // Chat methods
+  async getChats(): Promise<Chat[]> {
+    const response = await this.request<ChatsResponse>("/chats");
+    return response.chats || [];
+  }
+
+  async getMessages(chatJid: string, limit = 50): Promise<Message[]> {
+    const response = await this.request<MessagesResponse>(`/messages?chat_jid=${encodeURIComponent(chatJid)}&limit=${limit}`);
+    return response.messages || [];
+  }
+
+  async sendMessage(recipient: string, message: string): Promise<SendMessageResponse> {
+    return this.request<SendMessageResponse>("/send", {
+      method: "POST",
+      body: JSON.stringify({ recipient, message }),
+    });
+  }
 }
 
 export class APIError extends Error {
@@ -194,6 +212,53 @@ export class APIError extends Error {
     super(message);
     this.name = "APIError";
   }
+}
+
+// Chat types
+export interface Chat {
+  jid: string;
+  name?: string;
+  is_group: boolean;
+  last_message_time?: string;
+  last_message?: string;
+  last_sender_name?: string;
+  last_is_from_me?: boolean;
+  total_message_count?: number;
+  participant_count?: number;
+}
+
+export interface Message {
+  id: string;
+  timestamp: string;
+  sender: string;
+  sender_name?: string;
+  content: string;
+  is_from_me: boolean;
+  media_type?: string;
+  quoted_message_id?: string;
+}
+
+export interface ChatsResponse {
+  success: boolean;
+  count: number;
+  chats: Chat[];
+}
+
+export interface MessagesResponse {
+  success: boolean;
+  count: number;
+  messages: Message[];
+}
+
+export interface SendMessageRequest {
+  recipient: string;
+  message: string;
+}
+
+export interface SendMessageResponse {
+  success: boolean;
+  message_id?: string;
+  error?: string;
 }
 
 export const getErrorMessage = (error: unknown): { title: string; description: string; action?: string } => {

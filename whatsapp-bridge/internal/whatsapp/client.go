@@ -161,6 +161,8 @@ func (c *Client) Connect() error {
 			if evt.Event == "code" {
 				fmt.Println("\nScan this QR code with your WhatsApp app:")
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
+				// Write raw QR string to file for external rendering
+				_ = os.WriteFile("/app/whatsapp-bridge/store/qr_code.txt", []byte(evt.Code), 0644)
 			} else if evt.Event == "success" {
 				connected <- true
 				break
