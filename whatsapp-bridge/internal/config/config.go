@@ -21,6 +21,14 @@ type Config struct {
 	// PRESENCE_PING_INTERVAL sets how often to ping (default 20m; reduce below 25m risks bot fingerprinting)
 	PresencePingEnabled  bool
 	PresencePingInterval time.Duration
+
+	// Human-like presence behaviour
+	// JUNO_WA_PRESENCE_MODE=human (default) keeps the account offline and only goes
+	// online for a short window around outgoing activity. always_online restores the
+	// legacy "online while connected" behaviour.
+	PresenceMode      string
+	PresenceLingerMin time.Duration // PRESENCE_LINGER_MIN
+	PresenceLingerMax time.Duration // PRESENCE_LINGER_MAX
 }
 
 // NewConfig creates a new configuration with default values
@@ -35,6 +43,10 @@ func NewConfig() *Config {
 		// Presence ping defaults
 		PresencePingEnabled:  true,
 		PresencePingInterval: 20 * time.Minute,
+		// Human-like presence defaults
+		PresenceMode:      "human",
+		PresenceLingerMin: 8 * time.Second,
+		PresenceLingerMax: 15 * time.Second,
 	}
 
 	// Override with environment variables if set
@@ -74,6 +86,26 @@ func NewConfig() *Config {
 		if d, err := time.ParseDuration(interval); err == nil && d > 0 {
 			cfg.PresencePingInterval = d
 		}
+	}
+
+	if mode := os.Getenv("JUNO_WA_PRESENCE_MODE"); mode == "always_online" {
+		cfg.PresenceMode = "always_online"
+	}
+
+	if min := os.Getenv("PRESENCE_LINGER_MIN"); min != "" {
+		if d, err := time.ParseDuration(min); err == nil && d > 0 {
+			cfg.PresenceLingerMin = d
+		}
+	}
+
+	if max := os.Getenv("PRESENCE_LINGER_MAX"); max != "" {
+		if d, err := time.ParseDuration(max); err == nil && d > 0 {
+			cfg.PresenceLingerMax = d
+		}
+	}
+
+	if cfg.PresenceLingerMax < cfg.PresenceLingerMin {
+		cfg.PresenceLingerMax = cfg.PresenceLingerMin
 	}
 
 	return cfg

@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -17,20 +18,27 @@ import (
 
 // Manager handles webhook processing and delivery
 type Manager struct {
-	messageStore *database.MessageStore
-	logger       waLog.Logger
-	configs      []*types.WebhookConfig
-	mutex        sync.RWMutex
-	delivery     *DeliveryService
+	messageStore    *database.MessageStore
+	logger          waLog.Logger
+	configs         []*types.WebhookConfig
+	mutex           sync.RWMutex
+	delivery        *DeliveryService
+	downloadBaseURL string
 }
 
 // NewManager creates a new webhook manager
 func NewManager(messageStore *database.MessageStore, logger waLog.Logger) *Manager {
+	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	return &Manager{
-		messageStore: messageStore,
-		logger:       logger,
-		configs:      make([]*types.WebhookConfig, 0),
-		delivery:     NewDeliveryService(messageStore, logger),
+		messageStore:    messageStore,
+		logger:          logger,
+		configs:         make([]*types.WebhookConfig, 0),
+		delivery:        NewDeliveryService(messageStore, logger),
+		downloadBaseURL: fmt.Sprintf("http://localhost:%s/api/download", port),
 	}
 }
 
@@ -247,7 +255,7 @@ func (wm *Manager) ProcessMessage(client interface{}, msg *events.Message, chatN
 
 	// Add media download URL if it's a media message
 	if mediaType != "" {
-		basePayload.Message.MediaDownloadURL = "http://localhost:8080/api/download"
+		basePayload.Message.MediaDownloadURL = wm.downloadBaseURL
 	}
 
 	// Add group info if it's a group chat

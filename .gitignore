@@ -51,3 +51,7 @@ Thumbs.db
 credentials.json
 secrets.yaml
 secrets.yml
+
+# Built binaries and local backups
+whatsapp-bridge/whatsapp-bridge
+whatsapp-bridge/whatsapp-bridge.*

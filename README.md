@@ -122,7 +122,7 @@ Migration:
 | `send_reaction` | React to message with emoji |
 | `edit_message` | Edit sent message |
 | `delete_message` | Delete/revoke message |
-| `mark_read` | Mark messages as read (blue ticks) |
+| `mark_read` | Mark messages as read (blue ticks), or as played for voice messages (`receipt_type="played"`) |
 
 ### Chats & Messages
 | Tool | Description |

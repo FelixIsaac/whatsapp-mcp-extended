@@ -51,7 +51,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send the message
+	// Presence is handled centrally by the client's presence manager.
 	result := s.client.SendMessage(s.messageStore, req.Recipient, req.Message, req.MediaPath, req.MentionedJIDs)
 
 	// Set response headers
@@ -510,6 +510,8 @@ func (s *Server) handleGetGroupInfo(w http.ResponseWriter, r *http.Request) {
 //   - chat_jid: Chat containing the messages (required)
 //   - message_ids: Array of message IDs to mark read (required)
 //   - sender_jid: Sender JID (required for group chats)
+//   - receipt_type: "read" (default) or "played" to mark voice messages as
+//     listened to (blue microphone icon); "played" also sends the read receipt
 //
 // Response: { success: bool, message: string }
 func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
@@ -531,15 +533,29 @@ func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.client.MarkMessagesRead(req.ChatJID, req.MessageIDs, req.SenderJID); err != nil {
-		SendJSONError(w, fmt.Sprintf("Failed to mark messages as read: %v", err), http.StatusInternalServerError)
-		return
+	receiptType := strings.ToLower(strings.TrimSpace(req.ReceiptType))
+	switch receiptType {
+	case "", "read":
+		if err := s.client.MarkMessagesRead(req.ChatJID, req.MessageIDs, req.SenderJID); err != nil {
+			SendJSONError(w, fmt.Sprintf("Failed to mark messages as read: %v", err), http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Messages marked as read",
+		})
+	case "played":
+		if err := s.client.MarkMessagesPlayed(req.ChatJID, req.MessageIDs, req.SenderJID); err != nil {
+			SendJSONError(w, fmt.Sprintf("Failed to mark messages as played: %v", err), http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Messages marked as played",
+		})
+	default:
+		SendJSONError(w, "receipt_type must be 'read' or 'played'", http.StatusBadRequest)
 	}
-
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Messages marked as read",
-	})
 }
 
 // Phase 2: Group Management Handlers

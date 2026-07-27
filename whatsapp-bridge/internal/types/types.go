@@ -303,9 +303,10 @@ type DeleteMessageRequest struct {
 
 // MarkReadRequest represents the request body for marking messages as read
 type MarkReadRequest struct {
-	ChatJID    string   `json:"chat_jid"`
-	MessageIDs []string `json:"message_ids"`
-	SenderJID  string   `json:"sender_jid,omitempty"` // required for group chats
+	ChatJID     string   `json:"chat_jid"`
+	MessageIDs  []string `json:"message_ids"`
+	SenderJID   string   `json:"sender_jid,omitempty"`   // required for group chats
+	ReceiptType string   `json:"receipt_type,omitempty"` // "read" (default) or "played" for voice messages
 }
 
 // Phase 2: Group Management

@@ -48,13 +48,13 @@ pair:
 	@curl -sf -X POST \
 	  -H "X-API-Key: $(API_KEY)" \
 	  -H "Content-Type: application/json" \
-	  -d '{"phone":"$(PHONE)"}' \
+	  -d '{"phone_number":"$(subst +,,$(PHONE))"}' \
 	  $(BRIDGE)/api/pair \
 	  | python3 -m json.tool 2>/dev/null \
 	  || curl -sf -X POST \
 	       -H "X-API-Key: $(API_KEY)" \
 	       -H "Content-Type: application/json" \
-	       -d '{"phone":"$(PHONE)"}' \
+	       -d '{"phone_number":"$(subst +,,$(PHONE))"}' \
 	       $(BRIDGE)/api/pair
 	@echo ""
 	@echo "Enter the 8-character code in WhatsApp > Settings > Linked Devices > Link a Device"

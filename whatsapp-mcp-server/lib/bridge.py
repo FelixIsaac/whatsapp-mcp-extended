@@ -178,13 +178,19 @@ def delete_message(chat_jid: str, message_id: str, sender_jid: str | None = None
         raise BridgeError(f"Failed to delete message: {e}") from e
 
 
-def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = None) -> dict[str, Any]:
+def mark_read(
+    chat_jid: str,
+    message_ids: list[str],
+    sender_jid: str | None = None,
+    receipt_type: str | None = None,
+) -> dict[str, Any]:
     """Mark messages as read.
 
     Args:
         chat_jid: Chat JID containing the messages.
         message_ids: List of message IDs to mark as read.
         sender_jid: Sender JID (required for group chats).
+        receipt_type: "read" (default) or "played" for voice messages that were listened to.
 
     Returns:
         Response with success status.
@@ -196,6 +202,8 @@ def mark_read(chat_jid: str, message_ids: list[str], sender_jid: str | None = No
         payload: dict[str, Any] = {"chat_jid": chat_jid, "message_ids": message_ids}
         if sender_jid:
             payload["sender_jid"] = sender_jid
+        if receipt_type:
+            payload["receipt_type"] = receipt_type
 
         response = requests.post(f"{WHATSAPP_API_BASE_URL}/read", json=payload, headers=_get_headers(), timeout=30)
         response.raise_for_status()
