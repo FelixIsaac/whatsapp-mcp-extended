@@ -23,7 +23,7 @@ type Config struct {
 	PresencePingInterval time.Duration
 
 	// Human-like presence behaviour
-	// JUNO_WA_PRESENCE_MODE=human (default) keeps the account offline and only goes
+	// WA_PRESENCE_MODE=human (default) keeps the account offline and only goes
 	// online for a short window around outgoing activity. always_online restores the
 	// legacy "online while connected" behaviour.
 	PresenceMode      string
@@ -88,7 +88,13 @@ func NewConfig() *Config {
 		}
 	}
 
-	if mode := os.Getenv("JUNO_WA_PRESENCE_MODE"); mode == "always_online" {
+	// WA_PRESENCE_MODE is the documented name; the JUNO_ prefixed variant stays readable so an
+	// existing deployment keeps working after the rename.
+	mode := os.Getenv("WA_PRESENCE_MODE")
+	if mode == "" {
+		mode = os.Getenv("JUNO_WA_PRESENCE_MODE")
+	}
+	if mode == "always_online" {
 		cfg.PresenceMode = "always_online"
 	}
 

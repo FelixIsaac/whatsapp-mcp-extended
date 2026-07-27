@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Presence modes, selected via JUNO_WA_PRESENCE_MODE.
+// Presence modes, selected via WA_PRESENCE_MODE.
 const (
 	// PresenceModeHuman keeps the account offline and only goes online in short
 	// bursts around real outgoing activity. Default.
