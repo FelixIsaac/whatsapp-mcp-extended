@@ -102,6 +102,45 @@ class Chat:
         }
 
 
+def _resolve_equivalent_jids(jid: str) -> list[str]:
+    """Resolve a JID to its LID/phone equivalent(s) using whatsmeow_lid_map.
+
+    WhatsApp migrated one-to-one chats to LID addressing. A single conversation
+    can be split across two chat_jid values in messages.db:
+      - Phone format: 34663060433@s.whatsapp.net
+      - LID format:   154713345548441@lid
+
+    Returns a list including the original JID plus any equivalent found.
+    Groups (@g.us) and unknown suffixes pass through unchanged.
+    """
+    if "@" not in jid:
+        return [jid]
+    bare, suffix = jid.split("@", 1)
+    if suffix not in ("s.whatsapp.net", "lid"):
+        return [jid]
+    try:
+        conn = sqlite3.connect(WHATSAPP_DB_PATH)
+        cursor = conn.cursor()
+        if suffix == "s.whatsapp.net":
+            row = cursor.execute(
+                "SELECT lid FROM whatsmeow_lid_map WHERE pn = ?", (bare,)
+            ).fetchone()
+            if row:
+                return [jid, f"{row[0]}@lid"]
+        else:
+            row = cursor.execute(
+                "SELECT pn FROM whatsmeow_lid_map WHERE lid = ?", (bare,)
+            ).fetchone()
+            if row:
+                return [jid, f"{row[0]}@s.whatsapp.net"]
+        return [jid]
+    except sqlite3.Error:
+        return [jid]
+    finally:
+        if "conn" in locals():
+            conn.close()
+
+
 @dataclass
 class Contact:
     phone_number: str
@@ -297,8 +336,14 @@ def list_messages(
             params.append(sender_phone_number)
 
         if chat_jid:
-            where_clauses.append("messages.chat_jid = ?")
-            params.append(chat_jid)
+            equiv = _resolve_equivalent_jids(chat_jid)
+            if len(equiv) > 1:
+                ph = ",".join("?" * len(equiv))
+                where_clauses.append(f"messages.chat_jid IN ({ph})")
+                params.extend(equiv)
+            else:
+                where_clauses.append("messages.chat_jid = ?")
+                params.append(chat_jid)
 
         if query:
             where_clauses.append("LOWER(messages.content) LIKE LOWER(?)")
@@ -656,8 +701,13 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
 
+        equiv = _resolve_equivalent_jids(jid)
+        bare_ids = [e.split("@")[0] for e in equiv]
+        sender_ph = ",".join("?" * len(bare_ids))
+        jid_ph = ",".join("?" * len(equiv))
+
         cursor.execute(
-            """
+            f"""
             SELECT DISTINCT
                 c.jid,
                 c.name,
@@ -668,11 +718,11 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> list[dict[str
                 m.is_from_me as last_is_from_me
             FROM chats c
             JOIN messages m ON c.jid = m.chat_jid
-            WHERE m.sender = ? OR c.jid = ?
+            WHERE m.sender IN ({sender_ph}) OR c.jid IN ({jid_ph})
             ORDER BY c.last_message_time DESC
             LIMIT ? OFFSET ?
         """,
-            (jid, jid, limit, page * limit),
+            (*bare_ids, *equiv, limit, page * limit),
         )
 
         chats = cursor.fetchall()
@@ -706,8 +756,13 @@ def get_last_interaction(jid: str) -> dict[str, Any] | None:
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
 
+        equiv = _resolve_equivalent_jids(jid)
+        bare_ids = [e.split("@")[0] for e in equiv]
+        sender_ph = ",".join("?" * len(bare_ids))
+        jid_ph = ",".join("?" * len(equiv))
+
         cursor.execute(
-            """
+            f"""
             SELECT
                 m.timestamp,
                 m.sender,
@@ -721,11 +776,11 @@ def get_last_interaction(jid: str) -> dict[str, Any] | None:
                 m.file_length
             FROM messages m
             JOIN chats c ON m.chat_jid = c.jid
-            WHERE m.sender = ? OR c.jid = ?
+            WHERE m.sender IN ({sender_ph}) OR c.jid IN ({jid_ph})
             ORDER BY m.timestamp DESC
             LIMIT 1
         """,
-            (jid, jid),
+            (*bare_ids, *equiv),
         )
 
         msg_data = cursor.fetchone()
@@ -821,8 +876,11 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any] | Non
         conn = sqlite3.connect(MESSAGES_DB_PATH)
         cursor = conn.cursor()
 
+        equiv = _resolve_equivalent_jids(f"{sender_phone_number}@s.whatsapp.net")
+        jid_ph = ",".join("?" * len(equiv))
+
         cursor.execute(
-            """
+            f"""
             SELECT
                 c.jid,
                 c.name,
@@ -833,10 +891,10 @@ def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any] | Non
             FROM chats c
             LEFT JOIN messages m ON c.jid = m.chat_jid
                 AND c.last_message_time = m.timestamp
-            WHERE c.jid LIKE ? AND c.jid NOT LIKE '%@g.us'
+            WHERE c.jid IN ({jid_ph}) AND c.jid NOT LIKE '%@g.us'
             LIMIT 1
         """,
-            (f"%{sender_phone_number}%",),
+            equiv,
         )
 
         chat_data = cursor.fetchone()
