@@ -105,20 +105,19 @@ var allowedMediaDirs = []string{
 	"/tmp",
 }
 
-// validateMediaPath checks if the path is within allowed directories
+// validateMediaPath checks if the path resolves to a location within an
+// allowed directory. It resolves symlinks before matching so a symlink planted
+// inside an allowed directory cannot redirect os.ReadFile to an arbitrary file,
+// and it matches on path-segment boundaries so a sibling directory that merely
+// shares a name prefix (e.g. /tmproot vs /tmp) is not treated as inside the
+// allowlist.
 func validateMediaPath(mediaPath string) error {
 	if mediaPath == "" {
 		return nil
 	}
 
-	// Clean and get absolute path
-	cleanPath := filepath.Clean(mediaPath)
-	absPath, err := filepath.Abs(cleanPath)
-	if err != nil {
-		return fmt.Errorf("invalid media path: %v", err)
-	}
-
-	// Check for path traversal attempts
+	// Check for path traversal attempts. Kept before DISABLE_PATH_CHECK so that
+	// traversal is rejected even when the check is otherwise disabled.
 	if strings.Contains(mediaPath, "..") {
 		return fmt.Errorf("path traversal not allowed")
 	}
@@ -128,18 +127,62 @@ func validateMediaPath(mediaPath string) error {
 		return nil
 	}
 
-	// Check if path is within allowed directories
+	absPath, err := filepath.Abs(filepath.Clean(mediaPath))
+	if err != nil {
+		return fmt.Errorf("invalid media path: %v", err)
+	}
+
+	// os.ReadFile follows symlinks, so validation must see the real destination.
+	// Resolve symlinks on the longest existing prefix of the path: this defeats
+	// a symlink planted anywhere along the path while still permitting a leaf
+	// file that has not been created yet.
+	resolvedPath := resolveExistingPrefix(absPath)
+
+	// Check if the resolved path is within an allowed directory, matching on
+	// path-segment boundaries rather than a raw string prefix.
+	sep := string(os.PathSeparator)
 	for _, allowedDir := range allowedMediaDirs {
 		allowedAbs, err := filepath.Abs(allowedDir)
 		if err != nil {
 			continue
 		}
-		if strings.HasPrefix(absPath, allowedAbs) {
+		// Resolve symlinks in the allowed directory too (e.g. macOS /tmp is a
+		// symlink to /private/tmp); skip entries that do not exist rather than
+		// failing the whole check.
+		if resolvedAllowed, err := filepath.EvalSymlinks(allowedAbs); err == nil {
+			allowedAbs = resolvedAllowed
+		}
+		if resolvedPath == allowedAbs || strings.HasPrefix(resolvedPath, allowedAbs+sep) {
 			return nil
 		}
 	}
 
 	return fmt.Errorf("media path outside allowed directories")
+}
+
+// resolveExistingPrefix returns absPath with its longest existing ancestor
+// passed through filepath.EvalSymlinks and any remaining (not-yet-existing)
+// components re-appended. filepath.EvalSymlinks requires the whole path to
+// exist; this walks up until it finds a component that does, so a symlink in
+// the existing portion is followed while a missing leaf file is tolerated.
+func resolveExistingPrefix(absPath string) string {
+	remainder := ""
+	current := absPath
+	for {
+		if resolved, err := filepath.EvalSymlinks(current); err == nil {
+			if remainder == "" {
+				return resolved
+			}
+			return filepath.Join(resolved, remainder)
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			// Reached the filesystem root without resolving anything.
+			return absPath
+		}
+		remainder = filepath.Join(filepath.Base(current), remainder)
+		current = parent
+	}
 }
 
 // SendMessage sends a WhatsApp message with optional media, quoted message, and mentions

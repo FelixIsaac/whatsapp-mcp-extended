@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,6 +26,9 @@ func TestValidateMediaPath(t *testing.T) {
 		{"outside allowed /etc", "/etc/passwd", true, "outside allowed"},
 		{"outside allowed /home", "/home/user/file.txt", true, "outside allowed"},
 		{"outside allowed /var", "/var/log/syslog", true, "outside allowed"},
+		// Sibling directory that merely shares a name prefix with /tmp must not
+		// pass: a raw strings.HasPrefix(absPath, "/tmp") would wrongly allow it.
+		{"sibling prefix of /tmp", "/tmpfoo/file.jpg", true, "outside allowed"},
 	}
 
 	os.Unsetenv("DISABLE_PATH_CHECK")
@@ -48,6 +52,38 @@ func TestValidateMediaPath(t *testing.T) {
 				t.Errorf("validateMediaPath(%s) = %v, want nil", tt.path, err)
 			}
 		})
+	}
+}
+
+func TestValidateMediaPath_SymlinkEscape(t *testing.T) {
+	os.Unsetenv("DISABLE_PATH_CHECK")
+
+	// A directory inside the allowlist (/tmp) containing a symlink that points
+	// outside it. os.ReadFile would follow the link, so validation must resolve
+	// it and reject — otherwise the link's own path (/tmp/...) passes the check
+	// while the bytes read come from the target.
+	dir, err := os.MkdirTemp("/tmp", "wamcp_symlink_")
+	if err != nil {
+		t.Skipf("cannot create temp dir under /tmp: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	// A real file inside the allowed dir must still be accepted.
+	realFile := filepath.Join(dir, "real.jpg")
+	if err := os.WriteFile(realFile, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write real file: %v", err)
+	}
+	if err := validateMediaPath(realFile); err != nil {
+		t.Errorf("real file %s under /tmp should be allowed, got: %v", realFile, err)
+	}
+
+	// A symlink to a file outside the allowlist must be rejected.
+	link := filepath.Join(dir, "escape.jpg")
+	if err := os.Symlink("/etc/passwd", link); err != nil {
+		t.Skipf("cannot create symlink: %v", err)
+	}
+	if err := validateMediaPath(link); err == nil {
+		t.Errorf("symlink %s -> /etc/passwd should be rejected, got nil", link)
 	}
 }
 
