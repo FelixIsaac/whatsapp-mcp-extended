@@ -395,8 +395,12 @@ def get_contact_context(
     if not contact:
         contact = whatsapp_get_contact_by_phone(identifier)
 
-    jid = contact.get("jid") if contact else identifier
-    result: dict[str, Any] = {"contact": contact}
+    if contact:
+        jid = contact.jid
+        result: dict[str, Any] = {"contact": contact.to_dict()}
+    else:
+        jid = identifier
+        result: dict[str, Any] = {"contact": None}
 
     if include_chats:
         result["chats"] = whatsapp_get_contact_chats(jid, limit, page)
