@@ -46,7 +46,7 @@ class Message:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Message to dictionary for structured output, omitting empty/null fields."""
-        result = {
+        result: dict[str, Any] = {
             "id": self.id,
             "chat_jid": self.chat_jid,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
@@ -138,7 +138,7 @@ class Chat:
     silent_duration_seconds: int | None = None
     is_recently_active: bool = False
     media_count_by_type: dict[str, int] = field(default_factory=dict)
-    recent_media: list[dict[str, Any]] = field(default_factory=list)
+    recent_media: list[str] = field(default_factory=list)
     has_media: bool = False
     is_disappearing_messages: bool = False
     disappearing_ttl: int | None = None
@@ -152,7 +152,7 @@ class Chat:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Chat to dictionary for structured output, omitting empty/null fields."""
-        result = {
+        result: dict[str, Any] = {
             "jid": self.jid,
             "name": self.name,
             "is_group": self.is_group,
@@ -255,7 +255,7 @@ class Contact:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Contact to dictionary for structured output, omitting empty/null fields."""
-        result = {
+        result: dict[str, Any] = {
             "jid": self.jid,
             "phone_number": self.phone_number,
             "name": self.name,

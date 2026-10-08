@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Any
 
 import gradio as gr
 from mcp.server.fastmcp import FastMCP
@@ -189,7 +190,7 @@ def get_contact_chats(jid: str, limit: int = 20, page: int = 0) -> str:
 
 
 @mcp.tool()
-def get_last_interaction(jid: str) -> str:
+def get_last_interaction(jid: str) -> dict[str, Any] | None:
     """Get most recent WhatsApp message involving the contact.
 
     Parameters:

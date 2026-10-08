@@ -149,3 +149,42 @@ def test_docker_mcp_entrypoint_uses_curated_main_server():
     assert "python gradio-main.py" not in dockerfile
     assert "MCP_TRANSPORT=streamable-http" in compose
     assert "WHATSAPP_MCP_TOOLSETS=${WHATSAPP_MCP_TOOLSETS:-all}" in compose
+
+
+def test_message_context_tool_returns_serialized_dict(monkeypatch):
+    main = reload_main(monkeypatch, "core")
+    expected = {
+        "message": {"id": "m1"},
+        "before": [{"id": "m0"}],
+        "after": [{"id": "m2"}],
+    }
+
+    class FakeContext:
+        def to_dict(self):
+            return expected
+
+    monkeypatch.setattr(main, "whatsapp_get_message_context", lambda *_args: FakeContext())
+
+    assert main.get_message_context("m1") == expected
+
+
+def test_list_all_contacts_tool_returns_serialized_dicts(monkeypatch):
+    main = reload_main(monkeypatch, "core")
+
+    class FakeContact:
+        def __init__(self, jid):
+            self.jid = jid
+
+        def to_dict(self):
+            return {"jid": self.jid}
+
+    monkeypatch.setattr(
+        main,
+        "whatsapp_list_all_contacts",
+        lambda _limit: [FakeContact("1@s.whatsapp.net"), FakeContact("2@s.whatsapp.net")],
+    )
+
+    assert main.list_all_contacts(2) == [
+        {"jid": "1@s.whatsapp.net"},
+        {"jid": "2@s.whatsapp.net"},
+    ]

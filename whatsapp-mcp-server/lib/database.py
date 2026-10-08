@@ -657,7 +657,7 @@ def list_chats(
                 last_sender_contact_info = get_contact_info(chat[5])
 
             # Calculate message velocity (Tier 2)
-            message_velocity = {}
+            message_velocity: dict[str, Any] = {}
             if msgs_week > 0:
                 message_velocity["messages_per_day"] = round(msgs_week / 7, 2)
                 # Determine trend direction

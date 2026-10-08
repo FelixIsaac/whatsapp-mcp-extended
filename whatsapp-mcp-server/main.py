@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import requests as _requests
 from mcp.server.fastmcp import FastMCP
@@ -241,7 +241,7 @@ def list_chats(
 
 
 @tool("core", "Get Chat", read_only=True, idempotent=True, open_world=False)
-def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]:
+def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any] | None:
     """Get WhatsApp chat metadata by JID.
 
     Args:
@@ -267,7 +267,7 @@ def get_message_context(message_id: str, before: int = 5, after: int = 5) -> dic
         - Useful after finding a message via search to see full context
     """
     context = whatsapp_get_message_context(message_id, before, after)
-    return context
+    return context.to_dict()
 
 
 @tool("send", "Send Message", read_only=False)
@@ -386,7 +386,7 @@ def list_all_contacts(limit: int = 100) -> list[dict[str, Any]]:
     Returns:
         List of contact dicts with jid, phone_number, name, first_name, full_name, push_name, business_name, nickname
     """
-    return whatsapp_list_all_contacts(limit)
+    return [contact.to_dict() for contact in whatsapp_list_all_contacts(limit)]
 
 
 @tool(
@@ -412,12 +412,13 @@ def get_contact_context(
     if not contact:
         contact = whatsapp_get_contact_by_phone(identifier)
 
+    result: dict[str, Any]
     if contact:
         jid = contact.jid
-        result: dict[str, Any] = {"contact": contact.to_dict()}
+        result = {"contact": contact.to_dict()}
     else:
         jid = identifier
-        result: dict[str, Any] = {"contact": None}
+        result = {"contact": None}
 
     if include_chats:
         result["chats"] = whatsapp_get_contact_chats(jid, limit, page)
@@ -809,7 +810,9 @@ def resource_sync_status() -> str:
 
 
 if __name__ == "__main__":
-    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    transport = cast(
+        Literal["stdio", "sse", "streamable-http"], os.getenv("MCP_TRANSPORT", "stdio")
+    )
     if transport in {"sse", "streamable-http"}:
         mcp.settings.host = os.getenv("HOST", "0.0.0.0")
         mcp.settings.port = int(os.getenv("PORT", "8081"))

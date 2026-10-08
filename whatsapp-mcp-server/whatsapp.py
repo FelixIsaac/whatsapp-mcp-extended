@@ -65,7 +65,7 @@ class Message:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert Message to dictionary for structured output."""
-        result = {
+        result: dict[str, Any] = {
             "id": self.id,
             "chat_jid": self.chat_jid,
             "chat_name": self.chat_name,
@@ -181,6 +181,14 @@ class MessageContext:
     before: list[Message]
     after: list[Message]
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert MessageContext to dictionary."""
+        return {
+            "message": self.message.to_dict(),
+            "before": [message.to_dict() for message in self.before],
+            "after": [message.to_dict() for message in self.after],
+        }
+
 
 def get_sender_name(sender_jid: str) -> str:
     """Get the best available name for a sender using both contact and chat data."""
@@ -263,7 +271,7 @@ def get_sender_name(sender_jid: str) -> str:
             messages_conn.close()
 
 
-def format_message(message: Message, show_chat_info: bool = True) -> None:
+def format_message(message: Message, show_chat_info: bool = True) -> str:
     """Print a single message with consistent formatting."""
     output = ""
 
@@ -284,7 +292,7 @@ def format_message(message: Message, show_chat_info: bool = True) -> None:
     return output
 
 
-def format_messages_list(messages: list[Message], show_chat_info: bool = True) -> None:
+def format_messages_list(messages: list[Message], show_chat_info: bool = True) -> str:
     output = ""
     if not messages:
         output += "No messages to display."
@@ -321,7 +329,7 @@ def list_messages(
         ]
         query_parts.append("JOIN chats ON messages.chat_jid = chats.jid")
         where_clauses = []
-        params = []
+        params: list[Any] = []
 
         # Add filters
         if after:
@@ -526,7 +534,7 @@ def list_chats(
     page: int = 0,
     include_last_message: bool = True,
     sort_by: str = "last_active",
-) -> list[Chat]:
+) -> list[dict[str, Any]]:
     """Get chats matching the specified criteria."""
     print(f"Debug: Database path: {MESSAGES_DB_PATH}")
     print(f"Debug: Database exists: {os.path.exists(MESSAGES_DB_PATH)}")
@@ -579,7 +587,7 @@ def list_chats(
         ]
 
         where_clauses = []
-        params = []
+        params: list[Any] = []
 
         if query:
             where_clauses.append("(LOWER(chats.name) LIKE LOWER(?) OR chats.jid LIKE ?)")
