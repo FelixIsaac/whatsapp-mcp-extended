@@ -1151,6 +1151,12 @@ def download_media(message_id: str, chat_jid: str) -> str | None:
             result = response.json()
             if result.get("success", False):
                 path = result.get("path")
+                if path and not os.path.isabs(path):
+                    # The bridge reports media paths relative to its own
+                    # working directory (the bridge's project root, one
+                    # level above WA_STORE_PATH), not this server's cwd.
+                    bridge_root = os.path.dirname(os.path.dirname(MESSAGES_DB_PATH))
+                    path = os.path.join(bridge_root, path)
                 print(f"Media downloaded successfully: {path}")
                 return path
             else:
