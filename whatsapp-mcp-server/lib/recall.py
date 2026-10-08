@@ -102,9 +102,7 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
         )
         """
     )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_msgemb_chat ON message_embeddings(chat_jid)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_msgemb_chat ON message_embeddings(chat_jid)")
 
 
 def _index_pending() -> None:
@@ -168,8 +166,7 @@ def _index_pending() -> None:
             )
             _indexer_state["indexed"] = (_indexer_state.get("indexed", 0) or 0) + len(rows)
         _indexer_state["status"] = "done"
-        logger.info("[recall] indexer finished, %d messages indexed total",
-                    _indexer_state["indexed"])
+        logger.info("[recall] indexer finished, %d messages indexed total", _indexer_state["indexed"])
     finally:
         try:
             conn.close()
@@ -200,9 +197,7 @@ def _ensure_indexer_running() -> None:
         except Exception:
             pass
 
-        _indexer_thread = threading.Thread(
-            target=_index_pending, daemon=True, name="recall-indexer"
-        )
+        _indexer_thread = threading.Thread(target=_index_pending, daemon=True, name="recall-indexer")
         _indexer_thread.start()
 
 

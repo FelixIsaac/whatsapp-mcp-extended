@@ -131,15 +131,11 @@ def _resolve_equivalent_jids(jid: str) -> list[str]:
         conn = sqlite3.connect(WHATSAPP_DB_PATH)
         cursor = conn.cursor()
         if suffix == "s.whatsapp.net":
-            row = cursor.execute(
-                "SELECT lid FROM whatsmeow_lid_map WHERE pn = ?", (bare,)
-            ).fetchone()
+            row = cursor.execute("SELECT lid FROM whatsmeow_lid_map WHERE pn = ?", (bare,)).fetchone()
             if row:
                 return [jid, f"{row[0]}@lid"]
         else:
-            row = cursor.execute(
-                "SELECT pn FROM whatsmeow_lid_map WHERE lid = ?", (bare,)
-            ).fetchone()
+            row = cursor.execute("SELECT pn FROM whatsmeow_lid_map WHERE lid = ?", (bare,)).fetchone()
             if row:
                 return [jid, f"{row[0]}@s.whatsapp.net"]
         return [jid]

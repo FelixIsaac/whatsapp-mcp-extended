@@ -78,7 +78,7 @@ WHATSAPP_ALLOWLIST_JIDS=1234567890,9876543210@s.whatsapp.net,1203630123456789@g.
 
 ## MCP Tools
 
-Version `0.3.0` exposes the full curated MCP surface by default for compatibility. Users who want a leaner agent context can opt into smaller toolsets.
+Version `0.4.0` exposes the full curated MCP surface by default for compatibility. Users who want a leaner agent context can opt into smaller toolsets.
 
 Default toolsets:
 

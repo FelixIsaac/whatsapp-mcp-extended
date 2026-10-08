@@ -810,9 +810,7 @@ def resource_sync_status() -> str:
 
 
 if __name__ == "__main__":
-    transport = cast(
-        Literal["stdio", "sse", "streamable-http"], os.getenv("MCP_TRANSPORT", "stdio")
-    )
+    transport = cast(Literal["stdio", "sse", "streamable-http"], os.getenv("MCP_TRANSPORT", "stdio"))
     if transport in {"sse", "streamable-http"}:
         mcp.settings.host = os.getenv("HOST", "0.0.0.0")
         mcp.settings.port = int(os.getenv("PORT", "8081"))

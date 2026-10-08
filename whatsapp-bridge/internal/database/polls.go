@@ -12,7 +12,7 @@ func (store *MessageStore) StorePollOptions(messageID, chatJID string, options [
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.Exec(`DELETE FROM poll_options WHERE message_id = ? AND chat_jid = ?`, messageID, chatJID); err != nil {
 		return err
