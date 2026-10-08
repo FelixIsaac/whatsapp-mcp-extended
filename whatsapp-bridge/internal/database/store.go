@@ -148,6 +148,24 @@ func createTables(db *sql.DB) error {
 			FOREIGN KEY (chat_jid) REFERENCES chats(jid)
 		);
 
+		CREATE TABLE IF NOT EXISTS poll_options (
+			message_id TEXT NOT NULL,
+			chat_jid TEXT NOT NULL,
+			option_index INTEGER NOT NULL,
+			option_name TEXT NOT NULL,
+			PRIMARY KEY (message_id, chat_jid, option_index)
+		);
+
+		CREATE TABLE IF NOT EXISTS poll_current_votes (
+			poll_message_id TEXT NOT NULL,
+			chat_jid TEXT NOT NULL,
+			voter_jid TEXT NOT NULL,
+			selected_options TEXT NOT NULL,
+			vote_timestamp_ms INTEGER NOT NULL,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (poll_message_id, chat_jid, voter_jid)
+		);
+
 		CREATE TABLE IF NOT EXISTS contact_nicknames (
 			jid TEXT PRIMARY KEY,
 			nickname TEXT NOT NULL,

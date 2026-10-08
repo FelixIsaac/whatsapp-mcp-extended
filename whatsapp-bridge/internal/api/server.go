@@ -83,6 +83,7 @@ func (s *Server) registerHandlers() {
 
 	// Phase 3: Polls
 	http.HandleFunc("/api/poll/create", SecureMiddleware(s.handleCreatePoll))
+	http.HandleFunc("/api/poll/results", SecureMiddleware(s.handleGetPollResults))
 
 	// Phase 4: History Sync
 	http.HandleFunc("/api/history/request", SecureMiddleware(s.handleRequestHistory))

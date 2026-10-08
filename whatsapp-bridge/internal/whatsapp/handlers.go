@@ -134,6 +134,29 @@ func (c *Client) HandleMessage(messageStore *database.MessageStore, webhookManag
 	// Extract text content
 	content := ExtractTextContent(msg.Message)
 
+	// A poll creation message needs its option list persisted locally, independent of anything
+	// whatsmeow itself stores: a later vote only ever carries SHA-256 hashes of the selected
+	// option text, never the text, so resolving a vote to something readable requires knowing
+	// the original options. This covers polls WE create too — CreatePoll sends but does not see
+	// its own message come back as an event, so it stores this itself (see messages.go).
+	if pollCreate := msg.Message.GetPollCreationMessage(); pollCreate != nil {
+		var optionNames []string
+		for _, opt := range pollCreate.GetOptions() {
+			optionNames = append(optionNames, opt.GetOptionName())
+		}
+		if err := messageStore.StorePollOptions(msg.Info.ID, chatJID, optionNames); err != nil {
+			c.logger.Warnf("Failed to store poll options for %s: %v", msg.Info.ID, err)
+		}
+	}
+
+	// A poll vote arrives as its own message wrapping a PollUpdateMessage. ExtractTextContent
+	// has no case for it (by design — decrypting it needs the live client and local poll-option
+	// state, not just the protobuf), so without this it silently has no content and no media and
+	// gets dropped a few lines down, with nothing in the store or the logs to show it happened.
+	if msg.Message.GetPollUpdateMessage() != nil {
+		content = c.resolvePollVoteContent(messageStore, msg)
+	}
+
 	// Extract media info
 	mediaType, filename, url, directPath, mediaKey, fileSHA256, fileEncSHA256, fileLength := ExtractMediaInfo(msg.Message)
 

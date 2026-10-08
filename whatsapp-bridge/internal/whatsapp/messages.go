@@ -779,8 +779,13 @@ func (c *Client) SetGroupTopic(groupJID string, topic string) error {
 
 // Phase 3: Polls
 
-// CreatePoll creates and sends a poll to a chat
-func (c *Client) CreatePoll(chatJID string, question string, options []string, multiSelect bool) (bridgeTypes.SendResult, error) {
+// CreatePoll creates and sends a poll to a chat, and stores the poll (with its option list)
+// locally so that votes on it can later be decrypted and resolved back to readable option text —
+// see resolvePollVoteContent in polls.go. A poll this bridge sends never comes back to it as an
+// incoming event (self-echo only happens across other linked devices), so this is the only place
+// that poll's options are ever captured; skipping it means every future vote on this poll decrypts
+// successfully but can't be matched to an option name.
+func (c *Client) CreatePoll(messageStore *database.MessageStore, chatJID string, question string, options []string, multiSelect bool) (bridgeTypes.SendResult, error) {
 	if !c.IsConnected() {
 		return bridgeTypes.SendResult{Success: false, Error: "not connected to WhatsApp"}, fmt.Errorf("not connected to WhatsApp")
 	}
@@ -819,9 +824,24 @@ func (c *Client) CreatePoll(chatJID string, question string, options []string, m
 	}
 	c.antiban.AfterSend(antiban.Poll)
 
+	msgID := string(resp.ID)
+	if err := messageStore.StorePollOptions(msgID, chatJID, options); err != nil {
+		c.logger.Warnf("Failed to store poll options for %s: %v", msgID, err)
+	}
+	var ownJID string
+	if c.Store != nil && c.Store.ID != nil {
+		ownJID = c.Store.ID.ToNonAD().String()
+	}
+	if err := messageStore.StoreMessage(
+		msgID, chatJID, ownJID, "", fmt.Sprintf("[Poll: %s]", question),
+		resp.Timestamp, true, "", "", "", "", nil, nil, nil, 0,
+	); err != nil {
+		c.logger.Warnf("Failed to store sent poll message %s: %v", msgID, err)
+	}
+
 	return bridgeTypes.SendResult{
 		Success:   true,
-		MessageID: string(resp.ID),
+		MessageID: msgID,
 		Timestamp: resp.Timestamp,
 	}, nil
 }
