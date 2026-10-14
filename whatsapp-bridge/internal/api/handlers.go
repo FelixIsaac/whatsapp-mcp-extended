@@ -1635,6 +1635,10 @@ func (s *Server) handlePairPhone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Query().Get("reset") == "true" || r.URL.Query().Get("force") == "true" {
+		s.client.ResetPairing()
+	}
+
 	var req types.PairPhoneRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		SendJSONError(w, "Invalid request body", http.StatusBadRequest)
@@ -1662,6 +1666,22 @@ func (s *Server) handlePairPhone(w http.ResponseWriter, r *http.Request) {
 		Success:   true,
 		Code:      code,
 		ExpiresIn: 160,
+	})
+}
+
+// handlePairReset forces clearing of any stuck pairing state
+// POST /api/pair/reset
+func (s *Server) handlePairReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		SendJSONError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.client.ResetPairing()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Pairing state reset successfully",
 	})
 }
 
