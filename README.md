@@ -267,6 +267,7 @@ After running `setup.ps1` once, use the Makefile for day-to-day operations:
 make status          # check connection state (connected, needs_pairing, jid)
 make pair PHONE=+60123456789   # pair via 8-digit phone code — no QR scan needed
 make pairing-status  # check pairing code progress
+make pair-reset      # reset pairing state if previous attempt timed out
 make reconnect       # force reconnect (no re-pairing)
 make logs            # tail bridge logs
 make sync-venv       # re-sync Python venv (fix missing module errors)

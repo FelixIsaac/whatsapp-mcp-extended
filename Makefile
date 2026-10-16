@@ -65,6 +65,13 @@ pairing-status:
 	  | python3 -m json.tool 2>/dev/null \
 	  || curl -sf -H "X-API-Key: $(API_KEY)" $(BRIDGE)/api/pairing
 
+## Reset pairing state if previous attempt got stuck
+pair-reset:
+	@curl -sf -X POST -H "X-API-Key: $(API_KEY)" $(BRIDGE)/api/pair/reset \
+	  | python3 -m json.tool 2>/dev/null \
+	  || curl -sf -X POST -H "X-API-Key: $(API_KEY)" $(BRIDGE)/api/pair/reset
+	@echo "Pairing state reset successfully"
+
 ## Run pre-flight checks on the Python MCP server
 check:
 	cd whatsapp-mcp-server && uv run python check.py
@@ -89,6 +96,7 @@ help:
 	@echo "  status         Show connection state (connected, needs_pairing, jid)"
 	@echo "  pair           Pair via phone code: make pair PHONE=+60123456789"
 	@echo "  pairing-status Check pairing code progress"
+	@echo "  pair-reset     Reset pairing state if previous attempt got stuck"
 	@echo "  reconnect      Force reconnect (no re-pairing)"
 	@echo "  check          Run Python MCP server pre-flight checks"
 	@echo "  sync-venv      Re-sync Python venv (fix missing module errors)"

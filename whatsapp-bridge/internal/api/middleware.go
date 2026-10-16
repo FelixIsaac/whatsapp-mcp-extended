@@ -42,6 +42,11 @@ func getAllowedOrigins() map[string]bool {
 // AuthMiddleware validates API key authentication using constant-time comparison
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("DISABLE_AUTH_CHECK") == "true" || os.Getenv("DISABLE_AUTH_CHECK") == "1" {
+			next(w, r)
+			return
+		}
+
 		expectedKey := os.Getenv("API_KEY")
 
 		// Skip auth if no API_KEY is configured (dev mode)

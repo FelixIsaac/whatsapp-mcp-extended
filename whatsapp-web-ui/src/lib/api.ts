@@ -123,10 +123,17 @@ export class WhatsAppAPI {
   }
 
   // Pairing methods
-  async pair(phoneNumber: string): Promise<PairResponse> {
-    return this.request<PairResponse>("/pair", {
+  async pair(phoneNumber: string, force = false): Promise<PairResponse> {
+    const endpoint = force ? "/pair?force=true" : "/pair";
+    return this.request<PairResponse>(endpoint, {
       method: "POST",
       body: JSON.stringify({ phone_number: phoneNumber }),
+    });
+  }
+
+  async resetPairing(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/pair/reset", {
+      method: "POST",
     });
   }
 

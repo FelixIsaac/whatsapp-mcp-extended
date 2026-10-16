@@ -109,6 +109,7 @@ func (s *Server) registerHandlers() {
 
 	// Phase 7: Phone Number Pairing
 	http.HandleFunc("/api/pair", SecureMiddleware(s.handlePairPhone))
+	http.HandleFunc("/api/pair/reset", SecureMiddleware(s.handlePairReset))
 	http.HandleFunc("/api/pairing", SecureMiddleware(s.handlePairingStatus))
 	http.HandleFunc("/api/connection", SecureMiddleware(s.handleConnectionStatus))
 
