@@ -999,6 +999,7 @@ def send_file(
     server's disk, so a path-only interface makes sending it impossible.
     """
     temp_path: str | None = None
+    temp_dir: str | None = None
     try:
         # Validate input
         if not recipient:
@@ -1011,7 +1012,7 @@ def send_file(
             }
 
         if file_content_base64:
-            if not filename:
+            if filename is None:
                 return {
                     "success": False,
                     "error": "filename must be provided with file_content_base64",
@@ -1026,12 +1027,15 @@ def send_file(
             # there first — and somewhere validateMediaPath allows.
             media_dir = os.path.join(MEDIA_TEMP_DIR, "whatsapp-outgoing")
             os.makedirs(media_dir, exist_ok=True)
-            # Only the basename: a filename like "../x" must not escape. The
-            # bridge also rejects any path containing "..", so a traversal
-            # attempt would fail there too.
-            safe_name = os.path.basename(filename) or "upload"
-            fd, temp_path = tempfile.mkstemp(suffix=f"-{safe_name}", dir=media_dir)
-            with os.fdopen(fd, "wb") as f:
+            # Keep the document name exact; put uniqueness in its directory.
+            # Empty names and directory markers must still name a regular file.
+            safe_name = os.path.basename(filename)
+            if safe_name in ("", ".", ".."):
+                safe_name = "upload"
+            temp_dir = tempfile.mkdtemp(dir=media_dir)
+            temp_path = os.path.join(temp_dir, safe_name)
+            with open(temp_path, "xb", opener=lambda path, flags: os.open(path, flags, 0o600)) as f:
+                os.fchmod(f.fileno(), 0o600)
                 f.write(content)
 
             media_path = temp_path
@@ -1075,6 +1079,11 @@ def send_file(
         if temp_path:
             try:
                 os.remove(temp_path)
+            except OSError:
+                pass
+        if temp_dir:
+            try:
+                os.rmdir(temp_dir)
             except OSError:
                 pass
 
