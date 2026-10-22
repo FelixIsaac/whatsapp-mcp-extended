@@ -75,6 +75,26 @@ func mediaTypeAndMimeType(mediaPath string) (whatsmeow.MediaType, string) {
 	}
 }
 
+// setAudioMessageMetadata keeps ordinary audio files distinct from voice notes.
+// Only Ogg/Opus voice notes use the existing duration and waveform analysis.
+func setAudioMessageMetadata(audio *waE2E.AudioMessage, mimeType string, mediaData []byte) error {
+	audio.PTT = proto.Bool(false)
+	audio.Seconds = nil
+	audio.Waveform = nil
+	if mimeType != "audio/ogg; codecs=opus" && mimeType != "audio/opus" {
+		return nil
+	}
+
+	seconds, waveform, err := AnalyzeOggOpus(mediaData)
+	if err != nil {
+		return fmt.Errorf("Failed to analyze Ogg Opus file: %w", err)
+	}
+	audio.PTT = proto.Bool(true)
+	audio.Seconds = proto.Uint32(seconds)
+	audio.Waveform = waveform
+	return nil
+}
+
 func documentFileName(mediaPath string) string {
 	return filepath.Base(strings.ReplaceAll(mediaPath, "\\", "/"))
 }
@@ -283,22 +303,7 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				FileLength:    &resp.FileLength,
 			}
 		case whatsmeow.MediaAudio:
-			// Handle ogg audio files
-			var seconds uint32 = 30 // Default fallback
-			var waveform []byte = nil
-
-			// Try to analyze the ogg file
-			if strings.Contains(mimeType, "ogg") {
-				analyzedSeconds, analyzedWaveform, err := AnalyzeOggOpus(mediaData)
-				if err == nil {
-					seconds = analyzedSeconds
-					waveform = analyzedWaveform
-				} else {
-					return bridgeTypes.SendResult{Success: false, Error: fmt.Sprintf("Failed to analyze Ogg Opus file: %v", err)}
-				}
-			}
-
-			msg.AudioMessage = &waE2E.AudioMessage{
+			audio := &waE2E.AudioMessage{
 				Mimetype:      proto.String(mimeType),
 				URL:           &resp.URL,
 				DirectPath:    &resp.DirectPath,
@@ -306,10 +311,11 @@ func (c *Client) SendMessage(messageStore *database.MessageStore, recipient stri
 				FileEncSHA256: resp.FileEncSHA256,
 				FileSHA256:    resp.FileSHA256,
 				FileLength:    &resp.FileLength,
-				Seconds:       proto.Uint32(seconds),
-				PTT:           proto.Bool(true),
-				Waveform:      waveform,
 			}
+			if err := setAudioMessageMetadata(audio, mimeType, mediaData); err != nil {
+				return bridgeTypes.SendResult{Success: false, Error: err.Error()}
+			}
+			msg.AudioMessage = audio
 		case whatsmeow.MediaVideo:
 			msg.VideoMessage = &waE2E.VideoMessage{
 				Caption:       proto.String(message),
