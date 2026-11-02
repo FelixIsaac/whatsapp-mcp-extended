@@ -87,7 +87,7 @@ func setAudioMessageMetadata(audio *waE2E.AudioMessage, mimeType string, mediaDa
 
 	seconds, waveform, err := AnalyzeOggOpus(mediaData)
 	if err != nil {
-		return fmt.Errorf("Failed to analyze Ogg Opus file: %w", err)
+		return fmt.Errorf("failed to analyze Ogg Opus file: %w", err)
 	}
 	audio.PTT = proto.Bool(true)
 	audio.Seconds = proto.Uint32(seconds)
