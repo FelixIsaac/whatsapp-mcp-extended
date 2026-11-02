@@ -480,7 +480,7 @@ func (c *Client) SendReaction(messageStore *database.MessageStore, chatJID, mess
 		}
 	}
 
-	msg := c.Client.BuildReaction(chat, senderJID, msgID, emoji)
+	msg := c.BuildReaction(chat, senderJID, msgID, emoji)
 
 	if err := c.antiban.BeforeSend(context.Background(), antiban.Reaction, 0); err != nil {
 		return fmt.Errorf("antiban blocked reaction: %v", err)
@@ -513,7 +513,7 @@ func (c *Client) EditMessage(chatJID, messageID, newContent string) error {
 	newMsg := &waE2E.Message{
 		Conversation: proto.String(newContent),
 	}
-	msg := c.Client.BuildEdit(chat, msgID, newMsg)
+	msg := c.BuildEdit(chat, msgID, newMsg)
 
 	if c.antiban.Enabled() {
 		_ = c.SendTypingIndicator(chatJID, "typing")
@@ -558,7 +558,7 @@ func (c *Client) DeleteMessage(chatJID, messageID, senderJID string) error {
 		}
 	}
 
-	msg := c.Client.BuildRevoke(chat, sender, msgID)
+	msg := c.BuildRevoke(chat, sender, msgID)
 
 	if err := c.antiban.BeforeSend(context.Background(), antiban.Delete, 0); err != nil {
 		return fmt.Errorf("antiban blocked delete: %v", err)
@@ -628,7 +628,7 @@ func (c *Client) markMessages(chatJID string, messageIDs []string, senderJID str
 		}
 	}
 
-	return c.Client.MarkRead(context.Background(), ids, time.Now(), chat, sender, receiptType)
+	return c.MarkRead(context.Background(), ids, time.Now(), chat, sender, receiptType)
 }
 
 // Phase 2: Group Management
@@ -677,7 +677,7 @@ func (c *Client) AddGroupParticipants(groupJID string, participants []string) ([
 		participantJIDs[i] = jid
 	}
 
-	return c.Client.UpdateGroupParticipants(context.Background(), group, participantJIDs, whatsmeow.ParticipantChangeAdd)
+	return c.UpdateGroupParticipants(context.Background(), group, participantJIDs, whatsmeow.ParticipantChangeAdd)
 }
 
 // RemoveGroupParticipants removes members from a group
@@ -700,7 +700,7 @@ func (c *Client) RemoveGroupParticipants(groupJID string, participants []string)
 		participantJIDs[i] = jid
 	}
 
-	return c.Client.UpdateGroupParticipants(context.Background(), group, participantJIDs, whatsmeow.ParticipantChangeRemove)
+	return c.UpdateGroupParticipants(context.Background(), group, participantJIDs, whatsmeow.ParticipantChangeRemove)
 }
 
 // PromoteGroupParticipant promotes a participant to admin
@@ -719,7 +719,7 @@ func (c *Client) PromoteGroupParticipant(groupJID string, participant string) ([
 		return nil, fmt.Errorf("invalid participant JID: %v", err)
 	}
 
-	return c.Client.UpdateGroupParticipants(context.Background(), group, []types.JID{jid}, whatsmeow.ParticipantChangePromote)
+	return c.UpdateGroupParticipants(context.Background(), group, []types.JID{jid}, whatsmeow.ParticipantChangePromote)
 }
 
 // DemoteGroupParticipant demotes an admin to regular participant
@@ -738,7 +738,7 @@ func (c *Client) DemoteGroupParticipant(groupJID string, participant string) ([]
 		return nil, fmt.Errorf("invalid participant JID: %v", err)
 	}
 
-	return c.Client.UpdateGroupParticipants(context.Background(), group, []types.JID{jid}, whatsmeow.ParticipantChangeDemote)
+	return c.UpdateGroupParticipants(context.Background(), group, []types.JID{jid}, whatsmeow.ParticipantChangeDemote)
 }
 
 // LeaveGroup leaves a WhatsApp group
@@ -810,7 +810,7 @@ func (c *Client) CreatePoll(messageStore *database.MessageStore, chatJID string,
 	}
 
 	// Build poll creation message
-	pollMsg := c.Client.BuildPollCreation(question, options, selectableCount)
+	pollMsg := c.BuildPollCreation(question, options, selectableCount)
 
 	// Antiban: typing indicator + rate limit
 	if c.antiban.Enabled() {
@@ -881,16 +881,16 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 
 	// Set sender correctly: fromMe uses own JID, incoming uses provided sender JID
 	if oldestMsgFromMe {
-		msgInfo.MessageSource.Sender = ownJID
+		msgInfo.Sender = ownJID
 	} else if oldestMsgSender != "" {
 		senderJID, parseErr := types.ParseJID(oldestMsgSender)
 		if parseErr == nil {
-			msgInfo.MessageSource.Sender = senderJID
+			msgInfo.Sender = senderJID
 		} else {
-			msgInfo.MessageSource.Sender = ownJID
+			msgInfo.Sender = ownJID
 		}
 	} else {
-		msgInfo.MessageSource.Sender = ownJID
+		msgInfo.Sender = ownJID
 	}
 
 	// Build the history sync request
@@ -899,7 +899,7 @@ func (c *Client) RequestChatHistory(chatJID string, oldestMsgID string, oldestMs
 		count = 50
 	}
 
-	msg := c.Client.BuildHistorySyncRequest(msgInfo, count)
+	msg := c.BuildHistorySyncRequest(msgInfo, count)
 
 	// Send as peer message to own device (NOT to the group/chat).
 	// History sync is a device-to-device protocol request to our own phone.
