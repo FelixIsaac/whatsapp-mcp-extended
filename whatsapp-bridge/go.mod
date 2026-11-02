@@ -1,12 +1,12 @@
 module whatsapp-bridge
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/mdp/qrterminal v1.0.1
 	go.mau.fi/whatsmeow v0.0.0-20260722203353-e9a033b24933
-	golang.org/x/crypto v0.54.0
+	golang.org/x/crypto v0.58.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -24,9 +24,9 @@ require (
 	go.mau.fi/libsignal v0.2.2 // indirect
 	go.mau.fi/util v0.9.12-0.20260717235539-f9ffa7eca58d // indirect
 	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
-	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	rsc.io/qr v0.2.0 // indirect
 )
