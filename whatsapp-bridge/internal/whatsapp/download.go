@@ -64,7 +64,7 @@ func (c *Client) DownloadMessageMedia(ctx context.Context, store *database.Messa
 		return "", "", fmt.Errorf("unsupported media type %q", mediaType)
 	}
 
-	data, err := c.Client.Download(ctx, msg)
+	data, err := c.Download(ctx, msg)
 	if err != nil {
 		return "", "", fmt.Errorf("whatsmeow download: %w", err)
 	}
