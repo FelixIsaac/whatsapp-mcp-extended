@@ -71,3 +71,43 @@ func TestStoreChatEmptyNameDoesNotEraseExistingName(t *testing.T) {
 		t.Fatalf("name = %q, want existing name", name)
 	}
 }
+
+func TestRenameChatReplacesTheStoredGroupName(t *testing.T) {
+	store := newTestMessageStore(t)
+	now := time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)
+
+	if err := store.StoreChat("120363000000000001@g.us", "Old Group Name", now); err != nil {
+		t.Fatalf("store chat: %v", err)
+	}
+	if err := store.RenameChat("120363000000000001@g.us", "New Group Name"); err != nil {
+		t.Fatalf("rename chat: %v", err)
+	}
+
+	var name string
+	var got time.Time
+	if err := store.db.QueryRow("SELECT name, last_message_time FROM chats WHERE jid = ?", "120363000000000001@g.us").Scan(&name, &got); err != nil {
+		t.Fatalf("read chat: %v", err)
+	}
+	if name != "New Group Name" {
+		t.Fatalf("name = %q, want the new group name", name)
+	}
+	if !got.Equal(now) {
+		t.Fatalf("last_message_time = %v, want it unchanged at %v", got, now)
+	}
+}
+
+func TestRenameChatOfAnUnknownGroupCreatesNoChat(t *testing.T) {
+	store := newTestMessageStore(t)
+
+	if err := store.RenameChat("999@g.us", "Never Seen"); err != nil {
+		t.Fatalf("rename chat: %v", err)
+	}
+
+	var count int
+	if err := store.db.QueryRow("SELECT COUNT(*) FROM chats").Scan(&count); err != nil {
+		t.Fatalf("count chats: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("chats = %d, want 0", count)
+	}
+}
