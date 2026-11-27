@@ -154,6 +154,7 @@ Delivery: async with exponential backoff, HMAC-SHA256 signatures
 
 ## Environment Variables
 - `BRIDGE_HOST`: Go bridge hostname (default: localhost, set to container name in docker)
+- `MCP_ALLOWED_HOSTS`: Extra `Host` header values accepted by the SSE/streamable-http transport, comma-separated (e.g. `whatsapp_mcp:8081`). Needed when clients reach the server by a name other than localhost; otherwise requests get 421 Misdirected Request
 - `GRADIO`: Enable/disable Gradio UI (true/false)
 - `DEBUG`: Enable debug logging
 
