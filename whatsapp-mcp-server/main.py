@@ -809,9 +809,26 @@ def resource_sync_status() -> str:
     return json.dumps(data)
 
 
+def extend_allowed_hosts(settings: Any, value: str) -> list[str]:
+    """Add comma-separated Host values to the transport-security allowlist.
+
+    FastMCP() is constructed with the default host 127.0.0.1, which enables
+    DNS-rebinding protection with a localhost-only Host allowlist. Changing
+    settings.host afterwards does not widen it, so clients that reach the server
+    by another name (e.g. a Docker service name like "whatsapp_mcp:8081") get
+    421 Misdirected Request. Returns the hosts that were added.
+    """
+    hosts = [h.strip() for h in value.split(",") if h.strip()]
+    if hosts and settings.transport_security is not None:
+        settings.transport_security.allowed_hosts.extend(hosts)
+        return hosts
+    return []
+
+
 if __name__ == "__main__":
     transport = cast(Literal["stdio", "sse", "streamable-http"], os.getenv("MCP_TRANSPORT", "stdio"))
     if transport in {"sse", "streamable-http"}:
         mcp.settings.host = os.getenv("HOST", "0.0.0.0")
         mcp.settings.port = int(os.getenv("PORT", "8081"))
+        extend_allowed_hosts(mcp.settings, os.getenv("MCP_ALLOWED_HOSTS", ""))
     mcp.run(transport=transport)
